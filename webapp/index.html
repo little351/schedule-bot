@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Расписание</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #000000;
+    --card: #1c1c1e;
+    --card-pressed: #2c2c2e;
+    --text: #ffffff;
+    --hint: #8e8e93;
+    --accent: #0a84ff;
+    --border: #2c2c2e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 16px;
+  }
+
+  .date-strip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .chevron {
+    background: var(--card);
+    border: none;
+    color: var(--text);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 16px;
+    flex: 0 0 auto;
+  }
+  .date-pills {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    justify-content: space-between;
+  }
+  .date-pill {
+    background: var(--card);
+    border: none;
+    color: var(--hint);
+    border-radius: 14px;
+    padding: 6px 4px;
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .date-pill .num {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .date-pill.selected {
+    background: var(--accent);
+  }
+  .date-pill.selected .num,
+  .date-pill.selected {
+    color: #ffffff;
+  }
+
+  .status {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--hint);
+  }
+
+  .lesson-card {
+    background: var(--card);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    display: flex;
+  }
+  .lesson-bar {
+    width: 5px;
+    flex: 0 0 5px;
+    background: #48484a;
+  }
+  .lesson-body {
+    flex: 1;
+    padding: 12px 14px;
+  }
+  .lesson-top {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    cursor: pointer;
+  }
+  .lesson-time {
+    flex: 0 0 56px;
+    font-size: 13px;
+    color: var(--hint);
+    line-height: 1.5;
+  }
+  .lesson-subject {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .rating-panel {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+  .rating-panel.open {
+    display: block;
+  }
+  .rating-label {
+    font-size: 11px;
+    color: var(--hint);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+  }
+  .rating-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  .rating-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+  }
+  .rating-name {
+    flex: 0 0 120px;
+    font-size: 13px;
+  }
+  .rating-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .rating-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+  .rating-pct {
+    flex: 0 0 60px;
+    font-size: 12px;
+    color: var(--hint);
+    text-align: right;
+  }
+  .rating-row.my-vote .rating-name {
+    color: var(--text);
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<h1>Расписание</h1>
+
+<div class="date-strip">
+  <button class="chevron" id="prevBtn">‹</button>
+  <div class="date-pills" id="datePills"></div>
+  <button class="chevron" id="nextBtn">›</button>
+</div>
+
+<div id="container">
+  <div class="status">Загрузка...</div>
+</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+const telegramId = tg.initDataUnsafe?.user?.id;
+
+const DAY_ABBR = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const RATING_LABELS = {
+  attend: "Ходить",
+  confused: "Пока не понял",
+  interesting: "Интересный",
+  skip: "Можно не ходить",
+};
+const RATING_COLORS = {
+  attend: "#ff3b30",
+  confused: "#ffcc00",
+  interesting: "#34c759",
+  skip: "#8e8e93",
+};
+const RATING_ORDER = ["attend", "confused", "interesting", "skip"];
+
+let selectedDate = new Date();
+selectedDate.setHours(0, 0, 0, 0);
+
+function fmtISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function addDays(d, n) {
+  const nd = new Date(d);
+  nd.setDate(nd.getDate() + n);
+  return nd;
+}
+
+function renderDateStrip() {
+  const pillsEl = document.getElementById("datePills");
+  pillsEl.innerHTML = "";
+  for (let offset = -2; offset <= 2; offset++) {
+    const d = addDays(selectedDate, offset);
+    const btn = document.createElement("button");
+    btn.className = "date-pill" + (offset === 0 ? " selected" : "");
+    const jsWeekday = (d.getDay() + 6) % 7; // приводим к Пн=0
+    btn.innerHTML = `${DAY_ABBR[jsWeekday]}<span class="num">${d.getDate()}</span>`;
+    btn.addEventListener("click", () => {
+      selectedDate = d;
+      selectedDate.setHours(0, 0, 0, 0);
+      renderDateStrip();
+      loadDay();
+    });
+    pillsEl.appendChild(btn);
+  }
+}
+
+function dominantColor(rating) {
+  if (!rating || rating.total === 0) return "#48484a";
+  return RATING_COLORS[rating.dominant] || "#48484a";
+}
+
+function buildRatingPanel(lesson) {
+  const rating = lesson.rating;
+  const total = rating.total;
+  const rows = RATING_ORDER.map(opt => {
+    const count = rating.counts[opt];
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    const isMine = lesson.my_vote === opt;
+    return `
+      <div class="rating-row${isMine ? " my-vote" : ""}" data-option="${opt}" data-key="${encodeURIComponent(lesson.subject_key)}">
+        <div class="rating-dot" style="background:${RATING_COLORS[opt]}"></div>
+        <div class="rating-name">${RATING_LABELS[opt]}${isMine ? " ✓" : ""}</div>
+        <div class="rating-bar-track">
+          <div class="rating-bar-fill" style="width:${pct}%;background:${RATING_COLORS[opt]}"></div>
+        </div>
+        <div class="rating-pct">${count} · ${pct}%</div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="rating-panel" data-panel-for="${encodeURIComponent(lesson.subject_key)}">
+      <div class="rating-label">Оценки студентов</div>
+      ${rows}
+    </div>
+  `;
+}
+
+async function castVote(subjectKey, option) {
+  if (!telegramId) return;
+  const res = await fetch("/api/rate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ telegram_id: telegramId, subject_key: subjectKey, option }),
+  });
+  if (res.ok) {
+    loadDay(); // перезагружаем день, чтобы обновить все цифры
+  }
+}
+
+function attachHandlers() {
+  document.querySelectorAll(".lesson-top").forEach(el => {
+    el.addEventListener("click", () => {
+      const panel = el.parentElement.querySelector(".rating-panel");
+      if (panel) panel.classList.toggle("open");
+    });
+  });
+
+  document.querySelectorAll(".rating-row").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const key = decodeURIComponent(el.dataset.key);
+      const option = el.dataset.option;
+      castVote(key, option);
+    });
+  });
+}
+
+async function loadDay() {
+  const container = document.getElementById("container");
+  container.innerHTML = '<div class="status">Загрузка...</div>';
+
+  if (!telegramId) {
+    container.innerHTML = '<div class="status">Открой приложение через кнопку в боте.</div>';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/day?telegram_id=${telegramId}&date=${fmtISO(selectedDate)}`);
+
+    if (res.status === 404) {
+      const data = await res.json();
+      if (data.detail === "group_not_set") {
+        container.innerHTML = '<div class="status">Сначала укажи группу в чате с ботом (команда /start).</div>';
+      } else {
+        container.innerHTML = '<div class="status">Расписание на эту дату не найдено.</div>';
+      }
+      return;
+    }
+    if (!res.ok) throw new Error("server error");
+
+    const data = await res.json();
+
+    if (data.lessons.length === 0) {
+      container.innerHTML = '<div class="status">В этот день пар нет</div>';
+      return;
+    }
+
+    container.innerHTML = data.lessons.map(lesson => `
+      <div class="lesson-card">
+        <div class="lesson-bar" style="background:${dominantColor(lesson.rating)}"></div>
+        <div class="lesson-body">
+          <div class="lesson-top">
+            <div class="lesson-time">${lesson.time_start}<br>${lesson.time_end}</div>
+            <div class="lesson-subject">${lesson.subject}</div>
+          </div>
+          ${buildRatingPanel(lesson)}
+        </div>
+      </div>
+    `).join("");
+
+    attachHandlers();
+
+  } catch (err) {
+    container.innerHTML = '<div class="status">Ошибка загрузки. Попробуй позже.</div>';
+  }
+}
+
+document.getElementById("prevBtn").addEventListener("click", () => {
+  selectedDate = addDays(selectedDate, -1);
+  renderDateStrip();
+  loadDay();
+});
+document.getElementById("nextBtn").addEventListener("click", () => {
+  selectedDate = addDays(selectedDate, 1);
+  renderDateStrip();
+  loadDay();
+});
+
+renderDateStrip();
+loadDay();
+</script>
+
+</body>
+</html>
