@@ -1,5 +1,28 @@
+import os
 import sqlite3
 from datetime import datetime
+
+PG_DSN = os.environ.get("DATABASE_URL")
+pg_conn = None
+if PG_DSN:
+    import psycopg2
+    pg_conn = psycopg2.connect(PG_DSN)
+    pg_conn.autocommit = True
+    with pg_conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                telegram_id BIGINT PRIMARY KEY,
+                group_name TEXT
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS ratings (
+                subject_key TEXT,
+                telegram_id BIGINT,
+                option TEXT,
+                PRIMARY KEY (subject_key, telegram_id)
+            )
+        """)
 
 DAYS_ORDER = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
 TIME_SLOTS = ["8.50-10.20", "10.40-12.10", "13.00-14.30", "14.50-16.20", "16.40-18.10"]
@@ -47,6 +70,14 @@ def save_schedule(conn, records):
 
 
 def set_user_group(conn, telegram_id, group_name):
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (telegram_id, group_name) VALUES (%s, %s) "
+                "ON CONFLICT (telegram_id) DO UPDATE SET group_name = EXCLUDED.group_name",
+                (telegram_id, group_name)
+            )
+        return
     conn.execute(
         "INSERT OR REPLACE INTO users (telegram_id, group_name) VALUES (?, ?)",
         (telegram_id, group_name)
@@ -55,6 +86,11 @@ def set_user_group(conn, telegram_id, group_name):
 
 
 def get_user_group(conn, telegram_id):
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT group_name FROM users WHERE telegram_id=%s", (telegram_id,))
+            row = cur.fetchone()
+        return row[0] if row else None
     row = conn.execute(
         "SELECT group_name FROM users WHERE telegram_id = ?", (telegram_id,)
     ).fetchone()
@@ -120,6 +156,14 @@ RATING_COLORS = {
 def set_rating(conn, subject_key, telegram_id, option):
     if option not in RATING_OPTIONS:
         raise ValueError("bad option")
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO ratings (subject_key, telegram_id, option) VALUES (%s, %s, %s) "
+                "ON CONFLICT (subject_key, telegram_id) DO UPDATE SET option = EXCLUDED.option",
+                (subject_key, telegram_id, option)
+            )
+        return
     conn.execute(
         "INSERT OR REPLACE INTO ratings (subject_key, telegram_id, option) VALUES (?, ?, ?)",
         (subject_key, telegram_id, option)
@@ -128,10 +172,18 @@ def set_rating(conn, subject_key, telegram_id, option):
 
 
 def get_rating_summary(conn, subject_key):
-    rows = conn.execute(
-        "SELECT option, COUNT(*) FROM ratings WHERE subject_key=? GROUP BY option",
-        (subject_key,)
-    ).fetchall()
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "SELECT option, COUNT(*) FROM ratings WHERE subject_key=%s GROUP BY option",
+                (subject_key,)
+            )
+            rows = cur.fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT option, COUNT(*) FROM ratings WHERE subject_key=? GROUP BY option",
+            (subject_key,)
+        ).fetchall()
     counts = {opt: 0 for opt in RATING_OPTIONS}
     for option, cnt in rows:
         if option in counts:
@@ -142,6 +194,14 @@ def get_rating_summary(conn, subject_key):
 
 
 def get_user_rating(conn, subject_key, telegram_id):
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "SELECT option FROM ratings WHERE subject_key=%s AND telegram_id=%s",
+                (subject_key, telegram_id)
+            )
+            row = cur.fetchone()
+        return row[0] if row else None
     row = conn.execute(
         "SELECT option FROM ratings WHERE subject_key=? AND telegram_id=?",
         (subject_key, telegram_id)
