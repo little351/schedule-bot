@@ -22,7 +22,9 @@ GROUPS = ["10", "11", "12", "13", "14", "15", "16"]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет! Напиши номер своей группы (10-16), чтобы я запомнил его."
+        "Привет! Напиши номер своей группы (10-16), чтобы я запомнил его.\n\n"
+        "⚠️ Бот работает на бесплатном хостинге и может «засыпать» при простое. "
+        "Если после команды или открытия приложения ничего не происходит — подожди секунд 30 и попробуй ещё раз."
     )
 
 
@@ -123,8 +125,11 @@ async def app_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("Открыть расписание", web_app=WebAppInfo(url=WEBAPP_URL))]
     ])
-    await update.message.reply_text("Нажми, чтобы открыть расписание:", reply_markup=keyboard)
-
+    await update.message.reply_text(
+        "Нажми, чтобы открыть расписание:\n\n"
+        "⚠️ Если страница долго грузится (первый раз за долгое время) — подожди секунд 30, сервер «просыпается».",
+        reply_markup=keyboard
+    )
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     document = update.message.document
