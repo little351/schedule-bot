@@ -19,6 +19,7 @@
   body {
     margin: 0;
     padding: 16px;
+    padding-bottom: 84px; /* место под нижнюю панель вкладок */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
@@ -171,20 +172,133 @@
     color: var(--text);
     font-weight: 700;
   }
+
+  /* --- Вкладка "Важное" --- */
+  .info-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .info-card h2 {
+    font-size: 15px;
+    margin: 0 0 8px;
+  }
+  .info-card p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--hint);
+    margin: 0;
+  }
+  .support-details {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card-pressed);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 12px;
+  }
+  .support-number {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .support-bank {
+    font-size: 12px;
+    color: var(--hint);
+    margin-top: 2px;
+  }
+  .copy-btn {
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    flex: 0 0 auto;
+  }
+  .copy-btn.copied {
+    background: #34c759;
+  }
+
+  /* --- Нижняя панель вкладок --- */
+  .tab-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+  .tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--hint);
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 0;
+  }
+  .tab-btn .tab-icon {
+    font-size: 20px;
+  }
+  .tab-btn.active {
+    color: var(--accent);
+  }
 </style>
 </head>
 <body>
 
-<h1>Расписание</h1>
+<div id="scheduleTab">
+  <h1>Расписание</h1>
 
-<div class="date-strip">
-  <button class="chevron" id="prevBtn">‹</button>
-  <div class="date-pills" id="datePills"></div>
-  <button class="chevron" id="nextBtn">›</button>
+  <div class="date-strip">
+    <button class="chevron" id="prevBtn">‹</button>
+    <div class="date-pills" id="datePills"></div>
+    <button class="chevron" id="nextBtn">›</button>
+  </div>
+
+  <div id="container">
+    <div class="status">Загрузка...</div>
+  </div>
 </div>
 
-<div id="container">
-  <div class="status">Загрузка...</div>
+<div id="importantTab" style="display:none;">
+  <h1>Важное</h1>
+
+  <div class="info-card">
+    <h2>О приложении</h2>
+    <p>Приложение не является официальным сервисом вуза. Информация о расписании загружается вручную и может содержать неточности или устаревать. Приложение предоставляется «как есть», без каких-либо гарантий. Разработчик не несёт ответственности за любые последствия, связанные с использованием приложения.</p>
+  </div>
+
+  <div class="info-card">
+    <h2>Поддержать проект</h2>
+    <p>Приложение делается и поддерживается одним человеком в свободное время. Если оно тебе полезно — можешь угостить разработчика вкусняшкой, это не обязательно, но приятно 🙂</p>
+    <div class="support-details">
+      <div>
+        <div class="support-number">8 999 556 75 97</div>
+        <div class="support-bank">Т-Банк</div>
+      </div>
+      <button class="copy-btn" id="copyBtn">Скопировать</button>
+    </div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" id="tabSchedule">
+    <span class="tab-icon">📅</span>
+    Расписание
+  </button>
+  <button class="tab-btn" id="tabImportant">
+    <span class="tab-icon">⚠️</span>
+    Важное
+  </button>
 </div>
 
 <script>
@@ -365,6 +479,49 @@ document.getElementById("nextBtn").addEventListener("click", () => {
   selectedDate = addDays(selectedDate, 1);
   renderDateStrip();
   loadDay();
+});
+
+// --- Переключение вкладок ---
+const scheduleTab = document.getElementById("scheduleTab");
+const importantTab = document.getElementById("importantTab");
+const tabScheduleBtn = document.getElementById("tabSchedule");
+const tabImportantBtn = document.getElementById("tabImportant");
+
+tabScheduleBtn.addEventListener("click", () => {
+  scheduleTab.style.display = "";
+  importantTab.style.display = "none";
+  tabScheduleBtn.classList.add("active");
+  tabImportantBtn.classList.remove("active");
+});
+
+tabImportantBtn.addEventListener("click", () => {
+  scheduleTab.style.display = "none";
+  importantTab.style.display = "";
+  tabImportantBtn.classList.add("active");
+  tabScheduleBtn.classList.remove("active");
+});
+
+// --- Копирование номера карты ---
+document.getElementById("copyBtn").addEventListener("click", async (e) => {
+  const number = "89995567597";
+  const btn = e.currentTarget;
+  try {
+    await navigator.clipboard.writeText(number);
+  } catch (err) {
+    // фолбэк для окружений без Clipboard API
+    const ta = document.createElement("textarea");
+    ta.value = number;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+  btn.textContent = "Скопировано";
+  btn.classList.add("copied");
+  setTimeout(() => {
+    btn.textContent = "Скопировать";
+    btn.classList.remove("copied");
+  }, 1500);
 });
 
 renderDateStrip();
