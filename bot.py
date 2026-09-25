@@ -36,8 +36,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in GROUPS:
         set_user_group(conn, telegram_id, f"{text} группа")
         await update.message.reply_text(
-            f"Готово, запомнил группу {text}. Команды: /app - основная команда,\n"
-"/week, /nweek, /day, /weekdate - используются для сохранения расписания в чате""
+            f"Готово, запомнил группу {text}. Команды: /app - основная команда, /week, /nweek, /day, /weekdate - используются для сохранения расписания в чате"
         )
     else:
         await update.message.reply_text(
