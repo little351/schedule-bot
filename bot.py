@@ -23,6 +23,7 @@ GROUPS = ["10", "11", "12", "13", "14", "15", "16"]
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привет! Напиши номер своей группы (10-16), чтобы я запомнил его.\n\n"
+        ""
         "⚠️ Бот работает на бесплатном хостинге и может «засыпать» при простое. "
         "Если после команды или открытия приложения ничего не происходит — подожди секунд 30 и попробуй ещё раз."
     )
@@ -35,7 +36,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in GROUPS:
         set_user_group(conn, telegram_id, f"{text} группа")
         await update.message.reply_text(
-            f"Готово, запомнил группу {text}. Команды: /week, /nweek, /day, /weekdate, /app"
+            f"Готово, запомнил группу {text}. Команды: /app - основная команда, /week, /nweek, /day, /weekdate - используются для сохранения расписания в чате"
         )
     else:
         await update.message.reply_text(
