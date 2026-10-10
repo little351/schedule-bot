@@ -112,25 +112,24 @@
   }
 
   .page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
     margin-bottom: 14px;
   }
   .page-header h1 {
-    margin: 0;
+    margin: 0 0 10px;
   }
+  /* заголовок на своей строке, под ним направление и группа в один ряд слева */
   .pickers {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
   }
   .group-select[hidden] {
     display: none;
   }
   .group-select {
+    box-sizing: border-box;
+    max-width: 100%;
     -webkit-appearance: none;
     appearance: none;
     background-color: var(--card);
@@ -340,6 +339,27 @@ function optionsHtml(items, selected) {
 }
 
 // направление и курс показываем только если их больше одного
+// ширина селекта по выбранному тексту, без пустого места перед стрелкой
+let measureCtx = null;
+function fitSelect(select) {
+  if (select.hidden) return;
+  try {
+    measureCtx = measureCtx || document.createElement("canvas").getContext("2d");
+    const style = getComputedStyle(select);
+    measureCtx.font = `${style.fontSize} ${style.fontFamily}`;
+    const option = select.options[select.selectedIndex];
+    const text = option ? option.text : "";
+    const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+    select.style.width = Math.ceil(measureCtx.measureText(text).width + padding + 2) + "px";
+  } catch (err) {
+    select.style.width = "";
+  }
+}
+
+function fitPickers() {
+  [programSelect, courseSelect, groupSelect].forEach(fitSelect);
+}
+
 function renderPickers() {
   const program = catalog.find(p => p.code === chosen.program);
   programSelect.hidden = catalog.length < 2;
@@ -356,6 +376,7 @@ function renderPickers() {
   const placeholder = chosen.group ? "" : '<option value="" selected disabled>Выбери группу</option>';
   groupSelect.innerHTML = placeholder + optionsHtml(
     (entry ? entry.groups : []).map(g => ({ value: g, label: g })), chosen.group);
+  fitPickers();
 }
 
 async function loadGroups() {
@@ -400,6 +421,7 @@ courseSelect.addEventListener("change", () => {
 });
 groupSelect.addEventListener("change", () => {
   chosen.group = groupSelect.value;
+  fitPickers();
   saveGroup();
 });
 
