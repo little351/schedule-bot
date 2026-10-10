@@ -310,8 +310,9 @@ async def app_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if OWNER_ID.isdigit() and update.effective_user.id != int(OWNER_ID):
-        return  # менять расписание может только владелец (если OWNER_ID задан)
+    # менять расписание может только владелец; без OWNER_ID загрузка файлов отключена
+    if not OWNER_ID.isdigit() or update.effective_user.id != int(OWNER_ID):
+        return
 
     document = update.message.document
     if not document.file_name.lower().endswith((".xlsx", ".xls")):
