@@ -19,7 +19,11 @@ from .common import (
 NAME = "matrix_by_discipline"
 CALENDAR_MARKER = "календарные сроки"
 LEGEND_RE = re.compile(r"(\d)\s*пара\s*(\d{1,2})[:.](\d{2})\s*-\s*(\d{1,2})[:.](\d{2})")
-TEACHER_PART_RE = re.compile(r"([лп])\s*-\s*(.*?)(?=\s+[лп]\s*-\s|$)", re.IGNORECASE | re.DOTALL)
+# части ячейки преподавателя: «л - Иванов п - Петров», «1 гр - Иванов, 2 гр - Петров»
+_PART_KEY = r"(?:л|п|\d+\s*гр\.?)"
+TEACHER_PART_RE = re.compile(
+    rf"({_PART_KEY})\s*-\s*(.*?)(?=[,;]?\s+{_PART_KEY}\s*-\s|$)", re.IGNORECASE | re.DOTALL
+)
 MARKER_PREFIX = {"л": "Л.", "п": "Пр."}
 
 
@@ -46,13 +50,48 @@ def _slot_times(sheet):
     return times
 
 
-def _teacher_for(teacher, marker):
-    """'л - Иванов  п - Петров' -> для «п» 'Петров'; без отметок строка остаётся как есть."""
+def _teacher_for(teacher, marker, group_numbers=()):
+    """Преподаватель для пары. 'л - Иванов  п - Петров' -> по отметке; '1 гр - А, 2 гр - Б' -> по номеру
+    группы (group_numbers в порядке предпочтения); без таких частей строка остаётся как есть."""
     teacher = re.sub(r"\s+", " ", teacher).strip()
-    parts = {m.lower(): v.strip() for m, v in TEACHER_PART_RE.findall(teacher)}
+    parts = {}
+    for key, value in TEACHER_PART_RE.findall(teacher):
+        key = re.sub(r"\s+|\.", "", key.lower())  # '5 гр.' -> '5гр'
+        parts[key] = value.strip(" ,;")
     if not parts:
         return teacher
-    return parts.get(marker) or ", ".join(v for v in parts.values() if v)
+    own = next((parts[f"{n}гр"] for n in group_numbers if f"{n}гр" in parts), None)
+    chosen = (parts.get("л") or own) if marker == "л" else (own or parts.get("п"))
+    return chosen or ", ".join(v for v in parts.values() if v)
+
+
+def _group_numbers(code, position):
+    """Номера, по которым группу называют в ячейке преподавателя: суффикс '/2', номер в коде, место в шапке."""
+    numbers = []
+    m = re.search(r"/(\d)$", code)
+    if m:
+        numbers.append(int(m.group(1)))
+    m = re.search(r"-(\d+)-\d{2}", code)
+    if m:
+        numbers.append(int(m.group(1)))
+    numbers.append(position)
+    return numbers
+
+
+def _row_groups(index, groups):
+    """Какой группе (группам) принадлежит строка. В столбце «группа» стоит номер группы
+    (5 для СГ1-5-26, 2 для Т2-07-26/2) или порядковый номер в шапке; пусто - строка общая."""
+    positions = list(enumerate(groups, 1))
+    if len(groups) == 1:
+        return positions
+    if index.isdigit():
+        n = int(index)
+        by_number = [(pos, g) for pos, g in positions if n in _group_numbers(g, 0)[:-1]]
+        if len(by_number) == 1:
+            return by_number
+        if 1 <= n <= len(groups):
+            return [positions[n - 1]]
+    return positions
 
 
 def parse(wb, config) -> list[dict]:
@@ -76,6 +115,8 @@ def parse(wb, config) -> list[dict]:
                 col_of["room"] = c
             elif h.startswith("ф.и.о"):
                 col_of["teacher"] = c
+            elif h == "группа":
+                col_of["group"] = c
         if "name" not in col_of:
             continue
 
@@ -111,36 +152,47 @@ def parse(wb, config) -> list[dict]:
 
         meta = extract_meta(sheet)
         resolver = Resolver(meta, config)
-        # в таком файле одна группа: её код написан в шапке
-        group = meta.group_codes[0] if meta.group_codes else None
-        if not group:
+        # коды групп из шапки; в файле их может быть несколько (строки по группам идут по очереди)
+        groups = list(meta.group_codes)
+        if not groups:
             m = GROUP_CODE_RE.search(" ".join(t for _, _, t in sheet.cells(15)))
-            group = m.group(0) if m else None
-        if not group:
+            groups = [m.group(0)] if m else []
+        if not groups:
             continue
-        program = (meta.programs[0][0] if meta.programs else None) or resolver.program_for_code(group) or ""
+        program = (meta.programs[0][0] if meta.programs else None) or resolver.program_for_code(groups[0]) or ""
         slot_times = _slot_times(sheet)
 
-        found = {}  # (день, дата, время) -> [предметы]
+        found = {}  # (группа, день, дата, время) -> [предметы]
+        current = None  # дисциплина, к которой относятся строки групп
         for r in range(slot_row + 1, sheet.max_row + 1):
             number = sheet.text(r, 1)
             name = sheet.text(r, col_of["name"])
-            if not name or (number and not number.isdigit()):
+            index = sheet.text(r, col_of["group"]) if "group" in col_of else ""
+            if number and not number.isdigit():
                 break  # дальше легенда «Условные обозначения»
-            room = sheet.text(r, col_of["room"]) if "room" in col_of else ""
-            teacher = sheet.text(r, col_of["teacher"]) if "teacher" in col_of else ""
+            if name:
+                current = {
+                    "name": name,
+                    "room": sheet.text(r, col_of["room"]) if "room" in col_of else "",
+                    "teacher": sheet.text(r, col_of["teacher"]) if "teacher" in col_of else "",
+                }
+            elif current is None or not index:
+                continue  # пустая строка между дисциплинами
+            row_groups = _row_groups(index, groups)
 
             for day, date, slots in day_cols:
                 for col, slot in slots.items():
                     marker = sheet.text(r, col).lower().rstrip(".")
                     if marker not in MARKER_PREFIX:
                         continue
-                    subject = " ".join(filter(None, [
-                        f"{MARKER_PREFIX[marker]} {name}", _teacher_for(teacher, marker), room,
-                    ]))
-                    found.setdefault((day, date, slot_times.get(slot, "")), []).append(subject)
+                    for position, group in row_groups:
+                        teacher = _teacher_for(current["teacher"], marker, _group_numbers(group, position))
+                        subject = " ".join(filter(None, [
+                            f"{MARKER_PREFIX[marker]} {current['name']}", teacher, current["room"],
+                        ]))
+                        found.setdefault((group, day, date, slot_times.get(slot, "")), []).append(subject)
 
-        for (day, date, time), subjects in found.items():
+        for (group, day, date, time), subjects in found.items():
             if not time:
                 continue
             records.append({
