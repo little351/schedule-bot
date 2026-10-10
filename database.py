@@ -30,6 +30,11 @@ if PG_DSN:
         for column, column_type in USER_EXTRA_COLUMNS:
             cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} {column_type}")
 
+def storage_name():
+    """Где лежат пользователи: Postgres (переживает деплой) или локальная SQLite (стирается при деплое)."""
+    return "Postgres" if pg_conn else "локальная SQLite (данные стираются при деплое)"
+
+
 DAYS_ORDER = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
 TIME_SLOTS = ["8.50-10.20", "10.40-12.10", "13.00-14.30", "14.50-16.20", "16.40-18.10", "18.30-20.00"]
 

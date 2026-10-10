@@ -11,7 +11,7 @@ from schedule_parsers.common import load_config
 from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
-    get_week_schedule_grid, get_today_day_name, get_groups, get_catalog, find_groups, GroupRef,
+    get_week_schedule_grid, get_today_day_name, get_groups, get_catalog, find_groups, GroupRef, storage_name,
     touch_user, list_users, users_without_profile, set_user_profile
 )
 from formatting import format_week_text, format_day_text
@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 OWNER_ID = os.environ.get("OWNER_ID", "").strip()
 
 conn = init_db()
+logger.info("Хранилище пользователей: %s", storage_name())
+if not os.environ.get("DATABASE_URL"):
+    logger.warning("DATABASE_URL не задана: список пользователей хранится в локальной SQLite и пропадёт при деплое")
 
 
 def load_schedules():
@@ -198,6 +201,7 @@ async def backfill_profiles(bot):
 async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await backfill_profiles(context.bot)
     rows = list_users(conn)
+    await update.message.reply_text(f"Хранилище пользователей: {storage_name()}")
     for text in format_users_messages(rows):
         await update.message.reply_text(text)
 
