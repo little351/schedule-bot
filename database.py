@@ -1,7 +1,10 @@
 import os
 import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
+
+# колонки таблицы users, добавленные после первой версии (миграция идёт при старте)
+USER_EXTRA_COLUMNS = ["username", "first_name", "first_seen", "last_seen"]
 
 PG_DSN = os.environ.get("DATABASE_URL")
 pg_conn = None
@@ -16,6 +19,9 @@ if PG_DSN:
                 group_name TEXT
             )
         """)
+        # учёт пользователей: колонки добавляются к уже существующей таблице без потери данных
+        for column in USER_EXTRA_COLUMNS:
+            cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} TEXT")
 
 DAYS_ORDER = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
 TIME_SLOTS = ["8.50-10.20", "10.40-12.10", "13.00-14.30", "14.50-16.20", "16.40-18.10", "18.30-20.00"]
@@ -41,6 +47,10 @@ def init_db(path="schedule.db"):
             group_name TEXT
         )
     """)
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+    for column in USER_EXTRA_COLUMNS:
+        if column not in existing:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {column} TEXT")
     conn.commit()
     return conn
 
@@ -64,7 +74,8 @@ def set_user_group(conn, telegram_id, group_name):
             )
         return
     conn.execute(
-        "INSERT OR REPLACE INTO users (telegram_id, group_name) VALUES (?, ?)",
+        "INSERT INTO users (telegram_id, group_name) VALUES (?, ?) "
+        "ON CONFLICT (telegram_id) DO UPDATE SET group_name = excluded.group_name",
         (telegram_id, group_name)
     )
     conn.commit()
@@ -80,6 +91,46 @@ def get_user_group(conn, telegram_id):
         "SELECT group_name FROM users WHERE telegram_id = ?", (telegram_id,)
     ).fetchone()
     return row[0] if row else None
+
+
+def touch_user(conn, telegram_id, username, first_name):
+    """Запоминает пользователя при любом обращении: username (может быть пустым),
+    имя, время первого и последнего обращения. Группу не трогает."""
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (telegram_id, username, first_name, first_seen, last_seen) "
+                "VALUES (%s, %s, %s, %s, %s) "
+                "ON CONFLICT (telegram_id) DO UPDATE SET username = EXCLUDED.username, "
+                "first_name = EXCLUDED.first_name, last_seen = EXCLUDED.last_seen, "
+                "first_seen = COALESCE(users.first_seen, EXCLUDED.first_seen)",
+                (telegram_id, username, first_name, now, now)
+            )
+        return
+    conn.execute(
+        "INSERT INTO users (telegram_id, username, first_name, first_seen, last_seen) "
+        "VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT (telegram_id) DO UPDATE SET username = excluded.username, "
+        "first_name = excluded.first_name, last_seen = excluded.last_seen, "
+        "first_seen = COALESCE(users.first_seen, excluded.first_seen)",
+        (telegram_id, username, first_name, now, now)
+    )
+    conn.commit()
+
+
+def list_users(conn):
+    """Все пользователи, сначала те, кто обращался недавно:
+    [(telegram_id, username, first_name, group_name, first_seen, last_seen), ...]"""
+    query = (
+        "SELECT telegram_id, username, first_name, group_name, first_seen, last_seen "
+        "FROM users ORDER BY last_seen IS NULL, last_seen DESC, telegram_id"
+    )
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute(query.replace("last_seen IS NULL, last_seen DESC", "last_seen DESC NULLS LAST"))
+            return cur.fetchall()
+    return conn.execute(query).fetchall()
 
 
 def get_week_schedule_grid(conn, group_name, week_sheet):
