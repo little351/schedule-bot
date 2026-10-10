@@ -33,7 +33,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   .chevron {
     background: var(--card);
@@ -111,23 +111,30 @@
     line-height: 1.35;
   }
 
-  .group-row {
+  .page-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin: -6px 0 16px;
+    margin-bottom: 14px;
   }
-  .group-label {
-    font-size: 13px;
-    color: var(--hint);
+  .page-header h1 {
+    margin: 0;
   }
   .group-select {
-    background: var(--card);
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: var(--card);
+    /* стрелка рисуется фоном, чтобы стоять ровно по центру */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238e8e93' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
     color: var(--text);
     border: none;
     border-radius: 10px;
-    padding: 8px 12px;
+    padding: 0 34px 0 12px;
+    height: 36px;
+    line-height: 36px;
     font-size: 14px;
     font-family: inherit;
   }
@@ -215,10 +222,8 @@
 <body>
 
 <div id="scheduleTab">
-  <h1>Расписание</h1>
-
-  <div class="group-row">
-    <span class="group-label">Группа</span>
+  <div class="page-header">
+    <h1>Расписание</h1>
     <select class="group-select" id="groupSelect"></select>
   </div>
 
