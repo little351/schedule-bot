@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 from datetime import datetime
 
@@ -13,14 +14,6 @@ if PG_DSN:
             CREATE TABLE IF NOT EXISTS users (
                 telegram_id BIGINT PRIMARY KEY,
                 group_name TEXT
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS ratings (
-                subject_key TEXT,
-                telegram_id BIGINT,
-                option TEXT,
-                PRIMARY KEY (subject_key, telegram_id)
             )
         """)
 
@@ -46,14 +39,6 @@ def init_db(path="schedule.db"):
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
             group_name TEXT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS ratings (
-            subject_key TEXT,
-            telegram_id INTEGER,
-            option TEXT,
-            PRIMARY KEY (subject_key, telegram_id)
         )
     """)
     conn.commit()
@@ -109,108 +94,16 @@ def get_week_schedule_grid(conn, group_name, week_sheet):
     return grid
 
 
-def get_current_week_sheet(conn):
-    rows = conn.execute(
-        "SELECT week_sheet, MIN(date) FROM lessons GROUP BY week_sheet"
-    ).fetchall()
-
-    today = datetime.now()
-    candidates = []
-    for week_sheet, min_date in rows:
-        if not min_date:
-            continue
-        week_start = datetime.fromisoformat(min_date)
-        candidates.append((week_start, week_sheet))
-
-    candidates.sort()
-
-    current = None
-    for week_start, week_sheet in candidates:
-        if week_start <= today:
-            current = week_sheet
-        else:
-            break
-
-    return current or (candidates[0][1] if candidates else None)
+def get_current_week_sheet(conn, group_name):
+    return get_week_sheet_for_date(conn, group_name, datetime.now())
 
 
 def get_today_day_name():
     return WEEKDAY_MAP[datetime.now().weekday()]
 
 
-RATING_OPTIONS = ["attend", "confused", "interesting", "skip"]
-RATING_LABELS = {
-    "attend": "Ходить",
-    "confused": "Пока не понял",
-    "interesting": "Интересный",
-    "skip": "Можно не ходить",
-}
-RATING_COLORS = {
-    "attend": "#ff3b30",
-    "confused": "#ffcc00",
-    "interesting": "#34c759",
-    "skip": "#8e8e93",
-}
-
-
-def set_rating(conn, subject_key, telegram_id, option):
-    if option not in RATING_OPTIONS:
-        raise ValueError("bad option")
-    if pg_conn:
-        with pg_conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO ratings (subject_key, telegram_id, option) VALUES (%s, %s, %s) "
-                "ON CONFLICT (subject_key, telegram_id) DO UPDATE SET option = EXCLUDED.option",
-                (subject_key, telegram_id, option)
-            )
-        return
-    conn.execute(
-        "INSERT OR REPLACE INTO ratings (subject_key, telegram_id, option) VALUES (?, ?, ?)",
-        (subject_key, telegram_id, option)
-    )
-    conn.commit()
-
-
-def get_rating_summary(conn, subject_key):
-    if pg_conn:
-        with pg_conn.cursor() as cur:
-            cur.execute(
-                "SELECT option, COUNT(*) FROM ratings WHERE subject_key=%s GROUP BY option",
-                (subject_key,)
-            )
-            rows = cur.fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT option, COUNT(*) FROM ratings WHERE subject_key=? GROUP BY option",
-            (subject_key,)
-        ).fetchall()
-    counts = {opt: 0 for opt in RATING_OPTIONS}
-    for option, cnt in rows:
-        if option in counts:
-            counts[option] = cnt
-    total = sum(counts.values())
-    dominant = max(counts, key=counts.get) if total > 0 else None
-    return {"counts": counts, "total": total, "dominant": dominant}
-
-
-def get_user_rating(conn, subject_key, telegram_id):
-    if pg_conn:
-        with pg_conn.cursor() as cur:
-            cur.execute(
-                "SELECT option FROM ratings WHERE subject_key=%s AND telegram_id=%s",
-                (subject_key, telegram_id)
-            )
-            row = cur.fetchone()
-        return row[0] if row else None
-    row = conn.execute(
-        "SELECT option FROM ratings WHERE subject_key=? AND telegram_id=?",
-        (subject_key, telegram_id)
-    ).fetchone()
-    return row[0] if row else None
-
-
 def get_day_lessons(conn, group_name, target_date):
-    week_sheet = get_week_sheet_for_date(conn, target_date)
+    week_sheet = get_week_sheet_for_date(conn, group_name, target_date)
     if not week_sheet:
         return None, []
 
@@ -233,13 +126,15 @@ def get_day_lessons(conn, group_name, target_date):
     return week_sheet, lessons
 
 
-def get_all_week_sheets_sorted(conn):
+def get_all_week_sheets_sorted(conn, group_name):
+    # у разных групп (из разных файлов) набор недель может отличаться
     rows = conn.execute(
-        "SELECT week_sheet, MIN(date) FROM lessons GROUP BY week_sheet"
+        "SELECT week_sheet, MIN(date) FROM lessons WHERE group_name=? GROUP BY week_sheet",
+        (group_name,)
     ).fetchall()
     candidates = []
     for week_sheet, min_date in rows:
-        if not min_date:
+        if not min_date or min_date == "None":
             continue
         week_start = datetime.fromisoformat(min_date)
         candidates.append((week_start, week_sheet))
@@ -247,8 +142,8 @@ def get_all_week_sheets_sorted(conn):
     return candidates
 
 
-def get_week_sheet_for_date(conn, target_date):
-    candidates = get_all_week_sheets_sorted(conn)
+def get_week_sheet_for_date(conn, group_name, target_date):
+    candidates = get_all_week_sheets_sorted(conn, group_name)
     if not candidates:
         return None
     result = None
@@ -260,9 +155,9 @@ def get_week_sheet_for_date(conn, target_date):
     return result or candidates[0][1]
 
 
-def get_relative_week_sheet(conn, offset):
-    candidates = get_all_week_sheets_sorted(conn)
-    current = get_current_week_sheet(conn)
+def get_relative_week_sheet(conn, group_name, offset):
+    candidates = get_all_week_sheets_sorted(conn, group_name)
+    current = get_current_week_sheet(conn, group_name)
     names = [c[1] for c in candidates]
     if current not in names:
         return None
@@ -270,4 +165,29 @@ def get_relative_week_sheet(conn, offset):
     new_idx = idx + offset
     if 0 <= new_idx < len(names):
         return names[new_idx]
+    return None
+
+
+def _group_sort_key(name):
+    m = re.match(r"\d+", name)
+    return (int(m.group()) if m else float("inf"), name)
+
+
+def get_groups(conn):
+    """Все группы, для которых загружено расписание: ['10 группа', '11 группа', ...]"""
+    rows = conn.execute("SELECT DISTINCT group_name FROM lessons").fetchall()
+    return sorted((r[0] for r in rows), key=_group_sort_key)
+
+
+def group_short_name(group_name):
+    """'10 группа' -> '10' (то, что пользователь пишет боту)."""
+    return re.sub(r"\s*группа\s*$", "", group_name, flags=re.IGNORECASE).strip()
+
+
+def find_group(conn, text):
+    """Ищет группу по вводу пользователя: '10', '10 группа', '10 ГРУППА'."""
+    needle = re.sub(r"\s+", " ", text).strip().lower()
+    for group in get_groups(conn):
+        if needle in (group.lower(), group_short_name(group).lower()):
+            return group
     return None
