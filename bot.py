@@ -152,6 +152,18 @@ async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text, reply_markup=markup)
 
 
+async def track_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Срабатывает на каждое обращение, ничего не отвечает и не мешает остальным обработчикам."""
+    user = update.effective_user
+    if not user or user.is_bot:
+        return
+    try:
+        touch_user(conn, user.id, user.username, user.full_name)
+    except Exception:
+        # учёт не должен ломать работу бота, но ошибку нужно видеть в логах
+        logger.exception("не удалось записать пользователя %s", user.id)
+
+
 def format_users_messages(rows):
     """Список пользователей, разбитый на сообщения короче лимита Telegram (4096)."""
     header = f"Пользователей: {len(rows)}"
