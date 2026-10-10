@@ -84,3 +84,12 @@ def test_api_flow(conn):
     assert r.status_code == 200
     assert client.get("/api/catalog?telegram_id=5").json()["current"]["program"] == "49.03.01"
     assert client.post("/api/group", json={"telegram_id": 5, "group": "нет", "program": "49.03.01", "course": 1}).status_code == 400
+
+
+def test_bot_application_builds(monkeypatch):
+    # ловит пропавшие обработчики и импорты: бот должен собираться при старте
+    monkeypatch.setenv("BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("OWNER_ID", "1")
+    import bot
+
+    assert bot.build_application() is not None
