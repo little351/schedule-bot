@@ -246,6 +246,29 @@ def set_user_profile(conn, telegram_id, username, first_name):
     conn.commit()
 
 
+def restore_users(conn, rows):
+    """Добавляет пользователей из резервной копии: [(telegram_id, username, first_name, group_name,
+    first_seen, last_seen, program), ...]. Уже существующие записи не трогает (они свежее копии).
+    Возвращает, сколько пользователей добавлено."""
+    added = 0
+    for telegram_id, username, first_name, group_name, first_seen, last_seen, program in rows:
+        params = (telegram_id, group_name, username, first_name, first_seen, last_seen, program)
+        if PG_DSN:
+            with pg_cursor() as cur:
+                cur.execute(
+                    "INSERT INTO users (telegram_id, group_name, username, first_name, first_seen, last_seen, program) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (telegram_id) DO NOTHING", params)
+                added += cur.rowcount
+        else:
+            cur = conn.execute(
+                "INSERT INTO users (telegram_id, group_name, username, first_name, first_seen, last_seen, program) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (telegram_id) DO NOTHING", params)
+            added += cur.rowcount
+    if not PG_DSN:
+        conn.commit()
+    return added
+
+
 def list_users(conn):
     """Все пользователи, сначала те, кто обращался недавно:
     [(telegram_id, username, first_name, group_name, first_seen, last_seen, program), ...]"""

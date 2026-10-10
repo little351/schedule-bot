@@ -121,3 +121,27 @@ def test_users_csv_backup():
     lines = data.strip().splitlines()
     assert lines[0].startswith("telegram_id,username")
     assert lines[1].startswith("1,ivan,Иван,4 группа")
+
+
+def test_users_restore_from_users_command_text_and_csv(tmp_path):
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+
+    rows = [
+        (1, "ivan", "Иван", "4 группа", "2026-09-01T10:00:00+00:00", "2026-10-09T10:00:00+00:00", "49.03.04"),
+        (2, None, "Мария", "Т1-04-26", None, "2026-10-08T10:00:00+00:00", "49.03.01"),
+        (3, "old", None, "7 группа", None, None, None),  # старая запись без направления
+        (4, "nogroup", "Пётр", None, None, "2026-10-01T10:00:00+00:00", None),
+    ]
+    text = "\n".join(bot.format_users_messages(rows))  # то, что бот присылает по /users
+    from_text = bot.parse_users_backup(text)
+    assert [r[0] for r in from_text] == [1, 2, 3, 4]
+    assert from_text[1][3:7:3] == ("Т1-04-26", "49.03.01") and from_text[2][3] == "7 группа" and from_text[3][3] is None
+
+    conn = init_db(str(tmp_path / "restore.db"))
+    assert bot.restore_users(conn, from_text) == 4
+    assert bot.restore_users(conn, from_text) == 0  # повторная загрузка ничего не дублирует и не затирает
+    assert get_user_group(conn, 1) == GroupRef("49.03.04", 1, "4 группа")
+
+    csv_rows = bot.parse_users_backup(bot.format_users_csv(rows).decode("utf-8-sig"))
+    assert [r[0] for r in csv_rows] == [1, 2, 3, 4]

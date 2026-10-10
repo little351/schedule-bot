@@ -2,6 +2,7 @@ import csv
 import io
 import logging
 import os
+import re
 from datetime import datetime
 from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from telegram.ext import (
@@ -14,7 +15,7 @@ from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
     get_week_schedule_grid, get_today_day_name, get_groups, get_catalog, find_groups, GroupRef, storage_name,
-    touch_user, list_users, users_without_profile, set_user_profile
+    touch_user, list_users, restore_users, users_without_profile, set_user_profile
 )
 from formatting import format_week_text, format_day_text
 
@@ -209,6 +210,39 @@ def format_users_csv(rows):
     return out.getvalue().encode("utf-8-sig")
 
 
+# строка списка /users: «@ivan · Иван · 4 группа (49.03.04) · 2026-10-09 · id 123»
+USER_LINE_RE = re.compile(r"^(?:@(\S+)|\(без username\)) · (.*?) · (.*?) · (\S+) · id (-?\d+)\s*$", re.MULTILINE)
+GROUP_PROGRAM_RE = re.compile(r"^(.*?)\s*\((\d{2}\.\d{2}\.\d{2})\)$")
+
+
+def parse_users_backup(text):
+    """Строки для restore_users из текста: сообщения /users (можно переслать боту) или файл /backup (CSV)."""
+    rows = []
+    for username, first_name, group, last, telegram_id in USER_LINE_RE.findall(text):
+        program = None
+        m = GROUP_PROGRAM_RE.match(group)
+        if m:
+            group, program = m.group(1), m.group(2)
+        group = None if group.startswith("группа не выбрана") else group
+        last = None if last == "?" else last
+        first_name = None if first_name == "—" else first_name
+        rows.append((int(telegram_id), username or None, first_name, group, last, last, program))
+    if rows:
+        return rows
+    for record in csv.DictReader(io.StringIO(text.lstrip("\ufeff"))):
+        if (record.get("telegram_id") or "").lstrip("-").isdigit():
+            rows.append((
+                int(record["telegram_id"]), record.get("username") or None, record.get("first_name") or None,
+                record.get("group_name") or None, record.get("first_seen") or None,
+                record.get("last_seen") or None, record.get("program") or None,
+            ))
+    return rows
+
+
+def _is_owner(update):
+    return OWNER_ID.isdigit() and update.effective_user.id == int(OWNER_ID)
+
+
 async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = format_users_csv(list_users(conn))
     name = f"users-{datetime.now().strftime('%Y-%m-%d')}.csv"
@@ -232,6 +266,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     telegram_id = update.effective_user.id
+
+    # владелец может переслать боту сообщения /users: пользователи из них добавляются в базу
+    if _is_owner(update):
+        restored = parse_users_backup(text)
+        if restored:
+            added = restore_users(conn, restored)
+            await update.message.reply_text(
+                f"Восстановление: в сообщении {len(restored)} пользователей, добавлено новых {added} "
+                f"(уже существующих не трогал).")
+            return
 
     matches = find_groups(conn, text)
     if len(matches) > 1:
@@ -349,6 +393,18 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     document = update.message.document
+    if document.file_name.lower().endswith((".csv", ".txt")):
+        # файл /backup или текст списка /users: восстановить пользователей
+        file = await context.bot.get_file(document.file_id)
+        content = bytes(await file.download_as_bytearray()).decode("utf-8-sig", errors="replace")
+        restored = parse_users_backup(content)
+        if not restored:
+            await update.message.reply_text("Не нашёл в файле пользователей.")
+            return
+        added = restore_users(conn, restored)
+        await update.message.reply_text(
+            f"Восстановление: в файле {len(restored)} пользователей, добавлено новых {added}.")
+        return
     if not document.file_name.lower().endswith((".xlsx", ".xls")):
         await update.message.reply_text("Нужен файл в формате .xlsx или .xls")
         return
