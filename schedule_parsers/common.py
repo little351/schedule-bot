@@ -15,8 +15,9 @@ DEFAULT_SLOT_TIMES = {
 
 # 49.03.04 Спорт, ... / 49.03.02 Физическая культура для лиц ... (адаптивная ...) профиль ...
 PROGRAM_RE = re.compile(r"(\d{2}\.\d{2}\.\d{2})\s+(.+?)(?=\s*(?:[,;(*\n]|[Пп]рофиль|$))", re.DOTALL)
+GROUPS_PREFIX_RE = re.compile(r"\bгрупп[аы]?\s+(?=[А-ЯA-Z]{1,2}\d)", re.IGNORECASE)
 COURSE_RE = re.compile(r"[Кк]урс\s+(\d+)")
-GROUP_CODE_RE = re.compile(r"[А-ЯA-Z]\d-\d{2}[А-Я]?-\d{2}")
+GROUP_CODE_RE = re.compile(r"[А-ЯA-Z]{1,2}\d-\d{1,2}[А-Я]?-\d{2}(?:/\d)?")
 
 
 def normalize_group(name) -> str:
@@ -43,8 +44,10 @@ def extract_meta(sheet, max_rows=15) -> SheetMeta:
             m = COURSE_RE.search(text)
             if m:
                 course = int(m.group(1))
-        if re.match(r"групп", text, re.IGNORECASE):
-            group_codes.extend(c for c in GROUP_CODE_RE.findall(text) if c not in group_codes)
+        # «группа СГ1-5-26, СГ1-6-26» может стоять отдельной ячейкой или в конце строки с направлением
+        m = GROUPS_PREFIX_RE.search(text)
+        if m:
+            group_codes.extend(c for c in GROUP_CODE_RE.findall(text[m.end():]) if c not in group_codes)
     return SheetMeta(programs, course, group_codes)
 
 

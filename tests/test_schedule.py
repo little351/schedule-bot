@@ -28,6 +28,12 @@ def test_each_format_is_detected_and_counted():
         "1 курс 7-9 группы + ФОД.xlsx": 485,
         "schedule.xlsx": 919,
         "АФВ 1 курс - очная.xls": 229,
+        "ЛФК 1 курс - очная.xls": 215,
+        "ФР 1 курс - очная.xls": 430,  # два файла-подгруппы в одной таблице: Т2-07-26/1 и /2
+        "Пед.образование 1 курс 2026 2 группы-2.xls": 468,
+        "Реклама 1 курс 2026.xls": 235,
+        "Режиссура 1 - очная.xls": 281,
+        "Менеджмент 1 курс 2026 2 группы.xls": 472,
     }
     for name, expected in counts.items():
         assert len(parse_schedule(os.path.join(DATA, name), config)) == expected, name
@@ -35,7 +41,9 @@ def test_each_format_is_detected_and_counted():
 
 def test_programs_and_same_numbers_do_not_collide(records):
     groups = {(r["program"], r["course"], r["group"]) for r in records}
-    assert {p for p, _, _ in groups} == {"49.03.04", "49.03.01", "49.03.02"}
+    assert {p for p, _, _ in groups} == {
+        "49.03.04", "49.03.01", "49.03.02", "44.03.01", "42.03.01", "51.03.05", "38.03.02",
+    }
     assert {c for _, c, _ in groups} == {1}
     names = [g for _, _, g in groups]
     assert len(groups) >= len(set(names))  # одинаковые названия допустимы на разных направлениях
@@ -50,7 +58,7 @@ def conn(tmp_path, records):
 
 def test_catalog_and_find_groups(conn):
     catalog = get_catalog(conn)
-    assert {p["code"] for p in catalog} == {"49.03.04", "49.03.01", "49.03.02"}
+    assert len(catalog) == 7
     some = get_groups(conn)[0]
     assert some in find_groups(conn, some.name)
 
@@ -77,7 +85,7 @@ def test_api_flow(conn):
     app.include_router(build_router(conn, ""))
     client = TestClient(app)
     data = client.get("/api/catalog?telegram_id=5").json()
-    assert data["current"] is None and len(data["programs"]) == 3
+    assert data["current"] is None and len(data["programs"]) == 7
     p = next(p for p in data["programs"] if p["code"] == "49.03.01")
     group = p["courses"][0]["groups"][0]
     r = client.post("/api/group", json={"telegram_id": 5, "group": group, "program": "49.03.01", "course": 1})
@@ -93,3 +101,13 @@ def test_bot_application_builds(monkeypatch):
     import bot
 
     assert bot.build_application() is not None
+
+
+def test_two_group_files_are_split_per_group(records):
+    """В таблицах «2 группы» строки дисциплин идут парами; каждая группа получает свои пары."""
+    by_group = {}
+    for r in records:
+        by_group.setdefault((r["program"], r["group"]), []).append(r)
+    assert len(by_group[("38.03.02", "СГ1-5-26")]) == len(by_group[("38.03.02", "СГ1-6-26")]) == 236
+    assert len(by_group[("44.03.01", "СГ2-1-26")]) == len(by_group[("44.03.01", "СГ2-2-26")]) == 234
+    assert {g for p, g in by_group if p == "49.03.02"} == {"Т2-07-26/1", "Т2-07-26/2", "Т2-08-26", "Т2-09-26"}
