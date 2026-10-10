@@ -1,6 +1,7 @@
 import os
 import re
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import NamedTuple
 
@@ -15,11 +16,41 @@ LEGACY_COURSE = 1
 
 PG_DSN = os.environ.get("DATABASE_URL")
 pg_conn = None
-if PG_DSN:
+
+
+def _pg_connect():
+    """(Пере)подключение к Postgres. Бесплатные облачные базы (Neon и др.) закрывают простаивающие
+    соединения, поэтому живое соединение проверяется перед запросом и при необходимости открывается заново."""
+    global pg_conn
     import psycopg2
-    pg_conn = psycopg2.connect(PG_DSN)
+    pg_conn = psycopg2.connect(PG_DSN, keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=3)
     pg_conn.autocommit = True
-    with pg_conn.cursor() as cur:
+    return pg_conn
+
+
+@contextmanager
+def pg_cursor():
+    import psycopg2
+    for attempt in (1, 2):
+        try:
+            if pg_conn is None or pg_conn.closed:
+                _pg_connect()
+            cur = pg_conn.cursor()
+            cur.execute("SELECT 1")  # соединение могло быть закрыто сервером, пока бот простаивал
+            break
+        except (psycopg2.OperationalError, psycopg2.InterfaceError):
+            if attempt == 2:
+                raise
+            _pg_connect()
+    try:
+        yield cur
+    finally:
+        cur.close()
+
+
+if PG_DSN:
+    _pg_connect()
+    with pg_cursor() as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 telegram_id BIGINT PRIMARY KEY,
@@ -29,6 +60,12 @@ if PG_DSN:
         # учёт пользователей: колонки добавляются к уже существующей таблице без потери данных
         for column, column_type in USER_EXTRA_COLUMNS:
             cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} {column_type}")
+
+
+def storage_name():
+    """Где лежат пользователи: Postgres (переживает деплой) или локальная SQLite (стирается при деплое)."""
+    return "Postgres" if PG_DSN else "локальная SQLite (данные стираются при деплое)"
+
 
 DAYS_ORDER = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
 TIME_SLOTS = ["8.50-10.20", "10.40-12.10", "13.00-14.30", "14.50-16.20", "16.40-18.10", "18.30-20.00"]
@@ -101,8 +138,8 @@ def save_schedule(conn, records):
 
 
 def set_user_group(conn, telegram_id, group: GroupRef):
-    if pg_conn:
-        with pg_conn.cursor() as cur:
+    if PG_DSN:
+        with pg_cursor() as cur:
             cur.execute(
                 "INSERT INTO users (telegram_id, group_name, program, course) VALUES (%s, %s, %s, %s) "
                 "ON CONFLICT (telegram_id) DO UPDATE SET group_name = EXCLUDED.group_name, "
@@ -124,8 +161,8 @@ def get_user_group(conn, telegram_id):
 
     Пользователи, выбравшие группу до появления направлений, хранятся только с названием группы:
     для них направление и курс находятся по загруженному расписанию и записываются в базу."""
-    if pg_conn:
-        with pg_conn.cursor() as cur:
+    if PG_DSN:
+        with pg_cursor() as cur:
             cur.execute("SELECT group_name, program, course FROM users WHERE telegram_id=%s", (telegram_id,))
             row = cur.fetchone()
     else:
@@ -161,8 +198,8 @@ def touch_user(conn, telegram_id, username, first_name):
     """Запоминает пользователя при любом обращении: username (может быть пустым),
     имя, время первого и последнего обращения. Группу не трогает."""
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    if pg_conn:
-        with pg_conn.cursor() as cur:
+    if PG_DSN:
+        with pg_cursor() as cur:
             cur.execute(
                 "INSERT INTO users (telegram_id, username, first_name, first_seen, last_seen) "
                 "VALUES (%s, %s, %s, %s, %s) "
@@ -185,8 +222,8 @@ def touch_user(conn, telegram_id, username, first_name):
 
 def users_without_profile(conn, limit=50):
     """ID пользователей, о которых бот ещё не знает имени (записи до появления учёта)."""
-    if pg_conn:
-        with pg_conn.cursor() as cur:
+    if PG_DSN:
+        with pg_cursor() as cur:
             cur.execute("SELECT telegram_id FROM users WHERE first_name IS NULL LIMIT %s", (limit,))
             return [r[0] for r in cur.fetchall()]
     rows = conn.execute("SELECT telegram_id FROM users WHERE first_name IS NULL LIMIT ?", (limit,)).fetchall()
@@ -195,8 +232,8 @@ def users_without_profile(conn, limit=50):
 
 def set_user_profile(conn, telegram_id, username, first_name):
     """Обновляет только username и имя, не трогая время обращений и группу."""
-    if pg_conn:
-        with pg_conn.cursor() as cur:
+    if PG_DSN:
+        with pg_cursor() as cur:
             cur.execute(
                 "UPDATE users SET username = %s, first_name = %s WHERE telegram_id = %s",
                 (username, first_name, telegram_id)
@@ -209,6 +246,29 @@ def set_user_profile(conn, telegram_id, username, first_name):
     conn.commit()
 
 
+def restore_users(conn, rows):
+    """Добавляет пользователей из резервной копии: [(telegram_id, username, first_name, group_name,
+    first_seen, last_seen, program), ...]. Уже существующие записи не трогает (они свежее копии).
+    Возвращает, сколько пользователей добавлено."""
+    added = 0
+    for telegram_id, username, first_name, group_name, first_seen, last_seen, program in rows:
+        params = (telegram_id, group_name, username, first_name, first_seen, last_seen, program)
+        if PG_DSN:
+            with pg_cursor() as cur:
+                cur.execute(
+                    "INSERT INTO users (telegram_id, group_name, username, first_name, first_seen, last_seen, program) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (telegram_id) DO NOTHING", params)
+                added += cur.rowcount
+        else:
+            cur = conn.execute(
+                "INSERT INTO users (telegram_id, group_name, username, first_name, first_seen, last_seen, program) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (telegram_id) DO NOTHING", params)
+            added += cur.rowcount
+    if not PG_DSN:
+        conn.commit()
+    return added
+
+
 def list_users(conn):
     """Все пользователи, сначала те, кто обращался недавно:
     [(telegram_id, username, first_name, group_name, first_seen, last_seen, program), ...]"""
@@ -216,8 +276,8 @@ def list_users(conn):
         "SELECT telegram_id, username, first_name, group_name, first_seen, last_seen, program "
         "FROM users ORDER BY last_seen IS NULL, last_seen DESC, telegram_id"
     )
-    if pg_conn:
-        with pg_conn.cursor() as cur:
+    if PG_DSN:
+        with pg_cursor() as cur:
             cur.execute(query.replace("last_seen IS NULL, last_seen DESC", "last_seen DESC NULLS LAST"))
             return cur.fetchall()
     return conn.execute(query).fetchall()
