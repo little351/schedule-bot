@@ -2,4 +2,5 @@ fastapi
 uvicorn[standard]
 python-telegram-bot
 openpyxl
+xlrd
 psycopg2-binary

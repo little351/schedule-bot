@@ -121,6 +121,15 @@
   .page-header h1 {
     margin: 0;
   }
+  .pickers {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .group-select[hidden] {
+    display: none;
+  }
   .group-select {
     -webkit-appearance: none;
     appearance: none;
@@ -224,7 +233,11 @@
 <div id="scheduleTab">
   <div class="page-header">
     <h1>Расписание</h1>
-    <select class="group-select" id="groupSelect"></select>
+    <div class="pickers">
+      <select class="group-select" id="programSelect" hidden></select>
+      <select class="group-select" id="courseSelect" hidden></select>
+      <select class="group-select" id="groupSelect"></select>
+    </div>
   </div>
 
   <div class="date-strip">
@@ -313,29 +326,81 @@ function renderDateStrip() {
   }
 }
 
+let catalog = [];
+let chosen = { program: null, course: null, group: null };
+
+const programSelect = document.getElementById("programSelect");
+const courseSelect = document.getElementById("courseSelect");
+const groupSelect = document.getElementById("groupSelect");
+
+function optionsHtml(items, selected) {
+  return items.map(i =>
+    `<option value="${i.value}"${String(i.value) === String(selected) ? " selected" : ""}>${i.label}</option>`
+  ).join("");
+}
+
+// направление и курс показываем только если их больше одного
+function renderPickers() {
+  const program = catalog.find(p => p.code === chosen.program);
+  programSelect.hidden = catalog.length < 2;
+  programSelect.innerHTML = optionsHtml(
+    catalog.map(p => ({ value: p.code, label: p.code })), chosen.program);
+  programSelect.title = program ? program.name : "";
+
+  const courses = program ? program.courses : [];
+  courseSelect.hidden = courses.length < 2;
+  courseSelect.innerHTML = optionsHtml(
+    courses.map(c => ({ value: c.course, label: `${c.course} курс` })), chosen.course);
+
+  const entry = courses.find(c => String(c.course) === String(chosen.course));
+  const placeholder = chosen.group ? "" : '<option value="" selected disabled>Выбери группу</option>';
+  groupSelect.innerHTML = placeholder + optionsHtml(
+    (entry ? entry.groups : []).map(g => ({ value: g, label: g })), chosen.group);
+}
+
 async function loadGroups() {
-  const select = document.getElementById("groupSelect");
   try {
-    const res = await fetch(`/api/groups?telegram_id=${telegramId || 0}`);
+    const res = await fetch(`/api/catalog?telegram_id=${telegramId || 0}`);
     if (!res.ok) throw new Error("server error");
     const data = await res.json();
-    const placeholder = data.current ? "" : '<option value="" selected disabled>Выбери группу</option>';
-    select.innerHTML = placeholder + data.groups.map(g =>
-      `<option value="${g}"${g === data.current ? " selected" : ""}>${g}</option>`
-    ).join("");
+    catalog = data.programs;
+    const cur = data.current;
+    if (cur) {
+      chosen = { program: cur.program, course: cur.course, group: cur.group };
+    } else if (catalog.length) {
+      chosen = { program: catalog[0].code, course: catalog[0].courses[0].course, group: null };
+    }
+    renderPickers();
   } catch (err) {
-    select.innerHTML = "";
+    groupSelect.innerHTML = "";
   }
 }
 
-document.getElementById("groupSelect").addEventListener("change", async (e) => {
+async function saveGroup() {
   if (!telegramId) return;
   const res = await fetch("/api/group", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ telegram_id: telegramId, group: e.target.value }),
+    body: JSON.stringify({
+      telegram_id: telegramId, group: chosen.group, program: chosen.program, course: Number(chosen.course),
+    }),
   });
   if (res.ok) loadDay();
+}
+
+// смена направления или курса только перестраивает список групп; сохраняется выбор группы
+programSelect.addEventListener("change", () => {
+  const program = catalog.find(p => p.code === programSelect.value);
+  chosen = { program: program.code, course: program.courses[0].course, group: null };
+  renderPickers();
+});
+courseSelect.addEventListener("change", () => {
+  chosen = { ...chosen, course: courseSelect.value, group: null };
+  renderPickers();
+});
+groupSelect.addEventListener("change", () => {
+  chosen.group = groupSelect.value;
+  saveGroup();
 });
 
 async function loadDay() {
