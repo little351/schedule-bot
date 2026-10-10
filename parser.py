@@ -3,8 +3,8 @@ import os
 import re
 from openpyxl import load_workbook
 
-DAYS_PER_WEEK = 6          # Пн-Сб
-SLOTS_PER_DAY = 5          # 5 пар в день
+DAY_NAMES = {"Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"}
+TIME_RE = re.compile(r"^\d{1,2}\.\d{2}-\d{1,2}\.\d{2}$")  # 8.50-10.20
 FIRST_GROUP_COL = 4        # столбец D - первая группа, дальше все столбцы с заголовком
 HEADER_MARKER = "День недели"
 
@@ -25,11 +25,35 @@ def find_header_row(sheet):
     return 7
 
 
+def _load_workbook(file_path):
+    # в некоторых файлах битая ссылка на картинку (xl/drawings/NULL) - openpyxl из-за неё
+    # не открывает весь файл, а картинки нам не нужны, поэтому такие ошибки пропускаем
+    import openpyxl.reader.excel as xl_reader
+
+    original = xl_reader.find_images
+
+    def safe_find_images(archive, path):
+        try:
+            return original(archive, path)
+        except KeyError:
+            return [], []
+
+    xl_reader.find_images = safe_find_images
+    try:
+        return load_workbook(file_path, data_only=True)
+    finally:
+        xl_reader.find_images = original
+
+
 def parse_schedule(file_path: str) -> list[dict]:
     """Возвращает список записей:
     {week_sheet, day, date, time, group, subject}
+
+    День начинается со строки, где в столбце A стоит название дня, и продолжается,
+    пока не встретится следующий день. Количество пар в дне не фиксировано: в новых
+    файлах у некоторых дней есть 6-я пара (18.30-20.00), и строки после неё сдвигаются.
     """
-    wb = load_workbook(file_path, data_only=True)
+    wb = _load_workbook(file_path)
     records = []
 
     for sheet_name in wb.sheetnames:
@@ -46,34 +70,31 @@ def parse_schedule(file_path: str) -> list[dict]:
             if val and str(val).strip():
                 group_names[col] = normalize_group(val)
 
-        # после заголовков идёт строка с направлениями, потом понедельник
-        row = header_row + 2
-        for _ in range(DAYS_PER_WEEK):
-            day_name = sheet.cell(row=row, column=1).value
-            date_val = sheet.cell(row=row, column=2).value
+        day_name = None
+        date_val = None
+        for r in range(header_row + 1, sheet.max_row + 1):
+            a_val = sheet.cell(row=r, column=1).value
+            if a_val and str(a_val).strip() in DAY_NAMES:
+                day_name = str(a_val).strip()
+                date_val = sheet.cell(row=r, column=2).value
             if not day_name:
-                row += SLOTS_PER_DAY
+                continue  # строка с направлениями под заголовком
+
+            time_val = sheet.cell(row=r, column=3).value
+            if not time_val or not TIME_RE.match(str(time_val).strip()):
                 continue
 
-            for slot in range(SLOTS_PER_DAY):
-                r = row + slot
-                time_val = sheet.cell(row=r, column=3).value
-                if not time_val:
-                    continue
-
-                for col, group in group_names.items():
-                    cell_val = sheet.cell(row=r, column=col).value
-                    if cell_val:
-                        records.append({
-                            "week_sheet": sheet_name,
-                            "day": str(day_name).strip(),
-                            "date": date_val,
-                            "time": str(time_val).strip(),
-                            "group": group,
-                            "subject": str(cell_val).strip(),
-                        })
-
-            row += SLOTS_PER_DAY
+            for col, group in group_names.items():
+                cell_val = sheet.cell(row=r, column=col).value
+                if cell_val and str(cell_val).strip():
+                    records.append({
+                        "week_sheet": sheet_name,
+                        "day": day_name,
+                        "date": date_val,
+                        "time": str(time_val).strip(),
+                        "group": group,
+                        "subject": str(cell_val).strip(),
+                    })
 
     return records
 
