@@ -119,6 +119,32 @@ def touch_user(conn, telegram_id, username, first_name):
     conn.commit()
 
 
+def users_without_profile(conn, limit=50):
+    """ID пользователей, о которых бот ещё не знает имени (записи до появления учёта)."""
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT telegram_id FROM users WHERE first_name IS NULL LIMIT %s", (limit,))
+            return [r[0] for r in cur.fetchall()]
+    rows = conn.execute("SELECT telegram_id FROM users WHERE first_name IS NULL LIMIT ?", (limit,)).fetchall()
+    return [r[0] for r in rows]
+
+
+def set_user_profile(conn, telegram_id, username, first_name):
+    """Обновляет только username и имя, не трогая время обращений и группу."""
+    if pg_conn:
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET username = %s, first_name = %s WHERE telegram_id = %s",
+                (username, first_name, telegram_id)
+            )
+        return
+    conn.execute(
+        "UPDATE users SET username = ?, first_name = ? WHERE telegram_id = ?",
+        (username, first_name, telegram_id)
+    )
+    conn.commit()
+
+
 def list_users(conn):
     """Все пользователи, сначала те, кто обращался недавно:
     [(telegram_id, username, first_name, group_name, first_seen, last_seen), ...]"""

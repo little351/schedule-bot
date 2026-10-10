@@ -10,10 +10,11 @@ from telegram import Update
 from database import (
     get_user_group, get_relative_week_sheet, get_week_schedule_grid,
     DAYS_ORDER, TIME_SLOTS, WEEKDAY_MAP, get_day_lessons,
-    get_groups, set_user_group
+    get_groups, set_user_group, touch_user
 )
 from formatting import trim_trailing_empty
-from bot import build_application, post_init, conn, load_schedules
+from bot import build_application, post_init, conn, load_schedules, TOKEN
+from telegram_auth import validate_init_data
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "hook")
@@ -96,6 +97,22 @@ def choose_group(body: GroupBody):
         raise HTTPException(status_code=400, detail="unknown_group")
     set_user_group(conn, body.telegram_id, body.group)
     return {"group": body.group}
+
+
+class VisitBody(BaseModel):
+    init_data: str
+
+
+@app.post("/api/visit")
+def visit(body: VisitBody):
+    """Мини-апп сообщает о заходе: по подписанным данным Telegram запоминаем username и время.
+    Большинство пользователей после выбора группы пишут боту редко и открывают только мини-апп."""
+    user = validate_init_data(body.init_data, TOKEN)
+    if not user:
+        raise HTTPException(status_code=403, detail="bad_init_data")
+    touch_user(conn, user["id"], user.get("username"),
+               " ".join(filter(None, [user.get("first_name"), user.get("last_name")])) or None)
+    return {"ok": True}
 
 
 def build_day_slots(grid, day_name):
