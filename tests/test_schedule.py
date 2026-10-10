@@ -111,3 +111,13 @@ def test_two_group_files_are_split_per_group(records):
     assert len(by_group[("38.03.02", "СГ1-5-26")]) == len(by_group[("38.03.02", "СГ1-6-26")]) == 236
     assert len(by_group[("44.03.01", "СГ2-1-26")]) == len(by_group[("44.03.01", "СГ2-2-26")]) == 234
     assert {g for p, g in by_group if p == "49.03.02"} == {"Т2-07-26/1", "Т2-07-26/2", "Т2-08-26", "Т2-09-26"}
+
+
+def test_users_csv_backup():
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+
+    data = bot.format_users_csv([(1, "ivan", "Иван", "4 группа", "2026-09-01", "2026-10-01", "49.03.04")]).decode("utf-8-sig")
+    lines = data.strip().splitlines()
+    assert lines[0].startswith("telegram_id,username")
+    assert lines[1].startswith("1,ivan,Иван,4 группа")

@@ -1,3 +1,5 @@
+import csv
+import io
 import logging
 import os
 from datetime import datetime
@@ -198,6 +200,22 @@ async def backfill_profiles(bot):
         set_user_profile(conn, telegram_id, chat.username, chat.full_name or chat.first_name)
 
 
+def format_users_csv(rows):
+    """Список пользователей в CSV (для резервной копии, открывается в Excel)."""
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["telegram_id", "username", "first_name", "group_name", "first_seen", "last_seen", "program"])
+    writer.writerows(rows)
+    return out.getvalue().encode("utf-8-sig")
+
+
+async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = format_users_csv(list_users(conn))
+    name = f"users-{datetime.now().strftime('%Y-%m-%d')}.csv"
+    await update.message.reply_document(document=io.BytesIO(data), filename=name,
+                                        caption="Резервная копия списка пользователей")
+
+
 async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await backfill_profiles(context.bot)
     rows = list_users(conn)
@@ -389,6 +407,7 @@ def build_application():
     if OWNER_ID.isdigit():
         # всем остальным /users не отвечает вовсе: команда нигде не публикуется
         application.add_handler(CommandHandler("users", users_command, filters=filters.User(user_id=int(OWNER_ID))))
+        application.add_handler(CommandHandler("backup", backup_command, filters=filters.User(user_id=int(OWNER_ID))))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     return application
