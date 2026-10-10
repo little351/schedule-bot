@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from telegram import (
@@ -13,7 +14,7 @@ from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
     get_week_schedule_grid, get_today_day_name, get_groups, group_short_name, find_group,
-    touch_user, list_users
+    touch_user, list_users, users_without_profile, set_user_profile
 )
 from formatting import format_week_text, format_day_text
 
@@ -21,6 +22,8 @@ TOKEN = os.environ.get("BOT_TOKEN") or ""
 WEBAPP_URL = os.environ.get("WEBAPP_URL") or os.environ.get("PUBLIC_URL") or "https://breeding-salvation-splashing.ngrok-free.dev"
 # все .xlsx из этой папки загружаются как расписание; группы берутся из заголовков листов
 SCHEDULE_DIR = "data"
+
+logger = logging.getLogger(__name__)
 
 # Telegram ID владельца: только он может смотреть список пользователей (/users)
 OWNER_ID = os.environ.get("OWNER_ID", "").strip()
@@ -72,7 +75,8 @@ async def track_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         touch_user(conn, user.id, user.username, user.full_name)
     except Exception:
-        pass  # учёт не должен ломать работу бота
+        # учёт не должен ломать работу бота, но ошибку нужно видеть в логах
+        logger.exception("не удалось записать пользователя %s", user.id)
 
 
 def format_users_messages(rows):
@@ -94,7 +98,19 @@ def format_users_messages(rows):
     return messages
 
 
+async def backfill_profiles(bot):
+    """Старые записи (созданные до учёта пользователей) не знают ни имени, ни username.
+    Telegram отдаёт их по ID тем, кто когда-либо писал боту, поэтому дозаполняем пачками."""
+    for telegram_id in users_without_profile(conn, limit=50):
+        try:
+            chat = await bot.get_chat(telegram_id)
+        except Exception:
+            continue  # пользователь заблокировал бота или удалил аккаунт
+        set_user_profile(conn, telegram_id, chat.username, chat.full_name or chat.first_name)
+
+
 async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await backfill_profiles(context.bot)
     rows = list_users(conn)
     for text in format_users_messages(rows):
         await update.message.reply_text(text)

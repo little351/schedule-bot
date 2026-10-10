@@ -438,6 +438,15 @@ document.getElementById("copyBtn").addEventListener("click", async (e) => {
   }, 1500);
 });
 
+// сообщаем серверу о заходе (для статистики), результат не важен
+if (tg.initData) {
+  fetch("/api/visit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ init_data: tg.initData }),
+  }).catch(() => {});
+}
+
 renderDateStrip();
 loadGroups();
 loadDay();
