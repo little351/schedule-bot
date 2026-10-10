@@ -32,11 +32,9 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    # база на бесплатном тарифе обнуляется при "засыпании" - при каждом холодном
-    # старте перезаливаем расписание из файлов, которые лежат в самом репозитории (data/*.xlsx)
-    existing = conn.execute("SELECT COUNT(*) FROM lessons").fetchone()[0]
-    if existing == 0:
-        load_schedules()
+    # при каждом старте перезаливаем расписание из data/*.xlsx: файлы - источник истины,
+    # так новый файл подхватывается простым перезапуском (таблица users не трогается)
+    load_schedules()
 
     await application.initialize()
     await post_init(application)
