@@ -1,20 +1,12 @@
 import os
-from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from telegram import Update
 
-from database import (
-    get_user_group, get_relative_week_sheet, get_week_schedule_grid,
-    DAYS_ORDER, TIME_SLOTS, WEEKDAY_MAP, get_day_lessons,
-    get_groups, set_user_group, touch_user
-)
-from formatting import trim_trailing_empty
 from bot import build_application, post_init, conn, load_schedules, TOKEN
-from telegram_auth import validate_init_data
+from routes import build_router
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "hook")
@@ -33,7 +25,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    # при каждом старте перезаливаем расписание из data/*.xlsx: файлы - источник истины,
+    # при каждом старте перезаливаем расписание из data/ (.xlsx и .xls): файлы - источник истины,
     # так новый файл подхватывается простым перезапуском (таблица users не трогается)
     load_schedules()
 
@@ -55,93 +47,7 @@ async def telegram_webhook(request: Request):
     return {"ok": True}
 
 
-@app.get("/api/day")
-def get_day(telegram_id: int, date: str):
-    group = get_user_group(conn, telegram_id)
-    if not group:
-        raise HTTPException(status_code=404, detail="group_not_set")
-
-    try:
-        target_date = datetime.strptime(date, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="bad_date")
-
-    week_sheet, lessons = get_day_lessons(conn, group, target_date)
-    if not week_sheet:
-        raise HTTPException(status_code=404, detail="week_not_found")
-
-    day_name = WEEKDAY_MAP.get(target_date.weekday(), "Воскресенье")
-
-    return {
-        "group": group,
-        "week_sheet": week_sheet,
-        "day_name": day_name,
-        "date": date,
-        "lessons": lessons,
-    }
-
-
-@app.get("/api/groups")
-def list_groups(telegram_id: int = 0):
-    return {"groups": get_groups(conn), "current": get_user_group(conn, telegram_id)}
-
-
-class GroupBody(BaseModel):
-    telegram_id: int
-    group: str
-
-
-@app.post("/api/group")
-def choose_group(body: GroupBody):
-    if body.group not in get_groups(conn):
-        raise HTTPException(status_code=400, detail="unknown_group")
-    set_user_group(conn, body.telegram_id, body.group)
-    return {"group": body.group}
-
-
-class VisitBody(BaseModel):
-    init_data: str
-
-
-@app.post("/api/visit")
-def visit(body: VisitBody):
-    """Мини-апп сообщает о заходе: по подписанным данным Telegram запоминаем username и время.
-    Большинство пользователей после выбора группы пишут боту редко и открывают только мини-апп."""
-    user = validate_init_data(body.init_data, TOKEN)
-    if not user:
-        raise HTTPException(status_code=403, detail="bad_init_data")
-    touch_user(conn, user["id"], user.get("username"),
-               " ".join(filter(None, [user.get("first_name"), user.get("last_name")])) or None)
-    return {"ok": True}
-
-
-def build_day_slots(grid, day_name):
-    subjects = [grid[day_name][t] for t in TIME_SLOTS]
-    trimmed = trim_trailing_empty(subjects)
-    if trimmed is None:
-        return None
-    return [{"time": t.replace(".", ":"), "subject": s} for t, s in zip(TIME_SLOTS, trimmed)]
-
-
-@app.get("/api/schedule")
-def get_schedule(telegram_id: int, offset: int = 0):
-    group = get_user_group(conn, telegram_id)
-    if not group:
-        raise HTTPException(status_code=404, detail="group_not_set")
-
-    week_sheet = get_relative_week_sheet(conn, group, offset)
-    if not week_sheet:
-        raise HTTPException(status_code=404, detail="week_not_found")
-
-    grid = get_week_schedule_grid(conn, group, week_sheet)
-
-    days_out = []
-    for day_name in DAYS_ORDER:
-        slots = build_day_slots(grid, day_name)
-        if slots:
-            days_out.append({"day": day_name, "slots": slots})
-
-    return {"group": group, "week_sheet": week_sheet, "days": days_out}
+app.include_router(build_router(conn, TOKEN))
 
 
 app.mount("/", StaticFiles(directory="webapp", html=True), name="webapp")
