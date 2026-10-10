@@ -4,13 +4,16 @@ from telegram import (
     Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo,
     ReplyKeyboardMarkup, ReplyKeyboardRemove
 )
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler, TypeHandler, ContextTypes, filters
+)
 
 from parser import parse_schedule, parse_all_schedules
 from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
-    get_week_schedule_grid, get_today_day_name, get_groups, group_short_name, find_group
+    get_week_schedule_grid, get_today_day_name, get_groups, group_short_name, find_group,
+    touch_user, list_users
 )
 from formatting import format_week_text, format_day_text
 
@@ -18,6 +21,9 @@ TOKEN = os.environ.get("BOT_TOKEN") or ""
 WEBAPP_URL = os.environ.get("WEBAPP_URL") or os.environ.get("PUBLIC_URL") or "https://breeding-salvation-splashing.ngrok-free.dev"
 # все .xlsx из этой папки загружаются как расписание; группы берутся из заголовков листов
 SCHEDULE_DIR = "data"
+
+# Telegram ID владельца: только он может смотреть список пользователей (/users)
+OWNER_ID = os.environ.get("OWNER_ID", "").strip()
 
 conn = init_db()
 
@@ -53,8 +59,45 @@ START_TEXT = (
     "⚠️ Бот неофициальный: расписание загружается вручную и может измениться или содержать "
     "неточности, поэтому сверяйся с официальным. Бот работает на бесплатном хостинге: после простоя "
     "он может отвечать с задержкой (до ~30 секунд), а иногда быть временно недоступен. "
-    "Если ничего не происходит — подожди и повтори."
+    "Если ничего не происходит — подожди и повтори.\n\n"
+    "Для статистики бот сохраняет твой username и выбранную группу."
 )
+
+
+async def track_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Срабатывает на каждое обращение, ничего не отвечает и не мешает остальным обработчикам."""
+    user = update.effective_user
+    if not user or user.is_bot:
+        return
+    try:
+        touch_user(conn, user.id, user.username, user.full_name)
+    except Exception:
+        pass  # учёт не должен ломать работу бота
+
+
+def format_users_messages(rows):
+    """Список пользователей, разбитый на сообщения короче лимита Telegram (4096)."""
+    header = f"Пользователей: {len(rows)}"
+    lines = []
+    for telegram_id, username, first_name, group_name, first_seen, last_seen in rows:
+        handle = f"@{username}" if username else "(без username)"
+        last = (last_seen or "?")[:10]
+        lines.append(f"{handle} · {first_name or '—'} · {group_name or 'группа не выбрана'} · {last} · id {telegram_id}")
+
+    messages, current = [], header
+    for line in lines:
+        if len(current) + len(line) + 1 > 3500:
+            messages.append(current)
+            current = ""
+        current = f"{current}\n{line}" if current else line
+    messages.append(current)
+    return messages
+
+
+async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    rows = list_users(conn)
+    for text in format_users_messages(rows):
+        await update.message.reply_text(text)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -215,12 +258,17 @@ async def post_init(application):
 
 def build_application():
     application = Application.builder().token(TOKEN).post_init(post_init).build()
+    # group=-1: учёт пользователей идёт раньше остальных обработчиков и их не заменяет
+    application.add_handler(TypeHandler(Update, track_user), group=-1)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("week", week))
     application.add_handler(CommandHandler("nweek", nweek))
     application.add_handler(CommandHandler("day", day))
     application.add_handler(CommandHandler("weekdate", weekdate))
     application.add_handler(CommandHandler("app", app_command))
+    if OWNER_ID.isdigit():
+        # всем остальным /users не отвечает вовсе: команда нигде не публикуется
+        application.add_handler(CommandHandler("users", users_command, filters=filters.User(user_id=int(OWNER_ID))))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     return application
