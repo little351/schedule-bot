@@ -89,11 +89,6 @@
     overflow: hidden;
     display: flex;
   }
-  .lesson-bar {
-    width: 5px;
-    flex: 0 0 5px;
-    background: #48484a;
-  }
   .lesson-body {
     flex: 1;
     padding: 12px 14px;
@@ -102,7 +97,6 @@
     display: flex;
     gap: 12px;
     align-items: flex-start;
-    cursor: pointer;
   }
   .lesson-time {
     flex: 0 0 56px;
@@ -117,60 +111,25 @@
     line-height: 1.35;
   }
 
-  .rating-panel {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-    display: none;
-  }
-  .rating-panel.open {
-    display: block;
-  }
-  .rating-label {
-    font-size: 11px;
-    color: var(--hint);
-    text-transform: uppercase;
-    margin-bottom: 8px;
-    letter-spacing: 0.3px;
-  }
-  .rating-row {
+  .group-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 0;
-    cursor: pointer;
-    border-radius: 8px;
+    justify-content: space-between;
+    gap: 12px;
+    margin: -6px 0 16px;
   }
-  .rating-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex: 0 0 auto;
-  }
-  .rating-name {
-    flex: 0 0 120px;
+  .group-label {
     font-size: 13px;
-  }
-  .rating-bar-track {
-    flex: 1;
-    height: 6px;
-    background: var(--border);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-  .rating-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-  }
-  .rating-pct {
-    flex: 0 0 60px;
-    font-size: 12px;
     color: var(--hint);
-    text-align: right;
   }
-  .rating-row.my-vote .rating-name {
+  .group-select {
+    background: var(--card);
     color: var(--text);
-    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
   }
 
   /* --- Вкладка "Важное" --- */
@@ -258,6 +217,11 @@
 <div id="scheduleTab">
   <h1>Расписание</h1>
 
+  <div class="group-row">
+    <span class="group-label">Группа</span>
+    <select class="group-select" id="groupSelect"></select>
+  </div>
+
   <div class="date-strip">
     <button class="chevron" id="prevBtn">‹</button>
     <div class="date-pills" id="datePills"></div>
@@ -309,20 +273,6 @@ tg.expand();
 const telegramId = tg.initDataUnsafe?.user?.id;
 
 const DAY_ABBR = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-const RATING_LABELS = {
-  attend: "Ходить",
-  confused: "Пока не понял",
-  interesting: "Интересный",
-  skip: "Можно не ходить",
-};
-const RATING_COLORS = {
-  attend: "#ff3b30",
-  confused: "#ffcc00",
-  interesting: "#34c759",
-  skip: "#8e8e93",
-};
-const RATING_ORDER = ["attend", "confused", "interesting", "skip"];
-
 let selectedDate = new Date();
 selectedDate.setHours(0, 0, 0, 0);
 
@@ -358,67 +308,30 @@ function renderDateStrip() {
   }
 }
 
-function dominantColor(rating) {
-  if (!rating || rating.total === 0) return "#48484a";
-  return RATING_COLORS[rating.dominant] || "#48484a";
-}
-
-function buildRatingPanel(lesson) {
-  const rating = lesson.rating;
-  const total = rating.total;
-  const rows = RATING_ORDER.map(opt => {
-    const count = rating.counts[opt];
-    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-    const isMine = lesson.my_vote === opt;
-    return `
-      <div class="rating-row${isMine ? " my-vote" : ""}" data-option="${opt}" data-key="${encodeURIComponent(lesson.subject_key)}">
-        <div class="rating-dot" style="background:${RATING_COLORS[opt]}"></div>
-        <div class="rating-name">${RATING_LABELS[opt]}${isMine ? " ✓" : ""}</div>
-        <div class="rating-bar-track">
-          <div class="rating-bar-fill" style="width:${pct}%;background:${RATING_COLORS[opt]}"></div>
-        </div>
-        <div class="rating-pct">${count} · ${pct}%</div>
-      </div>
-    `;
-  }).join("");
-
-  return `
-    <div class="rating-panel" data-panel-for="${encodeURIComponent(lesson.subject_key)}">
-      <div class="rating-label">Оценки студентов</div>
-      ${rows}
-    </div>
-  `;
-}
-
-async function castVote(subjectKey, option) {
-  if (!telegramId) return;
-  const res = await fetch("/api/rate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ telegram_id: telegramId, subject_key: subjectKey, option }),
-  });
-  if (res.ok) {
-    loadDay(); // перезагружаем день, чтобы обновить все цифры
+async function loadGroups() {
+  const select = document.getElementById("groupSelect");
+  try {
+    const res = await fetch(`/api/groups?telegram_id=${telegramId || 0}`);
+    if (!res.ok) throw new Error("server error");
+    const data = await res.json();
+    const placeholder = data.current ? "" : '<option value="" selected disabled>Выбери группу</option>';
+    select.innerHTML = placeholder + data.groups.map(g =>
+      `<option value="${g}"${g === data.current ? " selected" : ""}>${g}</option>`
+    ).join("");
+  } catch (err) {
+    select.innerHTML = "";
   }
 }
 
-function attachHandlers() {
-  document.querySelectorAll(".lesson-top").forEach(el => {
-    el.addEventListener("click", () => {
-      const panel = el.parentElement.querySelector(".rating-panel");
-      if (panel) panel.classList.toggle("open");
-    });
+document.getElementById("groupSelect").addEventListener("change", async (e) => {
+  if (!telegramId) return;
+  const res = await fetch("/api/group", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ telegram_id: telegramId, group: e.target.value }),
   });
-
-  document.querySelectorAll(".rating-row").forEach(el => {
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const key = decodeURIComponent(el.dataset.key);
-      const option = el.dataset.option;
-      castVote(key, option);
-    });
-  });
-}
+  if (res.ok) loadDay();
+});
 
 async function loadDay() {
   const container = document.getElementById("container");
@@ -435,7 +348,7 @@ async function loadDay() {
     if (res.status === 404) {
       const data = await res.json();
       if (data.detail === "group_not_set") {
-        container.innerHTML = '<div class="status">Сначала укажи группу в чате с ботом (команда /start).</div>';
+        container.innerHTML = '<div class="status">Выбери свою группу в списке выше.</div>';
       } else {
         container.innerHTML = '<div class="status">Расписание на эту дату не найдено.</div>';
       }
@@ -452,18 +365,14 @@ async function loadDay() {
 
     container.innerHTML = data.lessons.map(lesson => `
       <div class="lesson-card">
-        <div class="lesson-bar" style="background:${dominantColor(lesson.rating)}"></div>
         <div class="lesson-body">
           <div class="lesson-top">
             <div class="lesson-time">${lesson.time_start}<br>${lesson.time_end}</div>
             <div class="lesson-subject">${lesson.subject}</div>
           </div>
-          ${buildRatingPanel(lesson)}
         </div>
       </div>
     `).join("");
-
-    attachHandlers();
 
   } catch (err) {
     container.innerHTML = '<div class="status">Ошибка загрузки. Попробуй позже.</div>';
@@ -525,6 +434,7 @@ document.getElementById("copyBtn").addEventListener("click", async (e) => {
 });
 
 renderDateStrip();
+loadGroups();
 loadDay();
 </script>
 

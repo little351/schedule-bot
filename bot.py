@@ -1,31 +1,53 @@
 import os
 from datetime import datetime
-from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from telegram import (
+    Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo,
+    ReplyKeyboardMarkup, ReplyKeyboardRemove
+)
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
-from parser import parse_schedule
+from parser import parse_schedule, parse_all_schedules
 from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
-    get_week_schedule_grid, get_today_day_name
+    get_week_schedule_grid, get_today_day_name, get_groups, group_short_name, find_group
 )
 from formatting import format_week_text, format_day_text
 
 TOKEN = os.environ.get("BOT_TOKEN") or ""
 WEBAPP_URL = os.environ.get("WEBAPP_URL") or os.environ.get("PUBLIC_URL") or "https://breeding-salvation-splashing.ngrok-free.dev"
-SCHEDULE_PATH = "data/schedule.xlsx"
+# все .xlsx из этой папки загружаются как расписание; группы берутся из заголовков листов
+SCHEDULE_DIR = "data"
 
 conn = init_db()
 
-GROUPS = ["10", "11", "12", "13", "14", "15", "16"]
+
+def load_schedules():
+    records = parse_all_schedules(SCHEDULE_DIR)
+    save_schedule(conn, records)
+    return records
+
+
+def groups_hint():
+    names = [group_short_name(g) for g in get_groups(conn)]
+    return ", ".join(names) if names else "расписание пока не загружено"
+
+
+def groups_keyboard():
+    names = [group_short_name(g) for g in get_groups(conn)]
+    rows = [names[i:i + 4] for i in range(0, len(names), 4)]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True) if rows else None
+
+
+NO_GROUP_MSG = "Сначала укажи группу — просто напиши её номер ({})."
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет! Напиши номер своей группы (10-16), чтобы я запомнил его.\n\n"
-        ""
+        f"Привет! Напиши номер своей группы ({groups_hint()}), чтобы я запомнил его.\n\n"
         "⚠️ Бот работает на бесплатном хостинге и может «засыпать» при простое. "
-        "Если после команды или открытия приложения ничего не происходит — подожди секунд 30 и попробуй ещё раз."
+        "Если после команды или открытия приложения ничего не происходит — подожди секунд 30 и попробуй ещё раз.",
+        reply_markup=groups_keyboard()
     )
 
 
@@ -33,14 +55,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     telegram_id = update.effective_user.id
 
-    if text in GROUPS:
-        set_user_group(conn, telegram_id, f"{text} группа")
+    group = find_group(conn, text)
+    if group:
+        set_user_group(conn, telegram_id, group)
         await update.message.reply_text(
-            f"Готово, запомнил группу {text}. Команды: /app - основная команда, /week, /nweek, /day, /weekdate - используются для сохранения расписания в чате"
+            f"Готово, запомнил: {group}. Команды: /app - основная команда, /week, /nweek, /day, /weekdate - используются для сохранения расписания в чате",
+            reply_markup=ReplyKeyboardRemove()
         )
     else:
         await update.message.reply_text(
-            "Не понял. Введи номер группы от 10 до 16, либо /week, /nweek, /day, /weekdate, /app"
+            f"Не понял. Введи номер группы ({groups_hint()}), либо /week, /nweek, /day, /weekdate, /app"
         )
 
 
@@ -57,9 +81,9 @@ async def week(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     group = get_user_group(conn, telegram_id)
     if not group:
-        await update.message.reply_text("Сначала укажи группу — просто напиши её номер (10-16).")
+        await update.message.reply_text(NO_GROUP_MSG.format(groups_hint()))
         return
-    week_sheet = get_current_week_sheet(conn)
+    week_sheet = get_current_week_sheet(conn, group)
     await _send_week(update, group, week_sheet, "Расписание не найдено.")
 
 
@@ -67,9 +91,9 @@ async def nweek(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     group = get_user_group(conn, telegram_id)
     if not group:
-        await update.message.reply_text("Сначала укажи группу — просто напиши её номер (10-16).")
+        await update.message.reply_text(NO_GROUP_MSG.format(groups_hint()))
         return
-    week_sheet = get_relative_week_sheet(conn, offset=1)
+    week_sheet = get_relative_week_sheet(conn, group, offset=1)
     await _send_week(update, group, week_sheet, "Расписание на следующую неделю пока не загружено.")
 
 
@@ -91,7 +115,7 @@ async def weekdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     group = get_user_group(conn, telegram_id)
     if not group:
-        await update.message.reply_text("Сначала укажи группу — просто напиши её номер (10-16).")
+        await update.message.reply_text(NO_GROUP_MSG.format(groups_hint()))
         return
 
     if not context.args:
@@ -103,7 +127,7 @@ async def weekdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Не понял дату. Формат: ДД.ММ или ДД.ММ.ГГГГ, например 05.10")
         return
 
-    week_sheet = get_week_sheet_for_date(conn, target_date)
+    week_sheet = get_week_sheet_for_date(conn, group, target_date)
     await _send_week(update, group, week_sheet, "Расписание на эту дату не найдено.")
 
 
@@ -111,10 +135,10 @@ async def day(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     group = get_user_group(conn, telegram_id)
     if not group:
-        await update.message.reply_text("Сначала укажи группу — просто напиши её номер (10-16).")
+        await update.message.reply_text(NO_GROUP_MSG.format(groups_hint()))
         return
 
-    week_sheet = get_current_week_sheet(conn)
+    week_sheet = get_current_week_sheet(conn, group)
     day_name = get_today_day_name()
     grid = get_week_schedule_grid(conn, group, week_sheet)
     text = format_day_text(group, week_sheet, day_name, grid)
@@ -140,16 +164,29 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("Получил файл, обновляю расписание...")
 
+    # файл с тем же именем заменяет старый, с новым именем - добавляется к остальным
     file = await context.bot.get_file(document.file_id)
-    os.makedirs(os.path.dirname(SCHEDULE_PATH), exist_ok=True)
-    await file.download_to_drive(SCHEDULE_PATH)
+    os.makedirs(SCHEDULE_DIR, exist_ok=True)
+    file_name = os.path.basename(document.file_name)
+    target_path = os.path.join(SCHEDULE_DIR, file_name)
+    tmp_path = os.path.join(SCHEDULE_DIR, f".upload-{file_name}")  # скрытые файлы не подхватываются
+    await file.download_to_drive(tmp_path)
 
     try:
-        records = parse_schedule(SCHEDULE_PATH)
-        save_schedule(conn, records)
-        await update.message.reply_text(f"Готово, расписание обновлено ({len(records)} записей).")
+        # сначала проверяем, что файл читается, и только потом кладём его к остальным,
+        # чтобы битый файл не ломал загрузку при следующем старте
+        if not parse_schedule(tmp_path):
+            raise ValueError("не нашёл ни одного занятия (листы недель вида 01.09, заголовок 'День недели')")
+        os.replace(tmp_path, target_path)
+        records = load_schedules()
+        await update.message.reply_text(
+            f"Готово, расписание обновлено ({len(records)} записей). Группы: {groups_hint()}."
+        )
     except Exception as e:
         await update.message.reply_text(f"Ошибка при обработке файла: {e}")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 async def post_init(application):
