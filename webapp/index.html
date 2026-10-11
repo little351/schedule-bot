@@ -117,19 +117,19 @@
   .page-header h1 {
     margin: 0 0 10px;
   }
-  /* заголовок на своей строке, под ним направление и группа в один ряд слева */
+  /* заголовок на своей строке, под ним курс, направление и группа в одном ряду слева направо */
   .pickers {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
   .group-select[hidden] {
     display: none;
   }
   .group-select {
     box-sizing: border-box;
-    max-width: 100%;
+    min-width: 0;
     -webkit-appearance: none;
     appearance: none;
     background-color: var(--card);
@@ -368,9 +368,15 @@ function programsOfCourse(course) {
   return catalog.filter(p => p.courses.some(c => String(c.course) === String(course)));
 }
 
-function renderPickers() {
+// тесное отображение для узких экранов: «2 курс» -> «2 к.», «8 группа» -> «8 гр.»
+let compact = false;
+const courseLabel = c => compact ? `${c} к.` : `${c} курс`;
+const groupLabel = g => compact ? g.replace(/ группа$/, " гр.") : g;
+
+function renderPickers(tight = false) {
+  compact = tight;
   courseSelect.innerHTML = optionsHtml(
-    allCourses().map(c => ({ value: c, label: `${c} курс` })), chosen.course);
+    allCourses().map(c => ({ value: c, label: courseLabel(c) })), chosen.course);
 
   const programs = programsOfCourse(chosen.course);
   const program = programs.find(p => p.code === chosen.program);
@@ -379,10 +385,21 @@ function renderPickers() {
   programSelect.title = program ? program.name : "";
 
   const entry = program && program.courses.find(c => String(c.course) === String(chosen.course));
-  const placeholder = chosen.group ? "" : '<option value="" selected disabled>Выбери группу</option>';
+  const placeholder = chosen.group ? "" : `<option value="" selected disabled>${compact ? "Группа" : "Выбери группу"}</option>`;
   groupSelect.innerHTML = placeholder + optionsHtml(
-    (entry ? entry.groups : []).map(g => ({ value: g, label: g })), chosen.group);
+    (entry ? entry.groups : []).map(g => ({ value: g, label: groupLabel(g) })), chosen.group);
   fitPickers();
+  if (!compact && pickersOverflow()) {
+    renderPickers(true);  // не влезло в одну строку: сокращаем подписи, а не переносим группу вниз
+  }
+}
+
+function pickersOverflow() {
+  const box = document.querySelector(".pickers");
+  const selects = [courseSelect, programSelect, groupSelect].filter(s => !s.hidden);
+  const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
+  const total = selects.reduce((sum, s) => sum + s.offsetWidth, 0) + gap * (selects.length - 1);
+  return total > box.clientWidth;
 }
 
 async function loadGroups() {

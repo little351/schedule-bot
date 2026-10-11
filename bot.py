@@ -173,10 +173,13 @@ def format_users_messages(rows):
     """Список пользователей, разбитый на сообщения короче лимита Telegram (4096)."""
     header = f"Пользователей: {len(rows)}"
     lines = []
-    for telegram_id, username, first_name, group_name, first_seen, last_seen, program in rows:
+    for telegram_id, username, first_name, group_name, first_seen, last_seen, program, course in rows:
         handle = f"@{username}" if username else "(без username)"
         last = (last_seen or "?")[:10]
-        group = f"{group_name} ({program})" if group_name and program else (group_name or "группа не выбрана")
+        if group_name and program:
+            group = f"{group_name} ({program}, {course or 1} курс)"
+        else:
+            group = group_name or "группа не выбрана"
         lines.append(f"{handle} · {first_name or '—'} · {group} · {last} · id {telegram_id}")
 
     messages, current = [], header
@@ -204,36 +207,39 @@ def format_users_csv(rows):
     """Список пользователей в CSV (для резервной копии, открывается в Excel)."""
     out = io.StringIO()
     writer = csv.writer(out)
-    writer.writerow(["telegram_id", "username", "first_name", "group_name", "first_seen", "last_seen", "program"])
+    writer.writerow(["telegram_id", "username", "first_name", "group_name", "first_seen", "last_seen", "program", "course"])
     writer.writerows(rows)
     return out.getvalue().encode("utf-8-sig")
 
 
-# строка списка /users: «@ivan · Иван · 4 группа (49.03.04) · 2026-10-09 · id 123»
+# строка списка /users: «@ivan · Иван · 4 группа (49.03.04, 2 курс) · 2026-10-09 · id 123»;
+# в старом формате курса нет: «4 группа (49.03.04)», такие пользователи получают 1 курс
 USER_LINE_RE = re.compile(r"^(?:@(\S+)|\(без username\)) · (.*?) · (.*?) · (\S+) · id (-?\d+)\s*$", re.MULTILINE)
-GROUP_PROGRAM_RE = re.compile(r"^(.*?)\s*\((\d{2}\.\d{2}\.\d{2})\)$")
+GROUP_PROGRAM_RE = re.compile(r"^(.*?)\s*\((\d{2}\.\d{2}\.\d{2})(?:, (\d) курс)?\)$")
 
 
 def parse_users_backup(text):
     """Строки для restore_users из текста: сообщения /users (можно переслать боту) или файл /backup (CSV)."""
     rows = []
     for username, first_name, group, last, telegram_id in USER_LINE_RE.findall(text):
-        program = None
+        program = course = None
         m = GROUP_PROGRAM_RE.match(group)
         if m:
-            group, program = m.group(1), m.group(2)
+            group, program, course = m.group(1), m.group(2), int(m.group(3) or 1)
         group = None if group.startswith("группа не выбрана") else group
         last = None if last == "?" else last
         first_name = None if first_name == "—" else first_name
-        rows.append((int(telegram_id), username or None, first_name, group, last, last, program))
+        rows.append((int(telegram_id), username or None, first_name, group, last, last, program, course))
     if rows:
         return rows
     for record in csv.DictReader(io.StringIO(text.lstrip("\ufeff"))):
         if (record.get("telegram_id") or "").lstrip("-").isdigit():
+            program = record.get("program") or None
+            course = int(record["course"]) if (record.get("course") or "").isdigit() else (1 if program else None)
             rows.append((
                 int(record["telegram_id"]), record.get("username") or None, record.get("first_name") or None,
                 record.get("group_name") or None, record.get("first_seen") or None,
-                record.get("last_seen") or None, record.get("program") or None,
+                record.get("last_seen") or None, program, course,
             ))
     return rows
 

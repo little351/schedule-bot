@@ -60,6 +60,8 @@ if PG_DSN:
         # учёт пользователей: колонки добавляются к уже существующей таблице без потери данных
         for column, column_type in USER_EXTRA_COLUMNS:
             cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} {column_type}")
+        # у пользователей с направлением курс по умолчанию первый
+        cur.execute("UPDATE users SET course = 1 WHERE program IS NOT NULL AND course IS NULL")
 
 
 def storage_name():
@@ -112,6 +114,7 @@ def init_db(path="schedule.db"):
         )
     """)
     _add_missing_columns(conn, "users", USER_EXTRA_COLUMNS)
+    conn.execute("UPDATE users SET course = 1 WHERE program IS NOT NULL AND course IS NULL")
     conn.commit()
     return conn
 
@@ -248,21 +251,21 @@ def set_user_profile(conn, telegram_id, username, first_name):
 
 def restore_users(conn, rows):
     """Добавляет пользователей из резервной копии: [(telegram_id, username, first_name, group_name,
-    first_seen, last_seen, program), ...]. Уже существующие записи не трогает (они свежее копии).
+    first_seen, last_seen, program, course), ...]. Уже существующие записи не трогает (они свежее копии).
     Возвращает, сколько пользователей добавлено."""
     added = 0
-    for telegram_id, username, first_name, group_name, first_seen, last_seen, program in rows:
-        params = (telegram_id, group_name, username, first_name, first_seen, last_seen, program)
+    for telegram_id, username, first_name, group_name, first_seen, last_seen, program, course in rows:
+        params = (telegram_id, group_name, username, first_name, first_seen, last_seen, program, course)
         if PG_DSN:
             with pg_cursor() as cur:
                 cur.execute(
-                    "INSERT INTO users (telegram_id, group_name, username, first_name, first_seen, last_seen, program) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (telegram_id) DO NOTHING", params)
+                    "INSERT INTO users (telegram_id, group_name, username, first_name, first_seen, last_seen, program, course) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (telegram_id) DO NOTHING", params)
                 added += cur.rowcount
         else:
             cur = conn.execute(
-                "INSERT INTO users (telegram_id, group_name, username, first_name, first_seen, last_seen, program) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (telegram_id) DO NOTHING", params)
+                "INSERT INTO users (telegram_id, group_name, username, first_name, first_seen, last_seen, program, course) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (telegram_id) DO NOTHING", params)
             added += cur.rowcount
     if not PG_DSN:
         conn.commit()
@@ -271,9 +274,9 @@ def restore_users(conn, rows):
 
 def list_users(conn):
     """Все пользователи, сначала те, кто обращался недавно:
-    [(telegram_id, username, first_name, group_name, first_seen, last_seen, program), ...]"""
+    [(telegram_id, username, first_name, group_name, first_seen, last_seen, program, course), ...]"""
     query = (
-        "SELECT telegram_id, username, first_name, group_name, first_seen, last_seen, program "
+        "SELECT telegram_id, username, first_name, group_name, first_seen, last_seen, program, course "
         "FROM users ORDER BY last_seen IS NULL, last_seen DESC, telegram_id"
     )
     if PG_DSN:
