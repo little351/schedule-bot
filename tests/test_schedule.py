@@ -26,9 +26,9 @@ def records():
 def test_each_format_is_detected_and_counted():
     config = load_config(DATA)
     counts = {
-        "49.03.04_1k_gr1-gr6.xlsx": 692,
-        "49.03.04+49.03.01_1k_gr7-gr9+t1-04-26.xlsx": 485,
-        "49.03.04_1k_gr10-gr16.xlsx": 919,
+        "49.03.04_1k_gr1-gr6.xlsx": 697,  # + общая лекция 01.09 в объединённой ячейке на 6 групп
+        "49.03.04+49.03.01_1k_gr7-gr9+t1-04-26.xlsx": 488,
+        "49.03.04_1k_gr10-gr16.xlsx": 925,
         "49.03.02_1k_t2-09-26.xls": 229,
         "49.03.02_1k_t2-08-26.xls": 215,
         "49.03.02_1k_t2-07-26.xls": 430,  # два файла-подгруппы в одной таблице: Т2-07-26/1 и /2
@@ -238,3 +238,91 @@ def test_bot_picker_course_program_group_flow(tmp_path, records):
         assert "2 курс" in GroupRef("49.03.04", 2, "1 группа").title
     finally:
         bot.conn = old_conn
+
+
+def _subjects(records, course, group, week, needle):
+    return [r["subject"] for r in records
+            if (r["course"], r["group"], r["week_sheet"]) == (course, group, week) and needle in r["subject"]]
+
+
+def test_merged_cell_lecture_reaches_every_group(records):
+    # 01.09 общая лекция записана одной объединённой ячейкой D14:I14 на 6 групп
+    for group in ("1 группа", "2 группа", "3 группа", "4 группа", "5 группа", "6 группа"):
+        assert len(_subjects(records, 1, group, "01.09", "Использование электронной")) == 1, group
+
+
+def test_matrix_rows_of_other_groups_keep_own_teacher_and_room(records):
+    # строка группы под названием дисциплины может иметь своего преподавателя и аудиторию
+    assert _subjects(records, 2, "СГ1-5-25", "05.10", "Элективные")[0].endswith("Попов Д.В. 27 ск")
+    assert _subjects(records, 2, "СГ1-6-25", "05.10", "Элективные")[0].endswith("Маранян С.А. 27 ск")
+    assert _subjects(records, 2, "СГ1-7-25", "05.10", "Элективные")[0].endswith("Махмудов М.М. 14 ск")
+    assert "Шакина Е.Е." in _subjects(records, 2, "Т2-07-25/2", "05.10", "плавания")[0]
+    assert "Никитина С.М." in _subjects(records, 2, "Т2-07-25/1", "05.10", "плавания")[0]
+    assert "Фураев А.Н." in _subjects(records, 1, "Т2-07-26/2", "05.10", "Спортивная метрология")[0]
+    # «5,6 гр. - Удалова, 7 гр - Ходырева»: каждой группе свой преподаватель
+    assert "Удалова" in _subjects(records, 2, "СГ1-6-25", "05.10", "Иностранный язык")[0]
+    assert "Удалова" not in _subjects(records, 2, "СГ1-7-25", "05.10", "Иностранный язык")[0]
+
+
+def test_dates_without_a_schedule_week_are_not_filled_with_the_last_known_week(tmp_path, records):
+    from datetime import datetime
+    from database import get_week_sheet_for_date
+
+    conn = init_db(str(tmp_path / "weeks.db"))
+    save_schedule(conn, records)
+    fod = GroupRef("49.03.04", 1, "1 группа")  # в файле расписание только до 26.10
+    assert get_week_sheet_for_date(conn, fod, datetime(2026, 10, 28)) == "26.10"  # среда этой недели
+    assert get_week_sheet_for_date(conn, fod, datetime(2026, 11, 1, 23, 59)) == "26.10"  # воскресенье
+    assert get_week_sheet_for_date(conn, fod, datetime(2026, 11, 2)) is None
+    assert get_week_sheet_for_date(conn, fod, datetime(2026, 8, 1)) is None  # раньше первой недели
+    # окно практики посреди семестра: в таблице нет недель 12.10-09.11
+    gap = GroupRef("44.03.01", 2, "СГ2-1-25")
+    assert get_week_sheet_for_date(conn, gap, datetime(2026, 10, 20)) is None
+    assert get_week_sheet_for_date(conn, gap, datetime(2026, 11, 17)) == "16.11"
+
+
+def test_next_week_is_taken_by_date(tmp_path, records, monkeypatch):
+    from datetime import datetime
+    import database
+
+    conn = init_db(str(tmp_path / "next.db"))
+    save_schedule(conn, records)
+    gap = GroupRef("44.03.01", 2, "СГ2-1-25")
+    monkeypatch.setattr(database, "now_local", lambda: datetime(2026, 11, 10, 12, 0))
+    assert database.get_current_week_sheet(conn, gap) is None
+    assert database.get_relative_week_sheet(conn, gap, 1) == "16.11"  # следующая неделя - 16.11, а не «после текущей»
+    monkeypatch.setattr(database, "now_local", lambda: datetime(2026, 12, 29, 12, 0))
+    assert database.get_relative_week_sheet(conn, GroupRef("49.03.04", 2, "10 группа"), 1) is None
+
+
+def test_today_is_moscow_time():
+    from datetime import datetime, timedelta, timezone
+    from database import now_local
+
+    expected = datetime.now(timezone.utc) + timedelta(hours=3)
+    assert abs((now_local() - expected.replace(tzinfo=None)).total_seconds()) < 5
+
+
+def test_room_cell_with_several_rooms_is_resolved_for_the_lesson():
+    from schedule_parsers.matrix_by_discipline import _room_for
+
+    # по дням недели (0 - понедельник)
+    assert _room_for("пн - 512 гл.к.     пт - 508 гл.к.", "п", 0, 1) == "512 гл.к."
+    assert _room_for("пн - 512 гл.к.     пт - 508 гл.к.", "п", 4, 2) == "508 гл.к."
+    assert _room_for("вт - 406 гл.к., ср,пт - 407 гл.к.", "п", 4, 1) == "407 гл.к."
+    assert _room_for("151 мбк, пт - 154 мбк", "п", 4, 1) == "154 мбк"  # общая аудитория и исключение
+    assert _room_for("151 мбк, пт - 154 мбк", "п", 1, 1) == "151 мбк"
+    # по виду занятия и по номеру пары
+    assert _room_for("л - 218 ауд.к. п - 327 мбк", "л", 2, 3) == "218 ауд.к."
+    assert _room_for("л - 218 ауд.к. п - 327 мбк", "п", 2, 3) == "327 мбк"
+    assert _room_for("2 п - 70 мбк, 3 п - 161 мбк", "п", 1, 3) == "161 мбк"
+    # день недели не указан в ячейке или разбор неоднозначен: остаётся текст таблицы
+    assert _room_for("пн - 512 гл.к. пт - 508 гл.к.", "п", 2, 1) == "пн - 512 гл.к. пт - 508 гл.к."
+    assert _room_for("вт- 407 глк., ср. 2 п. - 209 гл.к., 3 п - 406 гл.к.", "п", 2, 2).startswith("вт- 407")
+    assert _room_for("513 гл.к.", "п", 0, 1) == "513 гл.к."
+    assert _room_for("411 л/а 205 ск", "п", 0, 1) == "411 л/а 205 ск"
+
+
+def test_rooms_are_resolved_in_loaded_schedule(records):
+    subject = _subjects(records, 1, "Т2-07-26/1", "05.10", "Иностранный язык")
+    assert subject and "пн - " not in subject[0] and "пт - " not in subject[0]

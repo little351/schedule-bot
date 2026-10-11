@@ -19,8 +19,8 @@ from .common import (
 NAME = "matrix_by_discipline"
 CALENDAR_MARKER = "календарные сроки"
 LEGEND_RE = re.compile(r"(\d)\s*пара\s*(\d{1,2})[:.](\d{2})\s*-\s*(\d{1,2})[:.](\d{2})")
-# части ячейки преподавателя: «л - Иванов п - Петров», «1 гр - Иванов, 2 гр - Петров»
-_PART_KEY = r"(?:л|п|\d+\s*гр\.?)"
+# части ячейки преподавателя: «л - Иванов п - Петров», «1 гр - Иванов, 2 гр - Петров», «5,6 гр. - Иванов»
+_PART_KEY = r"(?:л|п|\d+(?:\s*,\s*\d+)*\s*гр\.?)"
 TEACHER_PART_RE = re.compile(
     rf"({_PART_KEY})\s*-\s*(.*?)(?=[,;]?\s+{_PART_KEY}\s*-\s|$)", re.IGNORECASE | re.DOTALL
 )
@@ -57,12 +57,52 @@ def _teacher_for(teacher, marker, group_numbers=()):
     parts = {}
     for key, value in TEACHER_PART_RE.findall(teacher):
         key = re.sub(r"\s+|\.", "", key.lower())  # '5 гр.' -> '5гр'
-        parts[key] = value.strip(" ,;")
+        for number in re.findall(r"\d+", key) if key.endswith("гр") else [None]:
+            parts[f"{number}гр" if number else key] = value.strip(" ,;")  # '5,6гр' -> '5гр' и '6гр'
     if not parts:
         return teacher
     own = next((parts[f"{n}гр"] for n in group_numbers if f"{n}гр" in parts), None)
     chosen = (parts.get("л") or own) if marker == "л" else (own or parts.get("п"))
     return chosen or ", ".join(v for v in parts.values() if v)
+
+
+_DAY_PREFIXES = {"пн": 0, "пон": 0, "вт": 1, "ср": 2, "чт": 3, "пт": 4, "сб": 5}
+_DAYS = r"(?:пн|пон|вт|ср|чт|пт|сб)"
+# метка в ячейке аудитории: «пн -», «ср,пт -», «л -», «п -», «2 п -»
+_ROOM_SELECTOR_RE = re.compile(
+    rf"(?:(?<=\s)|(?<=,)|^)((?:{_DAYS}\.?(?:\s*,\s*{_DAYS}\.?)*)|[лп]|\d\s*п\.?)\s*[-–]\s*", re.IGNORECASE
+)
+
+
+def _room_for(room, marker, weekday, slot):
+    """Аудитория для пары. Ячейка может перечислять аудитории по дням («пн - 512 гл.к. пт - 508 гл.к.»),
+    по виду занятия («л - 218 ауд.к. п - 327 мбк») или по номеру пары («2 п - 70 мбк, 3 п - 161 мбк»);
+    тогда берём подходящую, остальные в строке не нужны. Что не удалось разобрать, остаётся как в таблице."""
+    room = re.sub(r"\s+", " ", room).strip()
+    found = list(_ROOM_SELECTOR_RE.finditer(room))
+    if not found:
+        return room
+    default = room[:found[0].start()].strip(" ,;")
+    segments = []  # (вид, значение, текст)
+    for i, m in enumerate(found):
+        end = found[i + 1].start() if i + 1 < len(found) else len(room)
+        label = re.sub(r"[\s.]", "", m.group(1).lower())
+        text = room[m.end():end].strip(" ,;")
+        if label in ("л", "п"):
+            segments.append(("marker", label, text))
+        elif label[:-1].isdigit() and label.endswith("п"):
+            segments.append(("slot", int(label[:-1]), text))
+        else:
+            days = {_DAY_PREFIXES[d] for d in re.findall(_DAYS, label)}
+            segments.append(("days", days, text))
+    if len({kind for kind, _, _ in segments}) > 1 or not all(text for _, _, text in segments):
+        return room  # день вместе с номером пары и т.п.: не гадаем
+    wanted = {"marker": marker, "slot": slot, "days": weekday}
+    matched = [text for kind, value, text in segments
+               if (weekday in value if kind == "days" else value == wanted[kind])]
+    if matched:
+        return " ".join(matched)
+    return default or room
 
 
 def _group_numbers(code, position):
@@ -170,14 +210,16 @@ def parse(wb, config) -> list[dict]:
             index = sheet.text(r, col_of["group"]) if "group" in col_of else ""
             if number and not number.isdigit():
                 break  # дальше легенда «Условные обозначения»
+            room = sheet.text(r, col_of["room"]) if "room" in col_of else ""
+            teacher = sheet.text(r, col_of["teacher"]) if "teacher" in col_of else ""
             if name:
-                current = {
-                    "name": name,
-                    "room": sheet.text(r, col_of["room"]) if "room" in col_of else "",
-                    "teacher": sheet.text(r, col_of["teacher"]) if "teacher" in col_of else "",
-                }
+                current = {"name": name, "room": room, "teacher": teacher}
+                row = current
             elif current is None or not index:
                 continue  # пустая строка между дисциплинами
+            else:
+                # строка другой группы той же дисциплины: свои преподаватель и аудитория, если указаны
+                row = {"name": current["name"], "room": room or current["room"], "teacher": teacher or current["teacher"]}
             row_groups = _row_groups(index, groups)
 
             for day, date, slots in day_cols:
@@ -186,10 +228,9 @@ def parse(wb, config) -> list[dict]:
                     if marker not in MARKER_PREFIX:
                         continue
                     for position, group in row_groups:
-                        teacher = _teacher_for(current["teacher"], marker, _group_numbers(group, position))
-                        subject = " ".join(filter(None, [
-                            f"{MARKER_PREFIX[marker]} {current['name']}", teacher, current["room"],
-                        ]))
+                        teacher = _teacher_for(row["teacher"], marker, _group_numbers(group, position))
+                        room_text = _room_for(row["room"], marker, DAY_NAMES.index(day), slot)
+                        subject = " ".join(filter(None, [f"{MARKER_PREFIX[marker]} {row['name']}", teacher, room_text]))
                         found.setdefault((group, day, date, slot_times.get(slot, "")), []).append(subject)
 
         for (group, day, date, time), subjects in found.items():
