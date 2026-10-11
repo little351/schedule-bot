@@ -34,6 +34,7 @@ def test_each_format_is_detected_and_counted():
         "42.03.01_1k_sg1-3-26.xls": 235,
         "51.03.05_1k_sg2-4-26.xls": 281,
         "38.03.02_1k_sg1-5-26+sg1-6-26.xls": 472,
+        "49.03.03_1k_t1-02-26.xls": 225,
     }
     for name, expected in counts.items():
         assert len(parse_schedule(os.path.join(DATA, "1k", name), config)) == expected, name
@@ -174,7 +175,7 @@ def test_files_are_found_in_course_folders_and_uploads_go_to_the_right_one(tmp_p
     from schedule_parsers import list_schedule_files, upload_dir
 
     found = list_schedule_files(DATA)
-    assert len(found) == 21
+    assert len(found) == 22
 
     root = str(tmp_path)
     assert upload_dir(root, "49.03.04_2k_gr1.xlsx", []) == os.path.join(root, "2k")
