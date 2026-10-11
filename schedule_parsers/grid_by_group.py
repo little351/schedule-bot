@@ -63,7 +63,7 @@ def parse(wb, config) -> list[dict]:
                 continue
 
             for col, col_groups in groups.items():
-                subject = sheet.text(r, col)
+                subject = sheet.text_merged(r, col)  # лекция на несколько групп - одна объединённая ячейка
                 if not subject:
                     continue
                 for program, name in col_groups:

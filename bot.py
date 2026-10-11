@@ -15,7 +15,7 @@ from schedule_parsers.common import load_config
 from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
-    get_week_schedule_grid, get_today_day_name, get_groups, get_catalog, find_groups, GroupRef, storage_name,
+    get_week_schedule_grid, get_today_day_name, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
     touch_user, list_users, restore_users, users_without_profile, set_user_profile
 )
 from formatting import format_week_text, format_day_text
@@ -340,7 +340,7 @@ def parse_input_date(text):
         try:
             dt = datetime.strptime(text, fmt)
             if "%Y" not in fmt and "%y" not in fmt:
-                dt = dt.replace(year=datetime.now().year)
+                dt = dt.replace(year=now_local().year)
             return dt
         except ValueError:
             continue

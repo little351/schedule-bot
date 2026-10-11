@@ -9,10 +9,11 @@ SPREADSHEET_EXTENSIONS = (".xlsx", ".xlsm", ".xls")
 class Sheet:
     """Лист в виде таблицы значений. Строки и столбцы нумеруются с 1, как в Excel."""
 
-    def __init__(self, name, rows, datemode=0):
+    def __init__(self, name, rows, datemode=0, merged=None):
         self.name = name
         self._rows = rows
         self.datemode = datemode
+        self._merged = merged or {}  # (строка, столбец) -> (строка, столбец) левой ячейки объединения
         self.max_row = len(rows)
         self.max_col = max((len(r) for r in rows), default=0)
 
@@ -31,6 +32,14 @@ class Sheet:
         if isinstance(v, float) and v.is_integer():
             v = int(v)
         return re.sub(r"[ \t]+", " ", str(v)).strip()
+
+    def text_merged(self, row, col):
+        """Как text(), но ячейка, закрытая горизонтальным объединением, возвращает текст его левой ячейки:
+        одна лекция на несколько групп записывается в таблице одной объединённой ячейкой."""
+        origin = self._merged.get((row, col))
+        if origin and origin[0] == row:
+            return self.text(*origin)
+        return self.text(row, col)
 
     def cells(self, max_rows=None):
         """(строка, столбец, текст) для всех непустых ячеек."""
@@ -93,7 +102,13 @@ def _open_xlsx(path):
     sheets = []
     for ws in wb.worksheets:
         rows = [list(r) for r in ws.iter_rows(values_only=True)]
-        sheets.append(Sheet(ws.title, rows))
+        merged = {}
+        for rng in ws.merged_cells.ranges:
+            for r in range(rng.min_row, rng.max_row + 1):
+                for c in range(rng.min_col, rng.max_col + 1):
+                    if (r, c) != (rng.min_row, rng.min_col):
+                        merged[(r, c)] = (rng.min_row, rng.min_col)
+        sheets.append(Sheet(ws.title, rows, merged=merged))
     return Workbook(path, sheets)
 
 

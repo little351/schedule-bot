@@ -5,6 +5,17 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import NamedTuple
 
+try:
+    from zoneinfo import ZoneInfo
+    _LOCAL_TZ = ZoneInfo("Europe/Moscow")
+except Exception:  # нет базы часовых поясов в системе: Москва - это UTC+3 без перехода на летнее время
+    _LOCAL_TZ = timezone(timedelta(hours=3))
+
+
+def now_local():
+    """Текущее время по Москве (сервер живёт в UTC, а «сегодня» для студентов - московское)."""
+    return datetime.now(_LOCAL_TZ).replace(tzinfo=None)
+
 # колонки таблицы users, добавленные после первой версии (миграция идёт при старте)
 USER_EXTRA_COLUMNS = [
     ("username", "TEXT"), ("first_name", "TEXT"), ("first_seen", "TEXT"), ("last_seen", "TEXT"),
@@ -300,11 +311,11 @@ def get_week_schedule_grid(conn, group: GroupRef, week_sheet):
 
 
 def get_current_week_sheet(conn, group: GroupRef):
-    return get_week_sheet_for_date(conn, group, datetime.now())
+    return get_week_sheet_for_date(conn, group, now_local())
 
 
 def get_today_day_name():
-    return WEEKDAY_MAP[datetime.now().weekday()]
+    return WEEKDAY_MAP[now_local().weekday()]
 
 
 def get_day_lessons(conn, group: GroupRef, target_date):
@@ -351,29 +362,16 @@ def get_all_week_sheets_sorted(conn, group: GroupRef):
 
 
 def get_week_sheet_for_date(conn, group: GroupRef, target_date):
-    candidates = get_all_week_sheets_sorted(conn, group)
-    if not candidates:
-        return None
-    result = None
-    for week_start, week_sheet in candidates:
-        if week_start <= target_date:
-            result = week_sheet
-        else:
-            break
-    return result or candidates[0][1]
+    """Лист недели, в которую попадает дата (понедельник-воскресенье), или None, если в таблицах
+    этой недели нет: раньше такая дата получала ближайшую прошлую неделю и показывала чужие пары."""
+    for week_start, week_sheet in get_all_week_sheets_sorted(conn, group):
+        if week_start <= target_date < week_start + timedelta(days=7):
+            return week_sheet
+    return None
 
 
 def get_relative_week_sheet(conn, group: GroupRef, offset):
-    candidates = get_all_week_sheets_sorted(conn, group)
-    current = get_current_week_sheet(conn, group)
-    names = [c[1] for c in candidates]
-    if current not in names:
-        return None
-    idx = names.index(current)
-    new_idx = idx + offset
-    if 0 <= new_idx < len(names):
-        return names[new_idx]
-    return None
+    return get_week_sheet_for_date(conn, group, now_local() + timedelta(days=7 * offset))
 
 
 def _group_sort_key(group: GroupRef):
