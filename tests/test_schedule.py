@@ -10,7 +10,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 DATA = os.path.join(ROOT, "data")
 
-from database import GroupRef, get_catalog, get_groups, get_user_group, init_db, save_schedule, find_groups  # noqa: E402
+from database import (  # noqa: E402
+    GroupRef, get_catalog, get_groups, get_user_group, init_db, save_schedule, find_groups, set_user_group,
+)
 from parser import parse_all_schedules, parse_schedule  # noqa: E402
 from routes import build_router  # noqa: E402
 from schedule_parsers.common import load_config  # noqa: E402
@@ -141,10 +143,11 @@ def test_users_csv_backup():
     os.environ.setdefault("BOT_TOKEN", "123:abc")
     import bot
 
-    data = bot.format_users_csv([(1, "ivan", "Иван", "4 группа", "2026-09-01", "2026-10-01", "49.03.04")]).decode("utf-8-sig")
+    data = bot.format_users_csv([(1, "ivan", "Иван", "4 группа", "2026-09-01", "2026-10-01", "49.03.04", 2)]).decode("utf-8-sig")
     lines = data.strip().splitlines()
     assert lines[0].startswith("telegram_id,username")
-    assert lines[1].startswith("1,ivan,Иван,4 группа")
+    assert lines[0].endswith("program,course") and lines[1].startswith("1,ivan,Иван,4 группа")
+    assert lines[1].endswith("49.03.04,2")
 
 
 def test_users_restore_from_users_command_text_and_csv(tmp_path):
@@ -152,23 +155,50 @@ def test_users_restore_from_users_command_text_and_csv(tmp_path):
     import bot
 
     rows = [
-        (1, "ivan", "Иван", "4 группа", "2026-09-01T10:00:00+00:00", "2026-10-09T10:00:00+00:00", "49.03.04"),
-        (2, None, "Мария", "Т1-04-26", None, "2026-10-08T10:00:00+00:00", "49.03.01"),
-        (3, "old", None, "7 группа", None, None, None),  # старая запись без направления
-        (4, "nogroup", "Пётр", None, None, "2026-10-01T10:00:00+00:00", None),
+        (1, "ivan", "Иван", "4 группа", "2026-09-01T10:00:00+00:00", "2026-10-09T10:00:00+00:00", "49.03.04", 1),
+        (2, None, "Мария", "Т1-04-26", None, "2026-10-08T10:00:00+00:00", "49.03.01", 2),
+        (3, "old", None, "7 группа", None, None, None, None),  # старая запись без направления
+        (4, "nogroup", "Пётр", None, None, "2026-10-01T10:00:00+00:00", None, None),
     ]
     text = "\n".join(bot.format_users_messages(rows))  # то, что бот присылает по /users
     from_text = bot.parse_users_backup(text)
     assert [r[0] for r in from_text] == [1, 2, 3, 4]
-    assert from_text[1][3:7:3] == ("Т1-04-26", "49.03.01") and from_text[2][3] == "7 группа" and from_text[3][3] is None
+    assert "Т1-04-26 (49.03.01, 2 курс)" in text
+    assert from_text[1][3] == "Т1-04-26" and from_text[1][6:] == ("49.03.01", 2)
+    assert from_text[2][3] == "7 группа" and from_text[3][3] is None
 
     conn = init_db(str(tmp_path / "restore.db"))
     assert bot.restore_users(conn, from_text) == 4
     assert bot.restore_users(conn, from_text) == 0  # повторная загрузка ничего не дублирует и не затирает
     assert get_user_group(conn, 1) == GroupRef("49.03.04", 1, "4 группа")
+    assert get_user_group(conn, 2) == GroupRef("49.03.01", 2, "Т1-04-26")
 
     csv_rows = bot.parse_users_backup(bot.format_users_csv(rows).decode("utf-8-sig"))
-    assert [r[0] for r in csv_rows] == [1, 2, 3, 4]
+    assert [r[0] for r in csv_rows] == [1, 2, 3, 4] and csv_rows[1][7] == 2
+
+
+def test_users_restore_old_formats_without_course():
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+
+    old_text = "Пользователей: 2\n@ivan · Иван · 4 группа (49.03.04) · 2026-10-09 · id 1\n(без username) · — · Т2-09-26 (49.03.02) · ? · id 2"
+    rows = bot.parse_users_backup(old_text)
+    assert [(r[0], r[3], r[6], r[7]) for r in rows] == [(1, "4 группа", "49.03.04", 1), (2, "Т2-09-26", "49.03.02", 1)]
+    old_csv = "telegram_id,username,first_name,group_name,first_seen,last_seen,program\n1,ivan,Иван,4 группа,,2026-10-01,49.03.04\n"
+    assert [(r[0], r[6], r[7]) for r in bot.parse_users_backup(old_csv)] == [(1, "49.03.04", 1)]
+
+
+def test_user_course_is_saved_and_migrated(tmp_path):
+    path = str(tmp_path / "m.db")
+    old = sqlite3.connect(path)
+    old.execute("CREATE TABLE users (telegram_id INTEGER PRIMARY KEY, group_name TEXT, program TEXT)")
+    old.execute("INSERT INTO users VALUES (5, '4 группа', '49.03.04')")
+    old.commit()
+    old.close()
+    conn = init_db(path)
+    assert conn.execute("SELECT course FROM users WHERE telegram_id = 5").fetchone() == (1,)
+    set_user_group(conn, 6, GroupRef("49.03.02", 2, "Т2-09-25"))
+    assert get_user_group(conn, 6) == GroupRef("49.03.02", 2, "Т2-09-25")
 
 
 def test_files_are_found_in_course_folders_and_uploads_go_to_the_right_one(tmp_path):
