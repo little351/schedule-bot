@@ -9,6 +9,7 @@ group (название группы как в файле), week_sheet, day, dat
 """
 import logging
 import os
+import re
 
 from . import grid_by_group, matrix_by_discipline
 from .common import load_config
@@ -35,20 +36,40 @@ def parse_file(path, config=None) -> list[dict]:
     )
 
 
+COURSE_DIRS = range(1, 6)  # data/1k ... data/5k
+COURSE_IN_NAME_RE = re.compile(r"_(\d)k_")
+
+
+def course_dir(schedule_dir, course) -> str:
+    return os.path.join(schedule_dir, f"{course}k")
+
+
+def upload_dir(schedule_dir, file_name, records) -> str:
+    """Папка для нового файла: курс из имени (49.03.04_1k_...), иначе курс из самой таблицы;
+    если курса нет среди 1-5, файл кладётся в корень data/."""
+    m = COURSE_IN_NAME_RE.search(file_name)
+    course = int(m.group(1)) if m else min((r["course"] for r in records if r.get("course")), default=None)
+    return course_dir(schedule_dir, course) if course in COURSE_DIRS else schedule_dir
+
+
 def list_schedule_files(schedule_dir) -> list[str]:
-    """Все таблицы в папке (кроме временных файлов Excel '~$...' и скрытых), по алфавиту."""
-    names = os.listdir(schedule_dir) if os.path.isdir(schedule_dir) else []
-    return sorted(
-        os.path.join(schedule_dir, n) for n in names
-        if n.lower().endswith(SPREADSHEET_EXTENSIONS) and not n.startswith(("~$", "."))
-    )
+    """Все таблицы в папке и её подпапках по курсам (кроме временных файлов Excel '~$...' и скрытых),
+    по пути в алфавитном порядке."""
+    found = []
+    for root, dirs, names in os.walk(schedule_dir):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        found.extend(
+            os.path.join(root, n) for n in names
+            if n.lower().endswith(SPREADSHEET_EXTENSIONS) and not n.startswith(("~$", "."))
+        )
+    return sorted(found)
 
 
 def parse_all(schedule_dir) -> list[dict]:
     """Расписание всех групп из всех файлов папки.
 
     Группа определяется тройкой (направление, курс, название). Если она встречается в нескольких
-    файлах, побеждает файл, идущий позже по алфавиту. Файл, который не удалось прочитать,
+    файлах, побеждает файл, идущий позже по пути (папка курса, затем имя). Файл, который не удалось прочитать,
     пропускается и пишется в лог, остальные продолжают работать."""
     config = load_config(schedule_dir)
     by_file = []

@@ -36,7 +36,7 @@ def test_each_format_is_detected_and_counted():
         "38.03.02_1k_sg1-5-26+sg1-6-26.xls": 472,
     }
     for name, expected in counts.items():
-        assert len(parse_schedule(os.path.join(DATA, name), config)) == expected, name
+        assert len(parse_schedule(os.path.join(DATA, "1k", name), config)) == expected, name
 
 
 def test_programs_and_same_numbers_do_not_collide(records):
@@ -145,3 +145,17 @@ def test_users_restore_from_users_command_text_and_csv(tmp_path):
 
     csv_rows = bot.parse_users_backup(bot.format_users_csv(rows).decode("utf-8-sig"))
     assert [r[0] for r in csv_rows] == [1, 2, 3, 4]
+
+
+def test_files_are_found_in_course_folders_and_uploads_go_to_the_right_one(tmp_path):
+    from schedule_parsers import list_schedule_files, upload_dir
+
+    found = list_schedule_files(DATA)
+    assert len(found) == 10 and all(os.sep + "1k" + os.sep in p for p in found)
+
+    root = str(tmp_path)
+    assert upload_dir(root, "49.03.04_2k_gr1.xlsx", []) == os.path.join(root, "2k")
+    # курса нет в имени: берём из самой таблицы; нет нигде или вне 1-5: корень data/
+    assert upload_dir(root, "schedule.xlsx", [{"course": 3}, {"course": 4}]) == os.path.join(root, "3k")
+    assert upload_dir(root, "schedule.xlsx", [{"course": 9}]) == root
+    assert upload_dir(root, "schedule.xlsx", []) == root

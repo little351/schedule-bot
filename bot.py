@@ -10,6 +10,7 @@ from telegram.ext import (
 )
 
 from parser import parse_file, parse_all_schedules
+from schedule_parsers import upload_dir
 from schedule_parsers.common import load_config
 from database import (
     init_db, set_user_group, get_user_group, save_schedule,
@@ -410,23 +411,26 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("Получил файл, обновляю расписание...")
 
-    # файл с тем же именем заменяет старый, с новым именем - добавляется к остальным
+    # файл кладётся в папку своего курса (data/1k, ...): с тем же именем заменяет старый, с новым добавляется
     file = await context.bot.get_file(document.file_id)
     os.makedirs(SCHEDULE_DIR, exist_ok=True)
     file_name = os.path.basename(document.file_name)
-    target_path = os.path.join(SCHEDULE_DIR, file_name)
     tmp_path = os.path.join(SCHEDULE_DIR, f".upload-{file_name}")  # скрытые файлы не подхватываются
     await file.download_to_drive(tmp_path)
 
     try:
         # сначала проверяем, что файл читается, и только потом кладём его к остальным,
         # чтобы битый файл не ломал загрузку при следующем старте
-        if not parse_file(tmp_path, load_config(SCHEDULE_DIR)):
+        records = parse_file(tmp_path, load_config(SCHEDULE_DIR))
+        if not records:
             raise ValueError("не нашёл ни одного занятия")
-        os.replace(tmp_path, target_path)
+        target_dir = upload_dir(SCHEDULE_DIR, file_name, records)
+        os.makedirs(target_dir, exist_ok=True)
+        os.replace(tmp_path, os.path.join(target_dir, file_name))
         records = load_schedules()
         await update.message.reply_text(
-            f"Готово, расписание обновлено ({len(records)} записей).\n{catalog_summary()}"
+            f"Готово, файл сохранён в {os.path.relpath(target_dir, os.path.dirname(SCHEDULE_DIR) or '.')}, "
+            f"расписание обновлено ({len(records)} записей).\n{catalog_summary()}"
         )
     except Exception as e:
         await update.message.reply_text(f"Ошибка при обработке файла: {e}")
