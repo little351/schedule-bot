@@ -40,14 +40,14 @@ def parse(wb, config) -> list[dict]:
 
         resolver = Resolver(extract_meta(sheet), config)
 
-        # группы: все непустые столбцы заголовка начиная с D
+        # группы: все непустые столбцы заголовка начиная с D; заголовок «6 группа, Т1-04-25» - это
+        # две группы, которые учатся вместе, поэтому одно расписание записывается каждой из них
         groups = {}
         for col in range(FIRST_GROUP_COL, sheet.max_col + 1):
             header = sheet.text(header_row, col)
             if header:
-                name = normalize_group(header)
-                program = resolver.program_for_header(name)
-                groups[col] = (program, name)
+                names = [normalize_group(part) for part in header.split(",") if part.strip()]
+                groups[col] = [(resolver.program_for_header(name), name) for name in names]
 
         day_name = date_val = None
         for r in range(header_row + 1, sheet.max_row + 1):
@@ -62,9 +62,11 @@ def parse(wb, config) -> list[dict]:
             if not TIME_RE.match(time_val):
                 continue
 
-            for col, (program, name) in groups.items():
+            for col, col_groups in groups.items():
                 subject = sheet.text(r, col)
-                if subject:
+                if not subject:
+                    continue
+                for program, name in col_groups:
                     records.append({
                         "program": program,
                         "program_name": resolver.program_name(program),

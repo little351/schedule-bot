@@ -85,7 +85,7 @@ class GroupRef(NamedTuple):
 
     @property
     def title(self):
-        return f"{self.name} ({self.program})"
+        return f"{self.name} ({self.program}, {self.course} курс)"
 
     @property
     def short_name(self):

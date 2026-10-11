@@ -44,11 +44,11 @@ def load_schedules():
 
 
 def catalog_summary():
-    """Что сейчас загружено: по строке на направление."""
+    """Что сейчас загружено: по строке на направление, группы по курсам."""
     lines = []
     for program in get_catalog(conn):
-        count = sum(len(c["groups"]) for c in program["courses"])
-        lines.append(f"{program['code']} {program['name']}: групп {count}")
+        by_course = ", ".join(f"{c['course']} курс {len(c['groups'])}" for c in program["courses"])
+        lines.append(f"{program['code']} {program['name']}: групп {by_course}")
     return "\n".join(lines) if lines else "расписание пока не загружено"
 
 
@@ -56,9 +56,9 @@ NO_GROUP_MSG = "Сначала выбери направление и групп
 
 
 START_TEXT = (
-    "Привет! Я показываю расписание 1 курса.\n\n"
+    "Привет! Я показываю расписание.\n\n"
     "Как пользоваться:\n"
-    "1. Выбери направление и группу кнопками ниже. Сменить их можно в любой момент: /group "
+    "1. Выбери курс, направление и группу кнопками ниже. Сменить их можно в любой момент: /group "
     "(или просто напиши номер группы).\n"
     "2. /app — открыть расписание в мини-приложении.\n"
     "3. Расписание прямо в чате: /day — сегодня, /week — эта неделя, "
@@ -76,16 +76,16 @@ DONE_TEXT = (
 )
 
 
-# --- выбор направления и группы кнопками ---
-# callback_data: p:<направление> | c:<направление>:<курс> | g:<направление>:<курс>:<группа> | back
+# --- выбор курса, направления и группы кнопками ---
+# callback_data: c:<курс> | p:<курс>:<направление> | g:<направление>:<курс>:<группа>
+#                b:c (назад к курсам) | b:<курс> (назад к направлениям курса)
 
-def _program_buttons(catalog):
-    return [[InlineKeyboardButton(f"{p['code']} {p['name']}", callback_data=f"p:{p['code']}")] for p in catalog]
+def _courses(catalog):
+    return sorted({c["course"] for p in catalog for c in p["courses"]})
 
 
-def _course_buttons(program):
-    return [[InlineKeyboardButton(f"{c['course']} курс", callback_data=f"c:{program['code']}:{c['course']}")]
-            for c in program["courses"]]
+def _programs_of_course(catalog, course):
+    return [p for p in catalog if any(c["course"] == course for c in p["courses"])]
 
 
 def _group_button(group, with_program=False):
@@ -98,36 +98,33 @@ def _group_buttons(groups, per_row=3, with_program=False):
     return [buttons[i:i + per_row] for i in range(0, len(buttons), per_row)]
 
 
-def picker_screen(step=None, program=None, course=None):
-    """Текст и клавиатура очередного шага выбора. Лишние шаги (одно направление, один курс) пропускаются."""
+def _back_row(target):
+    return [[InlineKeyboardButton("‹ Назад", callback_data=f"b:{target}")]] if target else []
+
+
+def picker_screen(step="course", course=None, program=None):
+    """Текст и клавиатура очередного шага: курс -> направление -> группа.
+    Шаг направления пропускается, если на курсе одно направление."""
     catalog = get_catalog(conn)
     if not catalog:
         return "Расписание пока не загружено, попробуй позже.", None
+    courses = _courses(catalog)
 
-    if step is None:
-        step = "program" if len(catalog) > 1 else "course"
-        program = catalog[0]["code"] if len(catalog) == 1 else None
-    entry = next((p for p in catalog if p["code"] == program), None)
+    if step == "course" or course not in courses:
+        buttons = [InlineKeyboardButton(f"{c} курс", callback_data=f"c:{c}") for c in courses]
+        return "Выбери курс:", InlineKeyboardMarkup([buttons[i:i + 3] for i in range(0, len(buttons), 3)])
 
-    if step == "program":
-        return "Выбери направление подготовки:", InlineKeyboardMarkup(_program_buttons(catalog))
+    programs = _programs_of_course(catalog, course)
+    if step == "program" and len(programs) > 1:
+        rows = [[InlineKeyboardButton(f"{p['code']} {p['name']}", callback_data=f"p:{course}:{p['code']}")]
+                for p in programs]
+        return f"{course} курс. Выбери направление подготовки:", InlineKeyboardMarkup(rows + _back_row("c"))
 
-    if entry is None:
-        return picker_screen("program")
-
-    if step == "course":
-        if len(entry["courses"]) > 1:
-            return f"{entry['code']} {entry['name']}. Выбери курс:", InlineKeyboardMarkup(
-                _course_buttons(entry) + _back_row(len(catalog) > 1))
-        course = entry["courses"][0]["course"]
-
-    groups = get_groups(conn, program, course)
-    rows = _group_buttons(groups) + _back_row(len(catalog) > 1 or len(entry["courses"]) > 1)
-    return f"{entry['code']} {entry['name']}, {course} курс. Выбери группу:", InlineKeyboardMarkup(rows)
-
-
-def _back_row(show):
-    return [[InlineKeyboardButton("‹ Назад", callback_data="back")]] if show else []
+    entry = next((p for p in programs if p["code"] == program), programs[0])
+    groups = get_groups(conn, entry["code"], course)
+    back = str(course) if len(programs) > 1 else "c"
+    return (f"{course} курс, {entry['code']} {entry['name']}. Выбери группу:",
+            InlineKeyboardMarkup(_group_buttons(groups) + _back_row(back)))
 
 
 async def group_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -140,7 +137,7 @@ async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     parts = (query.data or "").split(":", 3)
 
-    if parts[0] == "g" and len(parts) == 4:
+    if parts[0] == "g" and len(parts) == 4 and parts[2].isdigit():
         group = GroupRef(parts[1], int(parts[2]), parts[3])
         if group not in get_groups(conn):
             await query.edit_message_text("Такой группы нет в расписании. Попробуй /group ещё раз.")
@@ -149,10 +146,12 @@ async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(DONE_TEXT.format(title=group.title))
         return
 
-    if parts[0] == "p" and len(parts) >= 2:
-        text, markup = picker_screen("course", program=parts[1])
-    elif parts[0] == "c" and len(parts) >= 3:
-        text, markup = picker_screen("groups", program=parts[1], course=int(parts[2]))
+    if parts[0] == "c" and len(parts) >= 2 and parts[1].isdigit():
+        text, markup = picker_screen("program", course=int(parts[1]))
+    elif parts[0] == "p" and len(parts) >= 3 and parts[1].isdigit():
+        text, markup = picker_screen("groups", course=int(parts[1]), program=parts[2])
+    elif parts[0] == "b" and len(parts) >= 2 and parts[1].isdigit():
+        text, markup = picker_screen("program", course=int(parts[1]))
     else:
         text, markup = picker_screen()
     await query.edit_message_text(text, reply_markup=markup)
@@ -457,7 +456,7 @@ def build_application():
     application.add_handler(TypeHandler(Update, track_user), group=-1)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("group", group_command))
-    application.add_handler(CallbackQueryHandler(on_pick, pattern=r"^(p|c|g|back)(:|$)"))
+    application.add_handler(CallbackQueryHandler(on_pick, pattern=r"^(p|c|g|b)(:|$)"))
     application.add_handler(CommandHandler("week", week))
     application.add_handler(CommandHandler("nweek", nweek))
     application.add_handler(CommandHandler("day", day))
