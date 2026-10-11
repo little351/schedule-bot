@@ -182,3 +182,28 @@ def test_files_are_found_in_course_folders_and_uploads_go_to_the_right_one(tmp_p
     assert upload_dir(root, "schedule.xlsx", [{"course": 3}, {"course": 4}]) == os.path.join(root, "3k")
     assert upload_dir(root, "schedule.xlsx", [{"course": 9}]) == root
     assert upload_dir(root, "schedule.xlsx", []) == root
+
+
+def test_bot_picker_course_program_group_flow(tmp_path, records):
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+
+    old_conn = bot.conn
+    bot.conn = init_db(str(tmp_path / "picker.db"))
+    save_schedule(bot.conn, records)
+    try:
+        def buttons(markup):
+            return [b.callback_data for row in markup.inline_keyboard for b in row]
+
+        text, markup = bot.picker_screen()
+        assert buttons(markup) == ["c:1", "c:2"]
+        text, markup = bot.picker_screen("program", course=2)
+        assert "p:2:49.03.04" in buttons(markup) and buttons(markup)[-1] == "b:c"
+        text, markup = bot.picker_screen("groups", course=2, program="49.03.04")
+        assert "g:49.03.04:2:1 группа" in buttons(markup) and buttons(markup)[-1] == "b:2"
+        # на втором курсе «1 группа» и на первом тоже: это разные группы
+        assert GroupRef("49.03.04", 1, "1 группа") in get_groups(bot.conn)
+        assert GroupRef("49.03.04", 2, "1 группа") in get_groups(bot.conn)
+        assert "2 курс" in GroupRef("49.03.04", 2, "1 группа").title
+    finally:
+        bot.conn = old_conn

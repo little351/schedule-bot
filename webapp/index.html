@@ -233,8 +233,8 @@
   <div class="page-header">
     <h1>Расписание</h1>
     <div class="pickers">
+      <select class="group-select" id="courseSelect"></select>
       <select class="group-select" id="programSelect" hidden></select>
-      <select class="group-select" id="courseSelect" hidden></select>
       <select class="group-select" id="groupSelect"></select>
     </div>
   </div>
@@ -338,7 +338,6 @@ function optionsHtml(items, selected) {
   ).join("");
 }
 
-// направление и курс показываем только если их больше одного
 // ширина селекта по выбранному тексту, без пустого места перед стрелкой
 let measureCtx = null;
 function fitSelect(select) {
@@ -360,19 +359,26 @@ function fitPickers() {
   [programSelect, courseSelect, groupSelect].forEach(fitSelect);
 }
 
+// порядок выбора: курс -> направление (только те, где есть этот курс) -> группа
+function allCourses() {
+  return [...new Set(catalog.flatMap(p => p.courses.map(c => c.course)))].sort((a, b) => a - b);
+}
+
+function programsOfCourse(course) {
+  return catalog.filter(p => p.courses.some(c => String(c.course) === String(course)));
+}
+
 function renderPickers() {
-  const program = catalog.find(p => p.code === chosen.program);
-  programSelect.hidden = catalog.length < 2;
-  programSelect.innerHTML = optionsHtml(
-    catalog.map(p => ({ value: p.code, label: p.code })), chosen.program);
+  courseSelect.innerHTML = optionsHtml(
+    allCourses().map(c => ({ value: c, label: `${c} курс` })), chosen.course);
+
+  const programs = programsOfCourse(chosen.course);
+  const program = programs.find(p => p.code === chosen.program);
+  programSelect.hidden = programs.length < 2;  // одно направление выбирать не из чего
+  programSelect.innerHTML = optionsHtml(programs.map(p => ({ value: p.code, label: p.code })), chosen.program);
   programSelect.title = program ? program.name : "";
 
-  const courses = program ? program.courses : [];
-  courseSelect.hidden = courses.length < 2;
-  courseSelect.innerHTML = optionsHtml(
-    courses.map(c => ({ value: c.course, label: `${c.course} курс` })), chosen.course);
-
-  const entry = courses.find(c => String(c.course) === String(chosen.course));
+  const entry = program && program.courses.find(c => String(c.course) === String(chosen.course));
   const placeholder = chosen.group ? "" : '<option value="" selected disabled>Выбери группу</option>';
   groupSelect.innerHTML = placeholder + optionsHtml(
     (entry ? entry.groups : []).map(g => ({ value: g, label: g })), chosen.group);
@@ -389,7 +395,8 @@ async function loadGroups() {
     if (cur) {
       chosen = { program: cur.program, course: cur.course, group: cur.group };
     } else if (catalog.length) {
-      chosen = { program: catalog[0].code, course: catalog[0].courses[0].course, group: null };
+      const course = allCourses()[0];
+      chosen = { program: programsOfCourse(course)[0].code, course, group: null };
     }
     renderPickers();
   } catch (err) {
@@ -409,14 +416,15 @@ async function saveGroup() {
   if (res.ok) loadDay();
 }
 
-// смена направления или курса только перестраивает список групп; сохраняется выбор группы
-programSelect.addEventListener("change", () => {
-  const program = catalog.find(p => p.code === programSelect.value);
-  chosen = { program: program.code, course: program.courses[0].course, group: null };
+// смена курса или направления только перестраивает списки; сохраняется выбор группы
+courseSelect.addEventListener("change", () => {
+  const programs = programsOfCourse(courseSelect.value);
+  const keep = programs.find(p => p.code === chosen.program);  // то же направление, если оно есть на этом курсе
+  chosen = { program: (keep || programs[0]).code, course: courseSelect.value, group: null };
   renderPickers();
 });
-courseSelect.addEventListener("change", () => {
-  chosen = { ...chosen, course: courseSelect.value, group: null };
+programSelect.addEventListener("change", () => {
+  chosen = { ...chosen, program: programSelect.value, group: null };
   renderPickers();
 });
 groupSelect.addEventListener("change", () => {
