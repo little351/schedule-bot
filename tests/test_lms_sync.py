@@ -325,3 +325,13 @@ def test_crawl_stops_at_request_limit(env):
     crawl_env(env, max_requests=3)
     report = run(env, TreeMoodle(), list_only=True)
     assert "достигнут лимит 3 страниц" in report.text()
+
+
+def test_login_post_timeout_says_which_step_failed(env):
+    def only_post_hangs(request):
+        if request.method == "POST":
+            raise httpx.ReadTimeout("slow")
+        return httpx.Response(200, text=LOGIN_PAGE)
+    report = asyncio.run(run_sync(env[1], env[0], client_factory=factory(only_post_hangs)))
+    assert "страница входа открылась (код 200, logintoken найден)" in report.text()
+    assert "отправка формы не удалась" in report.text() and PASSWORD not in report.text()

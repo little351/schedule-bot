@@ -32,6 +32,7 @@ from schedule_parsers.common import load_config
 logger = logging.getLogger(__name__)
 
 SOURCES_FILE = "lms_sources.json"
+LOGIN_TIMEOUT = 180.0         # секунд на ответ сайта после отправки логина и пароля
 REQUEST_PAUSE = 1.0           # секунд между запросами к сайту: ходим вежливо, по одному
 MAX_FILE_BYTES = 20 * 1024 * 1024
 DEFAULT_MIN_RATIO = 0.6       # занятий в новой версии должно быть не меньше этой доли от старой
@@ -278,7 +279,12 @@ class MoodleClient:
         data = {"username": self._login, "password": self._password, "anchor": ""}
         if token:
             data["logintoken"] = token
-        result = self._request("POST", "/login/index.php", data=data)
+        try:
+            # проверка пароля на сайте может занять заметно больше обычного ответа
+            result = self._request("POST", "/login/index.php", data=data, timeout=LOGIN_TIMEOUT)
+        except SyncError as e:
+            raise SyncError(f"страница входа открылась (код {page.status_code}, logintoken "
+                            f"{'найден' if token else 'не найден'}), но отправка формы не удалась: {e}") from None
         if "login/logout.php" in result.text:
             return
         if any(marker in result.text for marker in CAPTCHA_MARKERS):
