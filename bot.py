@@ -2,8 +2,11 @@ import csv
 import io
 import logging
 import os
+import asyncio
 import re
+import secrets
 from datetime import datetime
+from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError
 from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, MessageHandler, TypeHandler, ContextTypes, filters
@@ -263,6 +266,86 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text)
 
 
+# --- рассылка (только владелец) ---
+BROADCAST_PAUSE = 0.05  # около 20 сообщений в секунду, лимит Telegram для рассылки - 30
+BROADCAST_MAX_LEN = 4000
+
+
+async def deliver_broadcast(bot, chat_ids, text, pause=BROADCAST_PAUSE, sleep=asyncio.sleep):
+    """Отправляет text всем chat_ids по одному, с паузой. Возвращает (отправлено, не доставлено).
+    Заблокировавшие бота и удалённые аккаунты пропускаются, на лимиты Telegram отвечаем ожиданием."""
+    sent = failed = 0
+    for chat_id in chat_ids:
+        for attempt in range(3):
+            try:
+                await bot.send_message(chat_id=chat_id, text=text)
+                sent += 1
+                break
+            except RetryAfter as e:
+                wait = e.retry_after
+                await sleep((wait.total_seconds() if hasattr(wait, "total_seconds") else wait) + 1)
+            except (Forbidden, BadRequest):
+                failed += 1  # бот заблокирован, аккаунт удалён или чат недоступен
+                break
+            except (NetworkError, TelegramError):
+                await sleep(2)
+        else:
+            failed += 1
+        await sleep(pause)
+    return sent, failed
+
+
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    parts = update.message.text.split(None, 1)
+    text = parts[1].strip() if len(parts) > 1 else ""
+    if not text:
+        await update.message.reply_text(
+            "Напиши текст после команды: /broadcast Текст сообщения. Я покажу предпросмотр, "
+            "и пока ты не нажмёшь «Отправить», никому ничего не уйдёт.")
+        return
+    if len(text) > BROADCAST_MAX_LEN:
+        await update.message.reply_text(f"Слишком длинно: {len(text)} символов, максимум {BROADCAST_MAX_LEN}.")
+        return
+    recipients = [row[0] for row in list_users(conn)]
+    token = secrets.token_hex(4)
+    context.bot_data["broadcast"] = {"token": token, "text": text, "recipients": recipients}
+    await update.message.reply_text(f"Предпросмотр. Так увидят пользователи:\n\n{text}")
+    await update.message.reply_text(
+        f"Получателей: {len(recipients)} (хранилище: {storage_name()}). Отправить?",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton(f"Отправить ({len(recipients)})", callback_data=f"bc:send:{token}"),
+            InlineKeyboardButton("Отмена", callback_data=f"bc:cancel:{token}"),
+        ]]))
+
+
+async def broadcast_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not _is_owner(update):
+        await query.answer()
+        return
+    _, action, token = query.data.split(":", 2)
+    pending = context.bot_data.get("broadcast")
+    if not pending or pending["token"] != token:
+        await query.answer("Это сообщение уже обработано или заменено новым.", show_alert=True)
+        return
+    context.bot_data.pop("broadcast")  # повторное нажатие не отправит рассылку второй раз
+    await query.answer()
+    if action != "send":
+        await query.edit_message_text("Рассылка отменена, ничего не отправлено.")
+        return
+    await query.edit_message_text(f"Отправляю {len(pending['recipients'])} получателям, отчёт пришлю сюда.")
+    chat_id = query.message.chat_id
+
+    async def run():
+        sent, failed = await deliver_broadcast(context.bot, pending["recipients"], pending["text"])
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"Рассылка завершена. Отправлено: {sent}. Не доставлено: {failed} "
+                 f"(заблокировали бота или удалили аккаунт).")
+
+    context.application.create_task(run())
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(START_TEXT)
     await group_command(update, context)
@@ -472,6 +555,8 @@ def build_application():
         # всем остальным /users не отвечает вовсе: команда нигде не публикуется
         application.add_handler(CommandHandler("users", users_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CommandHandler("backup", backup_command, filters=filters.User(user_id=int(OWNER_ID))))
+        application.add_handler(CommandHandler("broadcast", broadcast_command, filters=filters.User(user_id=int(OWNER_ID))))
+        application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     return application
