@@ -66,6 +66,13 @@ def interval_hours():
         return 24.0
 
 
+def request_timeout():
+    try:
+        return max(5.0, float(os.environ.get("LMS_TIMEOUT_SECONDS", "60")))
+    except ValueError:
+        return 60.0
+
+
 def sync_enabled():
     return os.environ.get("LMS_SYNC_ENABLED", "1").strip().lower() not in ("0", "false", "no", "off")
 
@@ -235,7 +242,7 @@ class MoodleClient:
         self._pause = REQUEST_PAUSE if pause is None else pause
         self._sleep = sleep
         self._first = True
-        self.http = httpx.Client(follow_redirects=True, timeout=30.0, transport=transport,
+        self.http = httpx.Client(follow_redirects=True, timeout=request_timeout(), transport=transport,
                                  headers={"User-Agent": USER_AGENT})
 
     def close(self):
@@ -245,10 +252,20 @@ class MoodleClient:
         if not self._first and self._pause:
             self._sleep(self._pause)
         self._first = False
-        try:
-            return self.http.request(method, urljoin(self.base_url + "/", url), **kwargs)
-        except httpx.HTTPError as e:
-            raise SyncError(f"сайт недоступен или не ответил ({type(e).__name__})") from None
+        target = urljoin(self.base_url + "/", url)
+        where = urlparse(target).path + (f"?{urlparse(target).query}" if urlparse(target).query else "")
+        for attempt in (1, 2):
+            try:
+                return self.http.request(method, target, **kwargs)
+            except httpx.TimeoutException as e:
+                # сайт принял соединение, но молчит: бывает при перегрузке или когда он закрыт для зарубежных адресов
+                if attempt == 1 and method == "GET":
+                    continue  # один повтор безопасного запроса, дальше сдаёмся
+                raise SyncError(f"сайт не ответил на запрос {where} ({type(e).__name__}, дважды по {request_timeout():.0f} с)"
+                                if method == "GET" else
+                                f"сайт не ответил на запрос {where} ({type(e).__name__})") from None
+            except httpx.HTTPError as e:
+                raise SyncError(f"не удалось связаться с сайтом на запросе {where} ({type(e).__name__})") from None
 
     def login(self):
         page = self._request("GET", "/login/index.php")
