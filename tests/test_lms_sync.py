@@ -11,6 +11,7 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 DATA = os.path.join(ROOT, "data")
+os.environ.setdefault("BOT_TOKEN", "123:abc")  # bot читает токен при первом импорте
 
 import lms_sync  # noqa: E402
 from database import init_db, list_synced_files, save_synced_file  # noqa: E402
