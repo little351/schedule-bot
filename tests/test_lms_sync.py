@@ -325,3 +325,15 @@ def test_crawl_stops_at_request_limit(env):
     crawl_env(env, max_requests=3)
     report = run(env, TreeMoodle(), list_only=True)
     assert "достигнут лимит 3 страниц" in report.text()
+
+
+def test_owner_is_notified_about_failures_at_most_once_a_day():
+    from datetime import datetime, timezone
+    import bot
+    now = datetime(2026, 10, 12, 12, 0, tzinfo=timezone.utc)
+    ago = lambda **kw: (now - timedelta(**kw)).isoformat()
+    assert bot.should_notify_owner("a", "", None, now)                       # первый сбой
+    assert not bot.should_notify_owner("b", "a", ago(hours=3), now)          # другой сбой в тот же день
+    assert not bot.should_notify_owner("a", "a", ago(hours=30), now)         # то же самое через сутки
+    assert bot.should_notify_owner("b", "a", ago(hours=30), now)             # новый сбой через сутки
+    assert bot.should_notify_owner("a", "a", ago(days=4), now)               # напоминание через 3 дня
