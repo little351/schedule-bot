@@ -326,3 +326,133 @@ def test_room_cell_with_several_rooms_is_resolved_for_the_lesson():
 def test_rooms_are_resolved_in_loaded_schedule(records):
     subject = _subjects(records, 1, "Т2-07-26/1", "05.10", "Иностранный язык")
     assert subject and "пн - " not in subject[0] and "пт - " not in subject[0]
+
+
+def test_broadcast_delivery_skips_blocked_and_waits_on_rate_limit():
+    import asyncio
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+    from telegram.error import Forbidden, NetworkError, RetryAfter
+
+    class FakeBot:
+        def __init__(self):
+            self.sent, self.calls = [], collections_counter()
+
+        async def send_message(self, chat_id, text):
+            self.calls[chat_id] += 1
+            if chat_id == 2:
+                raise Forbidden("Forbidden: bot was blocked by the user")
+            if chat_id == 3 and self.calls[3] == 1:
+                raise RetryAfter(5)
+            if chat_id == 4:
+                raise NetworkError("down")
+            self.sent.append((chat_id, text))
+
+    def collections_counter():
+        import collections
+        return collections.Counter()
+
+    slept = []
+
+    async def fake_sleep(seconds):
+        slept.append(seconds)
+
+    fake = FakeBot()
+    sent, failed = asyncio.run(bot.deliver_broadcast(fake, [1, 2, 3, 4, 5], "Привет", pause=0, sleep=fake_sleep))
+    assert (sent, failed) == (3, 2)  # 2 заблокировал бота, 4 недоступен после трёх попыток
+    assert [c for c, _ in fake.sent] == [1, 3, 5]
+    assert 6 in slept  # на RetryAfter(5) ждали 5+1 секунд
+    assert fake.calls[4] == 3 and fake.calls[2] == 1
+
+
+def test_broadcast_needs_confirmation_and_is_sent_once(tmp_path, monkeypatch):
+    import asyncio
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+
+    old_conn, old_owner = bot.conn, bot.OWNER_ID
+    bot.conn = init_db(str(tmp_path / "bc.db"))
+    bot.touch_user(bot.conn, 11, "a", "А")
+    bot.touch_user(bot.conn, 12, "b", "Б")
+    monkeypatch.setattr(bot, "OWNER_ID", "11")
+    delivered = []
+
+    async def fake_deliver(bot_, ids, text):
+        delivered.append((list(ids), text))
+        return len(ids), 0
+
+    monkeypatch.setattr(bot, "deliver_broadcast", fake_deliver)
+
+    class Msg:
+        def __init__(self, text=""):
+            self.text, self.out, self.chat_id = text, [], 11
+
+        async def reply_text(self, text, reply_markup=None, **k):
+            self.out.append((text, reply_markup))
+
+    class Query:
+        def __init__(self, data, owner=True):
+            self.data, self.message, self.answers = data, Msg(), []
+
+        async def answer(self, text=None, show_alert=False):
+            self.answers.append(text)
+
+        async def edit_message_text(self, text, **k):
+            self.message.out.append((text, None))
+
+    class App:
+        tasks = []
+
+        def create_task(self, coro):
+            self.tasks.append(coro)
+
+    class Bot:
+        sent = []
+
+        async def send_message(self, chat_id, text):
+            self.sent.append((chat_id, text))
+
+    context = type("C", (), {"bot_data": {}, "bot": Bot(), "application": App(), "args": []})()
+
+    def upd(user_id, message=None, query=None):
+        return type("U", (), {"effective_user": type("E", (), {"id": user_id})(), "message": message,
+                              "callback_query": query})()
+
+    try:
+        # без текста рассылку не начинаем
+        m = Msg("/broadcast")
+        asyncio.run(bot.broadcast_command(upd(11, m), context))
+        assert "broadcast" not in context.bot_data
+
+        # с текстом: предпросмотр и кнопки, ничего не отправлено
+        m = Msg("/broadcast Завтра пары по расписанию\nне меняются")
+        asyncio.run(bot.broadcast_command(upd(11, m), context))
+        assert "не меняются" in m.out[0][0] and delivered == []
+        token = context.bot_data["broadcast"]["token"]
+        assert "Получателей: 2" in m.out[1][0]
+
+        # чужое нажатие игнорируется
+        q = Query(f"bc:send:{token}")
+        asyncio.run(bot.broadcast_button(upd(12, query=q), context))
+        assert delivered == [] and "broadcast" in context.bot_data
+
+        # отмена
+        q = Query(f"bc:cancel:{token}")
+        asyncio.run(bot.broadcast_button(upd(11, query=q), context))
+        assert "broadcast" not in context.bot_data and delivered == []
+
+        # подтверждение отправляет один раз, повторное нажатие ничего не делает
+        asyncio.run(bot.broadcast_command(upd(11, Msg("/broadcast Текст")), context))
+        token = context.bot_data["broadcast"]["token"]
+        q = Query(f"bc:send:{token}")
+        asyncio.run(bot.broadcast_button(upd(11, query=q), context))
+        async def drain():
+            await asyncio.gather(*context.application.tasks)
+
+        asyncio.run(drain())
+        asyncio.run(bot.broadcast_button(upd(11, query=Query(f"bc:send:{token}")), context))
+        assert delivered == [([11, 12], "Текст")] or delivered == [([12, 11], "Текст")]
+        assert len(delivered) == 1 and "Отправлено: 2" in context.bot.sent[-1][1]
+    finally:
+        bot.conn = old_conn
+        bot.OWNER_ID = old_owner
