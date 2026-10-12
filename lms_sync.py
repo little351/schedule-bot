@@ -86,8 +86,8 @@ def missing_settings(sources):
         missing.append("переменные LMS_LOGIN и LMS_PASSWORD на Render")
     if not sources.get("base_url"):
         missing.append(f"base_url в data/{SOURCES_FILE}")
-    if not sources.get("pages") and not sources.get("resources"):
-        missing.append(f"страницы курса (pages) или ссылки на файлы (resources) в data/{SOURCES_FILE}")
+    if not sources.get("crawl") and not sources.get("pages") and not sources.get("resources"):
+        missing.append(f"обход категорий (crawl), страницы курса (pages) или ссылки на файлы (resources) в data/{SOURCES_FILE}")
     return missing
 
 
@@ -125,6 +125,89 @@ def find_resources(page_html, page_url):
                 seen.add(url)
                 found.append((name, url))
     return found
+
+
+CATEGORY_HREF_RE = re.compile(r"/course/index\.php\?categoryid=(\d+)")
+COURSE_HREF_RE = re.compile(r"/course/view\.php\?id=(\d+)")
+
+
+def main_region(page_html):
+    """Основная часть страницы без шапки, хлебных крошек и боковых меню: оттуда нельзя уйти «вверх» по ссылкам."""
+    i = page_html.find('id="region-main"')
+    return page_html[i:] if i >= 0 else page_html
+
+
+def parse_listing(page_html, page_url):
+    """Страница категории или курса: (подкатегории, курсы, файлы), каждый список [(название, ссылка)]."""
+    region = main_region(page_html)
+    categories, courses, seen = [], [], set()
+    for href, inner in ANCHOR_RE.findall(region):
+        href = html.unescape(href)
+        url = urljoin(page_url, href)
+        name = _text(inner)
+        if not name or url in seen:
+            continue
+        if CATEGORY_HREF_RE.search(href):
+            seen.add(url)
+            categories.append((name, url))
+        elif COURSE_HREF_RE.search(href):
+            seen.add(url)
+            courses.append((name, url))
+    return categories, courses, find_resources(region, page_url)
+
+
+def _page_id(url):
+    m = CATEGORY_HREF_RE.search(url) or COURSE_HREF_RE.search(url)
+    return (("c" if CATEGORY_HREF_RE.search(url) else "k"), m.group(1)) if m else url
+
+
+def crawl_site(client, cfg, listing, errors):
+    """Обход категорий от стартовой страницы вниз по названиям (id не нужны, кроме стартового):
+    категории, чьё название подходит под exclude_categories (по умолчанию «заочн»), пропускаются.
+    Возвращает найденные файлы [(путь, название, ссылка)]; listing пополняется для /sync list."""
+    include = re.compile(cfg["include_categories"], re.IGNORECASE) if cfg.get("include_categories") else None
+    exclude = re.compile(cfg.get("exclude_categories", "заочн"), re.IGNORECASE)
+    file_include = re.compile(cfg.get("file_include") or ".", re.IGNORECASE)
+    file_exclude = re.compile(cfg["file_exclude"], re.IGNORECASE) if cfg.get("file_exclude") else None
+    max_depth = int(cfg.get("max_depth", 8))
+    max_requests = int(cfg.get("max_requests", 400))
+    queue = [(cfg["start"], "", 0)]
+    visited, targets, requests = set(), [], 0
+    while queue:
+        url, path, depth = queue.pop(0)
+        page_id = _page_id(url)
+        if page_id in visited:
+            continue
+        visited.add(page_id)
+        if requests >= max_requests:
+            errors.append(f"обход остановлен: достигнут лимит {max_requests} страниц (max_requests в настройках)")
+            break
+        requests += 1
+        try:
+            text, final_url = client.page(url)
+        except SyncError as e:
+            if "сессия" in str(e):
+                raise
+            errors.append(f"{path or url}: {e}")
+            continue
+        categories, courses, resources = parse_listing(text, final_url)
+        if resources:
+            listing.append((path or url, [name for name, _ in resources]))
+        for name, link in resources:
+            if file_include.search(name) and not (file_exclude and file_exclude.search(name)):
+                targets.append((path, name, link))
+        if depth >= max_depth:
+            continue
+        for name, link in categories:
+            if exclude.search(name) or (include and not include.search(name)):
+                continue
+            queue.append((link, f"{path} / {name}" if path else name, depth + 1))
+        for name, link in courses:
+            if exclude.search(name) or (include and not include.search(name)):
+                continue
+            queue.append((link, f"{path} / {name}" if path else name, depth + 1))
+    listing.append((f"просмотрено страниц: {requests}", []))
+    return targets
 
 
 def _filename(response):
@@ -359,6 +442,9 @@ def _fetch_all(sources, client_factory, list_only):
             for name, link in names:
                 if include.search(name) and not (exclude and exclude.search(name)):
                     targets.append((name, link))
+        if sources.get("crawl"):
+            for path, name, link in crawl_site(client, sources["crawl"], listing, errors):
+                targets.append((name, link))
         for resource in sources.get("resources", []):
             targets.append((resource.get("label") or resource["url"], resource["url"]))
         if not list_only:
@@ -403,7 +489,10 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
 
     if list_only:
         for url, names in listing:
-            report.info(f"Страница {url}: файлов {len(names)}")
+            if not names and url.startswith("просмотрено"):
+                report.info(url)
+                continue
+            report.info(f"{url}: файлов {len(names)}")
             report.lines.extend(f"  • {name}" for name in names[:60])
         for error in errors:
             report.problem(error)

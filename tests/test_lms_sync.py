@@ -243,3 +243,73 @@ def test_sync_command_reports_and_reloads_schedule(env, monkeypatch):
     assert "t2-09-26.xls: новый" in sent[-1] and "Из подгрузки" in sent[-1]
     assert PASSWORD not in "".join(sent)
     assert lms_sync.get_sync_state(conn, "last_ok") == "1"
+
+
+def category_page(subs="", courses="", extra=""):
+    link = lambda kind, i, name: f'<a href="https://lms.test/course/{kind}.php?{"categoryid" if kind == "index" else "id"}={i}">{name}</a>'
+    body = "".join(link("index", i, n) for i, n in subs) + "".join(link("view", i, n) for i, n in courses)
+    # шапка и хлебные крошки с ссылками «вверх» стоят до основной области и не должны обходиться
+    return (f'<nav>{link("index", 1, "Личный кабинет")}{link("index", 999, "Чужая категория")}</nav>'
+            f'<section id="region-main">{body}{extra}</section>')
+
+
+class TreeMoodle(FakeMoodle):
+    """Дерево как на сайте: РАСПИСАНИЕ > факультет > курс > формы > направление > группа > файл."""
+
+    PAGES = {
+        ("/course/index.php", "10"): category_page(subs=[(11, "Тренерский факультет"), (12, "Социально-гуманитарный факультет")]),
+        ("/course/index.php", "11"): category_page(subs=[(21, "1 курс")]),
+        ("/course/index.php", "12"): category_page(subs=[(22, "1 курс")]),
+        ("/course/index.php", "21"): category_page(subs=[(31, "Расписание занятий ОЧНОЙ формы обучения"),
+                                                          (32, "Расписание занятий ЗАОЧНОЙ формы обучения")]),
+        ("/course/index.php", "22"): category_page(subs=[(33, "Расписание занятий ОЧНОЙ формы обучения")]),
+        ("/course/index.php", "31"): category_page(subs=[(41, "направление подготовки 49.03.04 Спорт")]),
+        ("/course/index.php", "32"): category_page(subs=[(42, "направление подготовки 49.03.04 Спорт")]),
+        ("/course/index.php", "33"): category_page(courses=[(52, "Т2-09-26")]),  # у других факультетов сразу файлы
+        ("/course/index.php", "41"): category_page(courses=[(51, "1 поток (гр.1-6)")]),
+        ("/course/index.php", "42"): category_page(courses=[(53, "Заочный поток")]),
+        ("/course/view.php", "51"): category_page(extra=COURSE_PAGE),
+        ("/course/view.php", "52"): category_page(extra=COURSE_PAGE.replace("id=100", "id=100")),
+        ("/course/view.php", "53"): category_page(extra=COURSE_PAGE),
+    }
+
+    def __call__(self, request):
+        key = (request.url.path, request.url.params.get("categoryid") or request.url.params.get("id"))
+        if self.logged_in and key in self.PAGES:
+            self.requests.append((request.method, f"{key[0]}?{key[1]}"))
+            return httpx.Response(200, text=self.PAGES[key])
+        return super().__call__(request)
+
+
+def crawl_env(env, **crawl):
+    schedule_dir, conn = env
+    cfg = {"start": "/course/index.php?categoryid=10", "file_include": "расписание"}
+    cfg.update(crawl)
+    with open(os.path.join(schedule_dir, "lms_sources.json"), "w", encoding="utf-8") as f:
+        json.dump({"base_url": "https://lms.test", "crawl": cfg}, f, ensure_ascii=False)
+
+
+def test_crawl_walks_categories_by_name_and_skips_distance_learning(env):
+    crawl_env(env)
+    site = TreeMoodle()
+    report = run(env, site, list_only=True)
+    visited = {p for _, p in site.requests if p.startswith("/course/")}
+    assert "/course/index.php?32" not in visited and "/course/index.php?42" not in visited  # заочная форма пропущена
+    assert "/course/index.php?999" not in visited and "/course/index.php?1" not in visited  # вверх по ссылкам шапки не ходим
+    assert {"/course/view.php?51", "/course/view.php?52"} <= visited
+    assert "Тренерский факультет / 1 курс / Расписание занятий ОЧНОЙ формы обучения" in report.text()
+    assert "Расписание 1 курс Т2-09-26" in report.text() and "просмотрено страниц" in report.text()
+
+
+def test_crawl_downloads_found_files_once(env):
+    crawl_env(env)
+    site = TreeMoodle()
+    report = run(env, site)
+    assert report.changed, report.text()
+    assert [p for _, p in site.requests if p == "/mod/resource/view.php"] == ["/mod/resource/view.php"]  # один и тот же файл из двух мест
+
+
+def test_crawl_stops_at_request_limit(env):
+    crawl_env(env, max_requests=3)
+    report = run(env, TreeMoodle(), list_only=True)
+    assert "достигнут лимит 3 страниц" in report.text()
