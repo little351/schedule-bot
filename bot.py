@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError
 from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from telegram.ext import (
@@ -272,7 +272,19 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text)
 
 
-LMS_FAIL_REPEAT_DAYS = 3  # об одной и той же неполадке подгрузки напоминаем не чаще
+LMS_NOTIFY_MIN_HOURS = 24  # о сбоях подгрузки пишем владельцу не чаще раза в сутки
+LMS_FAIL_REPEAT_DAYS = 3   # об одной и той же неполадке напоминаем не чаще
+
+
+def should_notify_owner(signature, last_signature, last_at, now):
+    """Писать ли владельцу о сбое подгрузки: не чаще раза в сутки; новая неполадка - сразу после суток,
+    та же самая - через LMS_FAIL_REPEAT_DAYS дней."""
+    if not last_at:
+        return True
+    elapsed = now - datetime.fromisoformat(last_at)
+    if elapsed < timedelta(hours=LMS_NOTIFY_MIN_HOURS):
+        return False
+    return signature != last_signature or elapsed >= timedelta(days=LMS_FAIL_REPEAT_DAYS)
 
 
 def _chunks(text, size=3800):
@@ -324,8 +336,7 @@ async def lms_scheduler(application):
                     signature = report.signature()
                     last = get_sync_state(conn, "notified_signature")
                     last_at = get_sync_state(conn, "notified_at")
-                    stale = not last_at or (lms_sync._now() - datetime.fromisoformat(last_at)).days >= LMS_FAIL_REPEAT_DAYS
-                    if signature != last or stale:
+                    if should_notify_owner(signature, last, last_at, lms_sync._now()):
                         set_sync_state(conn, "notified_signature", signature)
                         set_sync_state(conn, "notified_at", lms_sync._now().isoformat(timespec="seconds"))
                         for part in _chunks("Подгрузка расписания с сайта: есть проблемы.\n\n" + report.text()):
@@ -335,6 +346,8 @@ async def lms_scheduler(application):
         except Exception:
             logger.exception("плановая подгрузка расписания: ошибка")
         await asyncio.sleep(1800)
+
+
 # --- рассылка (только владелец) ---
 BROADCAST_PAUSE = 0.05  # около 20 сообщений в секунду, лимит Telegram для рассылки - 30
 BROADCAST_MAX_LEN = 4000
