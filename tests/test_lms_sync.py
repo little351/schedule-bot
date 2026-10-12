@@ -178,7 +178,19 @@ def test_site_down_is_a_calm_failure(env):
     def down(request):
         raise httpx.ConnectError("boom " + PASSWORD)
     report = asyncio.run(run_sync(env[1], env[0], client_factory=factory(down)))
-    assert report.problems and "недоступен" in report.text() and PASSWORD not in report.text()
+    assert report.problems and "не удалось связаться" in report.text() and "/login/index.php" in report.text()
+    assert PASSWORD not in report.text()
+
+
+def test_timeout_names_the_request_and_retries_once(env):
+    calls = []
+
+    def silent(request):
+        calls.append(request.url.path)
+        raise httpx.ReadTimeout("slow")
+    report = asyncio.run(run_sync(env[1], env[0], client_factory=factory(silent)))
+    assert "не ответил на запрос /login/index.php" in report.text() and "ReadTimeout" in report.text()
+    assert calls == ["/login/index.php", "/login/index.php"]
 
 
 def test_not_configured_is_explained_not_failed(env, monkeypatch):
