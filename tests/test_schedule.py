@@ -521,3 +521,19 @@ def test_practice_period_is_shown_instead_of_empty_week(tmp_path, records):
     # до начала практики в этой группе идут обычные пары
     _, before = get_day_lessons(conn, group, datetime(2026, 11, 24))
     assert all(lesson["time_start"] != "Практика" for lesson in before)
+
+
+def test_week_text_ends_with_donation_note_within_telegram_limit(tmp_path, records):
+    from database import get_week_schedule_grid
+    from formatting import format_week_text, with_donation_note
+
+    conn = init_db(str(tmp_path / "note.db"))
+    save_schedule(conn, records)
+    longest = 0
+    for program, course, name, week in conn.execute(
+            "SELECT DISTINCT program, course, group_name, week_sheet FROM lessons").fetchall():
+        grid = get_week_schedule_grid(conn, GroupRef(program, course, name), week)
+        text = with_donation_note(format_week_text(name, week, grid))
+        assert text.endswith("вкусным → \\+79995567597")
+        longest = max(longest, len(text))
+    assert longest < 4096  # лимит Telegram на одно сообщение
