@@ -1,6 +1,8 @@
 import re
 from database import DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS
 
+DONATION_NOTE = "Купить что-нибудь вкусное\nсоздателю → +79995567597"  # подпись под расписанием (то же в webapp/index.html)
+
 MDV2_SPECIAL = r'_*[]()~`>#+-=|{}.!'
 
 
@@ -58,3 +60,8 @@ def format_day_text(group_name, week_sheet, day_name, grid):
     if practice:
         lines.append(f"*{PRACTICE_SLOT}* — {escape_md(practice)}")
     return "\n".join(lines)
+
+
+def with_donation_note(text):
+    """Текст расписания (MarkdownV2) с подписью через пустую строку."""
+    return f"{text}\n\n{escape_md(DONATION_NOTE)}"

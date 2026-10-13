@@ -21,7 +21,7 @@ from database import (
     get_week_schedule_grid, get_today_day_name, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
     touch_user, list_users, restore_users, users_without_profile, set_user_profile
 )
-from formatting import format_week_text, format_day_text
+from formatting import format_week_text, format_day_text, with_donation_note
 
 TOKEN = os.environ.get("BOT_TOKEN") or ""
 WEBAPP_URL = os.environ.get("WEBAPP_URL") or os.environ.get("PUBLIC_URL") or "https://breeding-salvation-splashing.ngrok-free.dev"
@@ -392,7 +392,7 @@ async def _send_week(update, group, week_sheet, not_found_msg):
         await update.message.reply_text(not_found_msg)
         return
     grid = get_week_schedule_grid(conn, group, week_sheet)
-    text = format_week_text(group.title, week_sheet, grid)
+    text = with_donation_note(format_week_text(group.title, week_sheet, grid))
     await update.message.reply_text(text, parse_mode="MarkdownV2")
 
 
