@@ -84,12 +84,36 @@ def test_third_year_files_are_read():
         assert len(parse_schedule(os.path.join(DATA, "3k", name), config)) == expected, name
 
 
+FOURTH_YEAR = {
+    "38.03.02_4k_sg1-5-23.xls": 209,
+    "42.03.01_4k_sg1-3-23.xls": 139,
+    "43.03.02_4k_t1-03-23.xls": 216,  # Туризм
+    "43.03.03_4k_t1-05-23.xls": 216,  # Гостиничное дело
+    "44.03.01_4k_sg2-18-23.xls": 145,
+    "49.03.02_4k_t2-07-23.xls": 170,
+    "49.03.02_4k_t2-08-23.xls": 170,
+    "49.03.02_4k_t2-09-23.xls": 170,
+    "49.03.03_4k_t1-01-23.xls": 157,
+    "49.03.04+49.03.01_4k_gr6-gr9+t1-04-23.xlsx": 672,
+    "49.03.04_4k_gr1-gr5.xlsx": 572,  # у 1, 2, 4, 5 групп несколько недель занимает практика: пар в таблице нет
+    "49.03.04_4k_gr10-gr16.xlsx": 963,
+    "51.03.05_4k_sg2-4-23.xls": 180,
+}
+
+
+def test_fourth_year_files_are_read():
+    config = load_config(DATA)
+    for name, expected in FOURTH_YEAR.items():
+        assert len(parse_schedule(os.path.join(DATA, "4k", name), config)) == expected, name
+
+
 def test_programs_and_same_numbers_do_not_collide(records):
     groups = {(r["program"], r["course"], r["group"]) for r in records}
     assert {p for p, _, _ in groups} == {
         "49.03.04", "49.03.01", "49.03.02", "44.03.01", "42.03.01", "51.03.05", "38.03.02", "49.03.03",
+        "43.03.02", "43.03.03",
     }
-    assert {c for _, c, _ in groups} == {1, 2, 3}
+    assert {c for _, c, _ in groups} == {1, 2, 3, 4}
     names = [g for _, _, g in groups]
     assert len(groups) >= len(set(names))  # одинаковые названия допустимы на разных направлениях
 
@@ -103,7 +127,7 @@ def conn(tmp_path, records):
 
 def test_catalog_and_find_groups(conn):
     catalog = get_catalog(conn)
-    assert len(catalog) == 8
+    assert len(catalog) == 10
     some = get_groups(conn)[0]
     assert some in find_groups(conn, some.name)
 
@@ -130,7 +154,7 @@ def test_api_flow(conn):
     app.include_router(build_router(conn, ""))
     client = TestClient(app)
     data = client.get("/api/catalog?telegram_id=5").json()
-    assert data["current"] is None and len(data["programs"]) == 8
+    assert data["current"] is None and len(data["programs"]) == 10
     p = next(p for p in data["programs"] if p["code"] == "49.03.01")
     group = p["courses"][0]["groups"][0]
     r = client.post("/api/group", json={"telegram_id": 5, "group": group, "program": "49.03.01", "course": 1})
@@ -226,7 +250,7 @@ def test_files_are_found_in_course_folders_and_uploads_go_to_the_right_one(tmp_p
     from schedule_parsers import list_schedule_files, upload_dir
 
     found = list_schedule_files(DATA)
-    assert len(found) == 33
+    assert len(found) == 46
 
     root = str(tmp_path)
     assert upload_dir(root, "49.03.04_2k_gr1.xlsx", []) == os.path.join(root, "2k")
@@ -248,7 +272,7 @@ def test_bot_picker_course_program_group_flow(tmp_path, records):
             return [b.callback_data for row in markup.inline_keyboard for b in row]
 
         text, markup = bot.picker_screen()
-        assert buttons(markup) == ["c:1", "c:2", "c:3"]
+        assert buttons(markup) == ["c:1", "c:2", "c:3", "c:4"]
         text, markup = bot.picker_screen("program", course=2)
         assert "p:2:49.03.04" in buttons(markup) and buttons(markup)[-1] == "b:c"
         text, markup = bot.picker_screen("groups", course=2, program="49.03.04")
