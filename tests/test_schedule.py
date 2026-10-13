@@ -63,12 +63,33 @@ def test_second_year_files_are_read():
         assert len(parse_schedule(os.path.join(DATA, "2k", name), config)) == expected, name
 
 
+THIRD_YEAR = {
+    "38.03.02_3k_sg1-5-24+sg1-6-24.xls": 338,
+    "42.03.01_3k_sg1-3-24.xls": 225,
+    "44.03.01_3k_sg2-18-24.xls": 141,
+    "49.03.02_3k_t2-07-24.xls": 175,
+    "49.03.02_3k_t2-08-24.xls": 175,
+    "49.03.02_3k_t2-09-24.xls": 175,
+    "49.03.03_3k_t1-02-24.xls": 200,
+    "49.03.04+49.03.01_3k_gr7-gr9+t1-04-24.xlsx": 712,  # «ФОД»: 7, 8, 9 группы и Т1-04-24
+    "49.03.04_3k_gr1-gr5.xlsx": 868,
+    "49.03.04_3k_gr10-gr16.xlsx": 1238,
+    "51.03.05_3k_sg2-4-24.xls": 258,
+}
+
+
+def test_third_year_files_are_read():
+    config = load_config(DATA)
+    for name, expected in THIRD_YEAR.items():
+        assert len(parse_schedule(os.path.join(DATA, "3k", name), config)) == expected, name
+
+
 def test_programs_and_same_numbers_do_not_collide(records):
     groups = {(r["program"], r["course"], r["group"]) for r in records}
     assert {p for p, _, _ in groups} == {
         "49.03.04", "49.03.01", "49.03.02", "44.03.01", "42.03.01", "51.03.05", "38.03.02", "49.03.03",
     }
-    assert {c for _, c, _ in groups} == {1, 2}
+    assert {c for _, c, _ in groups} == {1, 2, 3}
     names = [g for _, _, g in groups]
     assert len(groups) >= len(set(names))  # одинаковые названия допустимы на разных направлениях
 
@@ -205,7 +226,7 @@ def test_files_are_found_in_course_folders_and_uploads_go_to_the_right_one(tmp_p
     from schedule_parsers import list_schedule_files, upload_dir
 
     found = list_schedule_files(DATA)
-    assert len(found) == 22
+    assert len(found) == 33
 
     root = str(tmp_path)
     assert upload_dir(root, "49.03.04_2k_gr1.xlsx", []) == os.path.join(root, "2k")
@@ -227,7 +248,7 @@ def test_bot_picker_course_program_group_flow(tmp_path, records):
             return [b.callback_data for row in markup.inline_keyboard for b in row]
 
         text, markup = bot.picker_screen()
-        assert buttons(markup) == ["c:1", "c:2"]
+        assert buttons(markup) == ["c:1", "c:2", "c:3"]
         text, markup = bot.picker_screen("program", course=2)
         assert "p:2:49.03.04" in buttons(markup) and buttons(markup)[-1] == "b:c"
         text, markup = bot.picker_screen("groups", course=2, program="49.03.04")
