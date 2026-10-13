@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from database import (
-    DAYS_ORDER, TIME_SLOTS, WEEKDAY_MAP, GroupRef, find_groups, get_catalog, get_day_lessons,
+    DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS, WEEKDAY_MAP, GroupRef, find_groups, get_catalog, get_day_lessons,
     get_groups, get_relative_week_sheet, get_user_group, get_week_schedule_grid, set_user_group,
     touch_user,
 )
@@ -28,9 +28,13 @@ class VisitBody(BaseModel):
 def build_day_slots(grid, day_name):
     subjects = [grid[day_name][t] for t in TIME_SLOTS]
     trimmed = trim_trailing_empty(subjects)
-    if trimmed is None:
+    practice = grid[day_name].get(PRACTICE_SLOT)
+    if trimmed is None and not practice:
         return None
-    return [{"time": t.replace(".", ":"), "subject": s} for t, s in zip(TIME_SLOTS, trimmed)]
+    slots = [{"time": t.replace(".", ":"), "subject": s} for t, s in zip(TIME_SLOTS, trimmed or [])]
+    if practice:
+        slots.append({"time": PRACTICE_SLOT, "subject": practice})
+    return slots
 
 
 def _group_json(group):

@@ -25,6 +25,21 @@ TEACHER_PART_RE = re.compile(
     rf"({_PART_KEY})\s*-\s*(.*?)(?=[,;]?\s+{_PART_KEY}\s*-\s|$)", re.IGNORECASE | re.DOTALL
 )
 MARKER_PREFIX = {"л": "Л.", "п": "Пр."}
+PRACTICE_SLOT = "Практика"  # вместо времени пары: практика идёт весь день
+PERIOD_RE = re.compile(r"(\d{2})\.(\d{2})\.(\d{2,4})\D+?(\d{2})\.(\d{2})\.(\d{2,4})")
+
+
+def _period(text):
+    """'26.11.26 - 14.12.26 гг.' / 'с 26.11.26 по 14.12.26' -> (дата начала, дата конца) или None."""
+    m = PERIOD_RE.search(text)
+    if not m:
+        return None
+    d1, m1, y1, d2, m2, y2 = m.groups()
+    year = lambda y: int(y) + 2000 if len(y) == 2 else int(y)
+    try:
+        return datetime.datetime(year(y1), int(m1), int(d1)), datetime.datetime(year(y2), int(m2), int(d2))
+    except ValueError:
+        return None
 
 
 def _find(sheet, predicate, max_rows=40):
@@ -232,6 +247,31 @@ def parse(wb, config) -> list[dict]:
                         room_text = _room_for(row["room"], marker, DAY_NAMES.index(day), slot)
                         subject = " ".join(filter(None, [f"{MARKER_PREFIX[marker]} {row['name']}", teacher, room_text]))
                         found.setdefault((group, day, date, slot_times.get(slot, "")), []).append(subject)
+
+        # практика: в столбцах дней вместо отметки «л»/«п» стоит текст («Производственная практика: ...
+        # - с 26.11.26 по 14.12.26 гг.»); срок берётся из него, без срока - только день, где стоит ячейка
+        practice = {}  # текст -> {столбец}
+        for r in range(slot_row + 1, sheet.max_row + 1):
+            if sheet.text(r, 1) and not sheet.text(r, 1).isdigit():
+                break
+            for _, _, slots in day_cols:
+                for c in slots:
+                    text = re.sub(r"\s+", " ", sheet.text(r, c))
+                    if "практик" in text.lower():
+                        practice.setdefault(text, set()).add(c)
+        for text, cols in practice.items():
+            period = _period(text)
+            label = re.sub(r"[\s(–-]*с?\s*\d{2}\.\d{2}\.\d{2,4}.*$", "", text).strip(" -–(") or text
+            if period:
+                label += f" ({period[0]:%d.%m}–{period[1]:%d.%m})"
+            for day, date, slots in day_cols:
+                if period and date:
+                    active = period[0] <= date <= period[1]
+                else:
+                    active = bool(cols & set(slots))
+                if active:
+                    for group in groups:
+                        found.setdefault((group, day, date, PRACTICE_SLOT), []).append(label)
 
         for (group, day, date, time), subjects in found.items():
             if not time:

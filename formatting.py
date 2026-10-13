@@ -1,5 +1,5 @@
 import re
-from database import DAYS_ORDER, TIME_SLOTS
+from database import DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS
 
 MDV2_SPECIAL = r'_*[]()~`>#+-=|{}.!'
 
@@ -22,15 +22,18 @@ def format_week_text(group_name, week_sheet, grid):
     for day in DAYS_ORDER:
         subjects = [grid[day][t] for t in TIME_SLOTS]
         trimmed = trim_trailing_empty(subjects)
-        if trimmed is None:
+        practice = grid[day].get(PRACTICE_SLOT)
+        if trimmed is None and not practice:
             continue
         lines.append(f"*{day}:*")
-        for t, subj in zip(TIME_SLOTS, trimmed):
+        for t, subj in zip(TIME_SLOTS, trimmed or []):
             display_time = escape_md(t.replace(".", ":"))
             if subj:
                 lines.append(f"*{display_time}* — {escape_md(subj)}")
             else:
                 lines.append(f"*{display_time}* —")
+        if practice:
+            lines.append(f"*{PRACTICE_SLOT}* — {escape_md(practice)}")
         lines.append("")
     return "\n".join(lines).strip()
 
@@ -41,14 +44,17 @@ def format_day_text(group_name, week_sheet, day_name, grid):
 
     subjects = [grid[day_name][t] for t in TIME_SLOTS]
     trimmed = trim_trailing_empty(subjects)
-    if trimmed is None:
+    practice = grid[day_name].get(PRACTICE_SLOT)
+    if trimmed is None and not practice:
         return f"На {escape_md(day_name.lower())} пар нет\\."
 
     lines = [f"*{day_name}*, неделя {escape_md(week_sheet)}", f"*Расписание {escape_md(group_name)}*", ""]
-    for t, subj in zip(TIME_SLOTS, trimmed):
+    for t, subj in zip(TIME_SLOTS, trimmed or []):
         display_time = escape_md(t.replace(".", ":"))
         if subj:
             lines.append(f"*{display_time}* — {escape_md(subj)}")
         else:
             lines.append(f"*{display_time}* —")
+    if practice:
+        lines.append(f"*{PRACTICE_SLOT}* — {escape_md(practice)}")
     return "\n".join(lines)

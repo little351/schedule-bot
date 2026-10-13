@@ -46,9 +46,9 @@ SECOND_YEAR = {
     "38.03.02_2k_sg1-5-25+sg1-6-25+sg1-7-25.xls": 626,  # в одной паре у СГ1-6-25 две дисциплины: 627 пометок
     "42.03.01_2k_sg1-3-25.xls": 225,
     "44.03.01_2k_sg2-1-25.xls": 155,
-    "49.03.02_2k_t2-07-25.xls": 386,
-    "49.03.02_2k_t2-08-25.xls": 193,
-    "49.03.02_2k_t2-09-25.xls": 193,
+    "49.03.02_2k_t2-07-25.xls": 418,
+    "49.03.02_2k_t2-08-25.xls": 209,
+    "49.03.02_2k_t2-09-25.xls": 209,
     "49.03.03_2k_t1-01-25.xls": 220,
     "49.03.04+49.03.01_2k_gr6-gr9+t1-04-25.xlsx": 614 + 153,  # «6 группа, Т1-04-25» - две группы с одним расписанием
     "49.03.04_2k_gr1-gr5.xlsx": 807,
@@ -67,9 +67,9 @@ THIRD_YEAR = {
     "38.03.02_3k_sg1-5-24+sg1-6-24.xls": 338,
     "42.03.01_3k_sg1-3-24.xls": 225,
     "44.03.01_3k_sg2-18-24.xls": 141,
-    "49.03.02_3k_t2-07-24.xls": 175,
-    "49.03.02_3k_t2-08-24.xls": 175,
-    "49.03.02_3k_t2-09-24.xls": 175,
+    "49.03.02_3k_t2-07-24.xls": 195,
+    "49.03.02_3k_t2-08-24.xls": 195,
+    "49.03.02_3k_t2-09-24.xls": 195,
     "49.03.03_3k_t1-02-24.xls": 200,
     "49.03.04+49.03.01_3k_gr7-gr9+t1-04-24.xlsx": 712,  # «ФОД»: 7, 8, 9 группы и Т1-04-24
     "49.03.04_3k_gr1-gr5.xlsx": 868,
@@ -90,14 +90,14 @@ FOURTH_YEAR = {
     "43.03.02_4k_t1-03-23.xls": 216,  # Туризм
     "43.03.03_4k_t1-05-23.xls": 216,  # Гостиничное дело
     "44.03.01_4k_sg2-18-23.xls": 145,
-    "49.03.02_4k_t2-07-23.xls": 170,
-    "49.03.02_4k_t2-08-23.xls": 170,
-    "49.03.02_4k_t2-09-23.xls": 170,
-    "49.03.03_4k_t1-01-23.xls": 157,
+    "49.03.02_4k_t2-07-23.xls": 198,
+    "49.03.02_4k_t2-08-23.xls": 198,
+    "49.03.02_4k_t2-09-23.xls": 198,
+    "49.03.03_4k_t1-01-23.xls": 173,
     "49.03.04+49.03.01_4k_gr6-gr9+t1-04-23.xlsx": 672,
     "49.03.04_4k_gr1-gr5.xlsx": 572,  # у 1, 2, 4, 5 групп несколько недель занимает практика: пар в таблице нет
     "49.03.04_4k_gr10-gr16.xlsx": 963,
-    "51.03.05_4k_sg2-4-23.xls": 180,
+    "51.03.05_4k_sg2-4-23.xls": 216,
 }
 
 
@@ -501,3 +501,23 @@ def test_broadcast_needs_confirmation_and_is_sent_once(tmp_path, monkeypatch):
     finally:
         bot.conn = old_conn
         bot.OWNER_ID = old_owner
+
+
+def test_practice_period_is_shown_instead_of_empty_week(tmp_path, records):
+    from datetime import datetime
+    from database import get_day_lessons, get_week_schedule_grid
+    from formatting import format_day_text, format_week_text
+
+    conn = init_db(str(tmp_path / "practice.db"))
+    save_schedule(conn, records)
+    group = GroupRef("49.03.03", 4, "Т1-01-23")  # практика с 26.11 по 14.12: пар по дисциплинам нет
+    week_sheet, lessons = get_day_lessons(conn, group, datetime(2026, 12, 1))
+    assert week_sheet == "30.11"
+    assert lessons == [{"time_start": "Практика", "time_end": "",
+                        "subject": "Производственная практика: Научно-исследовательская работа (26.11–14.12)"}]
+    grid = get_week_schedule_grid(conn, group, week_sheet)
+    assert "Практика" in format_day_text(group.title, week_sheet, "Вторник", grid)
+    assert "Практика" in format_week_text(group.title, week_sheet, grid)
+    # до начала практики в этой группе идут обычные пары
+    _, before = get_day_lessons(conn, group, datetime(2026, 11, 24))
+    assert all(lesson["time_start"] != "Практика" for lesson in before)
