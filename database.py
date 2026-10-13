@@ -82,6 +82,7 @@ def storage_name():
 
 DAYS_ORDER = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
 TIME_SLOTS = ["8.50-10.20", "10.40-12.10", "13.00-14.30", "14.50-16.20", "16.40-18.10", "18.30-20.00"]
+PRACTICE_SLOT = "Практика"  # запись на весь день вместо пары
 
 WEEKDAY_MAP = {
     0: "Понедельник", 1: "Вторник", 2: "Среда",
@@ -303,9 +304,9 @@ def get_week_schedule_grid(conn, group: GroupRef, week_sheet):
         "WHERE program=? AND course=? AND group_name=? AND week_sheet=?",
         (*group, week_sheet)
     ).fetchall()
-    grid = {day: {t: None for t in TIME_SLOTS} for day in DAYS_ORDER}
+    grid = {day: {t: None for t in TIME_SLOTS + [PRACTICE_SLOT]} for day in DAYS_ORDER}
     for day, time, subject in rows:
-        if day in grid and time in grid[day]:
+        if day in grid and (time in TIME_SLOTS or time == PRACTICE_SLOT):
             grid[day][time] = subject
     return grid
 
@@ -339,6 +340,8 @@ def get_day_lessons(conn, group: GroupRef, target_date):
                 "time_end": end.replace(".", ":"),
                 "subject": subj,
             })
+    if grid[day_name][PRACTICE_SLOT]:
+        lessons.append({"time_start": PRACTICE_SLOT, "time_end": "", "subject": grid[day_name][PRACTICE_SLOT]})
     return week_sheet, lessons
 
 
