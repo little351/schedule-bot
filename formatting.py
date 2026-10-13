@@ -1,7 +1,7 @@
 import re
 from database import DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS
 
-DONATION_NOTE = "Угостите создателя чем-нибудь вкусным → +79995567597"  # подпись под расписанием (то же в webapp/index.html)
+DONATION_NOTE = "Угости создателя чем-нибудь вкусным → +79995567597"  # подпись под расписанием (то же в webapp/index.html)
 
 MDV2_SPECIAL = r'_*[]()~`>#+-=|{}.!'
 
