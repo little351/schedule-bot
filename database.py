@@ -354,6 +354,17 @@ def list_synced_files(conn, with_content=False):
     return result
 
 
+def get_synced_content(conn, key):
+    """Содержимое одного подгруженного файла (файлы читаются по одному, чтобы не держать их все в памяти)."""
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute("SELECT content FROM synced_files WHERE key = %s", (key,))
+            row = cur.fetchone()
+    else:
+        row = conn.execute("SELECT content FROM synced_files WHERE key = ?", (key,)).fetchone()
+    return bytes(row[0]) if row else None
+
+
 def delete_synced_file(conn, key):
     if PG_DSN:
         with pg_cursor() as cur:

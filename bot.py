@@ -279,20 +279,29 @@ def _chunks(text, size=3800):
     return [text[i:i + size] for i in range(0, len(text), size)] or [""]
 
 
+_lms_lock = asyncio.Lock()
+
+
 async def run_lms_sync(list_only=False):
-    """Один запуск подгрузки; после успешной смены файлов расписание перечитывается. Возвращает Report."""
-    report = await lms_sync.run_sync(conn, SCHEDULE_DIR, list_only=list_only)
-    if list_only:
+    """Один запуск подгрузки; после успешной смены файлов расписание перечитывается. Возвращает Report.
+    Два запуска одновременно не идут (плановый и ручной): каждый держит в памяти страницы и файлы сайта."""
+    if _lms_lock.locked():
+        report = lms_sync.Report()
+        report.info("Подгрузка уже идёт, дождитесь её окончания.")
         return report
-    if report.changed:
-        try:
-            await asyncio.to_thread(load_schedules)
-        except Exception:
-            logger.exception("после подгрузки не удалось перечитать расписание")
-            report.problem("файлы сохранены, но расписание не перечиталось, перезапустите сервис")
-    if lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR)) == []:
-        lms_sync.record_run(conn, report)
-    return report
+    async with _lms_lock:
+        report = await lms_sync.run_sync(conn, SCHEDULE_DIR, list_only=list_only)
+        if list_only:
+            return report
+        if report.changed:
+            try:
+                await asyncio.to_thread(load_schedules)
+            except Exception:
+                logger.exception("после подгрузки не удалось перечитать расписание")
+                report.problem("файлы сохранены, но расписание не перечиталось, перезапустите сервис")
+        if lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR)) == []:
+            lms_sync.record_run(conn, report)
+        return report
 
 
 async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

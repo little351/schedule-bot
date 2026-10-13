@@ -325,3 +325,53 @@ def test_crawl_stops_at_request_limit(env):
     crawl_env(env, max_requests=3)
     report = run(env, TreeMoodle(), list_only=True)
     assert "достигнут лимит 3 страниц" in report.text()
+
+
+def test_oversized_file_is_refused_without_keeping_it(env, monkeypatch):
+    monkeypatch.setattr(lms_sync, "MAX_FILE_BYTES", 1000)
+    report = run(env, FakeMoodle())
+    assert not report.changed and "слишком большой" in report.text()
+    assert list_synced_files(env[1]) == []
+
+
+def test_oversized_page_is_refused(env, monkeypatch):
+    monkeypatch.setattr(lms_sync, "MAX_PAGE_BYTES", 200)
+    report = run(env, FakeMoodle())
+    assert "слишком большой" in report.text() and not report.changed
+
+
+def test_compressed_pages_are_read_once_and_correctly(env):
+    import gzip
+
+    class Gzipped(FakeMoodle):
+        def __call__(self, request):
+            response = super().__call__(request)
+            if request.url.path == "/course/view.php":
+                body = gzip.compress(response.content)
+                return httpx.Response(200, headers={"content-encoding": "gzip"}, content=body)
+            return response
+    report = run(env, Gzipped(), list_only=True)
+    assert "Расписание 1 курс Т2-09-26" in report.text()
+
+
+def test_second_sync_does_not_start_while_one_is_running(env, monkeypatch):
+    import bot
+    monkeypatch.setattr(bot, "conn", env[1])
+    monkeypatch.setattr(bot, "SCHEDULE_DIR", env[0])
+    started, release = [], asyncio.Event()
+
+    async def slow_sync(conn, schedule_dir, list_only=False, client_factory=None):
+        started.append(1)
+        await release.wait()
+        return lms_sync.Report()
+    monkeypatch.setattr(lms_sync, "run_sync", slow_sync)
+
+    async def scenario():
+        first = asyncio.create_task(bot.run_lms_sync())
+        await asyncio.sleep(0.05)
+        second = await bot.run_lms_sync()
+        release.set()
+        await first
+        return second
+    second = asyncio.run(scenario())
+    assert "уже идёт" in second.text() and started == [1]
