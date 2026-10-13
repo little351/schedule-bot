@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from fastapi import FastAPI, Request
@@ -5,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
 
-from bot import build_application, post_init, conn, load_schedules, TOKEN
+from bot import build_application, post_init, conn, load_schedules, lms_scheduler, TOKEN
 from routes import build_router
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
@@ -32,10 +33,15 @@ async def startup():
     await application.initialize()
     await post_init(application)
     await application.bot.set_webhook(url=f"{PUBLIC_URL}{WEBHOOK_PATH}")
+    # автоподгрузка расписания с сайта вуза: работает, только если заданы LMS_LOGIN и LMS_PASSWORD
+    app.state.lms_task = asyncio.create_task(lms_scheduler(application))
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    task = getattr(app.state, "lms_task", None)
+    if task:
+        task.cancel()
     await application.shutdown()
 
 

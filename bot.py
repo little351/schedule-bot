@@ -1,8 +1,8 @@
+import asyncio
 import csv
 import io
 import logging
 import os
-import asyncio
 import re
 import secrets
 from datetime import datetime
@@ -12,14 +12,15 @@ from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, MessageHandler, TypeHandler, ContextTypes, filters
 )
 
-from parser import parse_file, parse_all_schedules
+import lms_sync
+from parser import parse_file
 from schedule_parsers import upload_dir
 from schedule_parsers.common import load_config
 from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
     get_week_schedule_grid, get_today_day_name, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
-    touch_user, list_users, restore_users, users_without_profile, set_user_profile
+    touch_user, list_users, restore_users, users_without_profile, set_user_profile, get_sync_state, set_sync_state
 )
 from formatting import format_week_text, format_day_text
 
@@ -41,7 +42,12 @@ if not os.environ.get("DATABASE_URL"):
 
 
 def load_schedules():
-    records = parse_all_schedules(SCHEDULE_DIR)
+    # порядок источников: свежая подгрузка с сайта вуза, затем загруженное владельцем, затем файлы репозитория
+    try:
+        records = lms_sync.merged_records(conn, SCHEDULE_DIR)
+    except Exception:
+        logger.exception("не удалось учесть подгруженные файлы, беру только data/")
+        records = lms_sync.disk_records(SCHEDULE_DIR)
     save_schedule(conn, records)
     return records
 
@@ -266,6 +272,69 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text)
 
 
+LMS_FAIL_REPEAT_DAYS = 3  # об одной и той же неполадке подгрузки напоминаем не чаще
+
+
+def _chunks(text, size=3800):
+    return [text[i:i + size] for i in range(0, len(text), size)] or [""]
+
+
+async def run_lms_sync(list_only=False):
+    """Один запуск подгрузки; после успешной смены файлов расписание перечитывается. Возвращает Report."""
+    report = await lms_sync.run_sync(conn, SCHEDULE_DIR, list_only=list_only)
+    if list_only:
+        return report
+    if report.changed:
+        try:
+            await asyncio.to_thread(load_schedules)
+        except Exception:
+            logger.exception("после подгрузки не удалось перечитать расписание")
+            report.problem("файлы сохранены, но расписание не перечиталось, перезапустите сервис")
+    if lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR)) == []:
+        lms_sync.record_run(conn, report)
+    return report
+
+
+async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/sync - запустить подгрузку расписания вручную; /sync list - какие файлы видны на страницах курса."""
+    list_only = bool(context.args) and context.args[0].lower() == "list"
+    await update.message.reply_text("Смотрю страницы курса..." if list_only else "Запускаю подгрузку расписания...")
+    try:
+        report = await run_lms_sync(list_only=list_only)
+        text = report.text() or "Нечего сообщить."
+        if not list_only:
+            text += "\n\n" + lms_sync.source_summary(conn)
+    except Exception as e:
+        logger.exception("/sync: ошибка")
+        text = lms_sync.scrub(f"Подгрузка упала с ошибкой {type(e).__name__}. Бот работает на запасных источниках.")
+    for part in _chunks(text):
+        await update.message.reply_text(part)
+
+
+async def lms_scheduler(application):
+    """Фоновая подгрузка: проверяет раз в полчаса, пора ли, и запускает по расписанию.
+    О сбое сообщает владельцу, повторно об одном и том же не чаще раза в LMS_FAIL_REPEAT_DAYS."""
+    await asyncio.sleep(60)
+    while True:
+        try:
+            if lms_sync.sync_enabled() and lms_sync.is_due(conn) \
+                    and not lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR)):
+                report = await run_lms_sync()
+                if report.problems and OWNER_ID.isdigit():
+                    signature = report.signature()
+                    last = get_sync_state(conn, "notified_signature")
+                    last_at = get_sync_state(conn, "notified_at")
+                    stale = not last_at or (lms_sync._now() - datetime.fromisoformat(last_at)).days >= LMS_FAIL_REPEAT_DAYS
+                    if signature != last or stale:
+                        set_sync_state(conn, "notified_signature", signature)
+                        set_sync_state(conn, "notified_at", lms_sync._now().isoformat(timespec="seconds"))
+                        for part in _chunks("Подгрузка расписания с сайта: есть проблемы.\n\n" + report.text()):
+                            await application.bot.send_message(chat_id=int(OWNER_ID), text=part)
+                elif not report.problems:
+                    set_sync_state(conn, "notified_signature", "")
+        except Exception:
+            logger.exception("плановая подгрузка расписания: ошибка")
+        await asyncio.sleep(1800)
 # --- рассылка (только владелец) ---
 BROADCAST_PAUSE = 0.05  # около 20 сообщений в секунду, лимит Telegram для рассылки - 30
 BROADCAST_MAX_LEN = 4000
@@ -555,6 +624,7 @@ def build_application():
         # всем остальным /users не отвечает вовсе: команда нигде не публикуется
         application.add_handler(CommandHandler("users", users_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CommandHandler("backup", backup_command, filters=filters.User(user_id=int(OWNER_ID))))
+        application.add_handler(CommandHandler("sync", sync_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CommandHandler("broadcast", broadcast_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
