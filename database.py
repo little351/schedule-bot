@@ -73,13 +73,6 @@ if PG_DSN:
             cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} {column_type}")
         # у пользователей с направлением курс по умолчанию первый
         cur.execute("UPDATE users SET course = 1 WHERE program IS NOT NULL AND course IS NULL")
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS synced_files (
-                key TEXT PRIMARY KEY, file_name TEXT, content BYTEA, sha256 TEXT,
-                fetched_at TEXT, group_counts TEXT, records INTEGER
-            )
-        """)
-        cur.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
 
 
 def storage_name():
@@ -133,13 +126,6 @@ def init_db(path="schedule.db"):
     """)
     _add_missing_columns(conn, "users", USER_EXTRA_COLUMNS)
     conn.execute("UPDATE users SET course = 1 WHERE program IS NOT NULL AND course IS NULL")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS synced_files (
-            key TEXT PRIMARY KEY, file_name TEXT, content BLOB, sha256 TEXT,
-            fetched_at TEXT, group_counts TEXT, records INTEGER
-        )
-    """)
-    conn.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
     conn.commit()
     return conn
 
@@ -309,79 +295,6 @@ def list_users(conn):
             cur.execute(query.replace("last_seen IS NULL, last_seen DESC", "last_seen DESC NULLS LAST"))
             return cur.fetchall()
     return conn.execute(query).fetchall()
-
-
-# --- файлы расписания, подгруженные с сайта вуза (lms_sync): последняя хорошая версия каждого файла ---
-
-def save_synced_file(conn, key, file_name, content, sha256, fetched_at, group_counts, records):
-    """Сохраняет (заменяет) файл с ключом key. group_counts - JSON {"программа|курс|группа": число занятий}."""
-    if PG_DSN:
-        import psycopg2
-        with pg_cursor() as cur:
-            cur.execute(
-                "INSERT INTO synced_files (key, file_name, content, sha256, fetched_at, group_counts, records) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (key) DO UPDATE SET file_name = EXCLUDED.file_name, "
-                "content = EXCLUDED.content, sha256 = EXCLUDED.sha256, fetched_at = EXCLUDED.fetched_at, "
-                "group_counts = EXCLUDED.group_counts, records = EXCLUDED.records",
-                (key, file_name, psycopg2.Binary(content), sha256, fetched_at, group_counts, records))
-        return
-    conn.execute(
-        "INSERT INTO synced_files (key, file_name, content, sha256, fetched_at, group_counts, records) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (key) DO UPDATE SET file_name = excluded.file_name, "
-        "content = excluded.content, sha256 = excluded.sha256, fetched_at = excluded.fetched_at, "
-        "group_counts = excluded.group_counts, records = excluded.records",
-        (key, file_name, content, sha256, fetched_at, group_counts, records))
-    conn.commit()
-
-
-def list_synced_files(conn, with_content=False):
-    """[{key, file_name, sha256, fetched_at, groups, records[, content]}, ...] от старых к новым."""
-    columns = "key, file_name, sha256, fetched_at, group_counts, records" + (", content" if with_content else "")
-    query = f"SELECT {columns} FROM synced_files ORDER BY fetched_at, key"
-    if PG_DSN:
-        with pg_cursor() as cur:
-            cur.execute(query)
-            rows = cur.fetchall()
-    else:
-        rows = conn.execute(query).fetchall()
-    names = ["key", "file_name", "sha256", "fetched_at", "group_counts", "records"] + (["content"] if with_content else [])
-    result = []
-    for row in rows:
-        item = dict(zip(names, row))
-        if with_content:
-            item["content"] = bytes(item["content"])
-        result.append(item)
-    return result
-
-
-def delete_synced_file(conn, key):
-    if PG_DSN:
-        with pg_cursor() as cur:
-            cur.execute("DELETE FROM synced_files WHERE key = %s", (key,))
-        return
-    conn.execute("DELETE FROM synced_files WHERE key = ?", (key,))
-    conn.commit()
-
-
-def get_sync_state(conn, key, default=None):
-    if PG_DSN:
-        with pg_cursor() as cur:
-            cur.execute("SELECT value FROM sync_state WHERE key = %s", (key,))
-            row = cur.fetchone()
-    else:
-        row = conn.execute("SELECT value FROM sync_state WHERE key = ?", (key,)).fetchone()
-    return row[0] if row else default
-
-
-def set_sync_state(conn, key, value):
-    if PG_DSN:
-        with pg_cursor() as cur:
-            cur.execute("INSERT INTO sync_state (key, value) VALUES (%s, %s) "
-                        "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (key, value))
-        return
-    conn.execute("INSERT INTO sync_state (key, value) VALUES (?, ?) "
-                 "ON CONFLICT (key) DO UPDATE SET value = excluded.value", (key, value))
-    conn.commit()
 
 
 def get_week_schedule_grid(conn, group: GroupRef, week_sheet):
