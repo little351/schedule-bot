@@ -24,7 +24,7 @@ from urllib.parse import unquote, urljoin, urlparse
 import httpx
 
 from database import (
-    delete_synced_file, get_sync_state, list_synced_files, save_synced_file, set_sync_state,
+    delete_synced_file, get_sync_state, get_synced_content, list_synced_files, save_synced_file, set_sync_state,
 )
 from schedule_parsers import parse_all, parse_file
 from schedule_parsers.common import load_config
@@ -34,6 +34,8 @@ logger = logging.getLogger(__name__)
 SOURCES_FILE = "lms_sources.json"
 REQUEST_PAUSE = 1.0           # секунд между запросами к сайту: ходим вежливо, по одному
 MAX_FILE_BYTES = 20 * 1024 * 1024
+MAX_PAGE_BYTES = 5 * 1024 * 1024   # страница сайта крупнее не читается: память на бесплатном тарифе ограничена
+MAX_QUEUE = 5000                   # сколько ссылок на категории и курсы можно держать в очереди обхода
 DEFAULT_MIN_RATIO = 0.6       # занятий в новой версии должно быть не меньше этой доли от старой
 FAILED_RETRY_HOURS = 6        # после неудачного запуска следующая попытка раньше обычной
 USER_AGENT = "schedule-bot/1.0 (timetable sync, at most once a day)"
@@ -205,14 +207,11 @@ def crawl_site(client, cfg, listing, errors):
                 targets.append((path, name, link))
         if depth >= max_depth:
             continue
-        for name, link in categories:
+        for name, link in categories + courses:
             if exclude.search(name) or (include and not include.search(name)):
                 continue
-            queue.append((link, f"{path} / {name}" if path else name, depth + 1))
-        for name, link in courses:
-            if exclude.search(name) or (include and not include.search(name)):
-                continue
-            queue.append((link, f"{path} / {name}" if path else name, depth + 1))
+            if len(queue) < MAX_QUEUE:
+                queue.append((link, f"{path} / {name}" if path else name, depth + 1))
     listing.append((f"просмотрено страниц: {requests}", []))
     return targets
 
@@ -254,9 +253,10 @@ class MoodleClient:
         self._first = False
         target = urljoin(self.base_url + "/", url)
         where = urlparse(target).path + (f"?{urlparse(target).query}" if urlparse(target).query else "")
+        limit = kwargs.pop("max_bytes", MAX_PAGE_BYTES)
         for attempt in (1, 2):
             try:
-                return self.http.request(method, target, **kwargs)
+                return self._fetch(method, target, limit, where, **kwargs)
             except httpx.TimeoutException as e:
                 # сайт принял соединение, но молчит: бывает при перегрузке или когда он закрыт для зарубежных адресов
                 if attempt == 1 and method == "GET":
@@ -266,6 +266,22 @@ class MoodleClient:
                                 f"сайт не ответил на запрос {where} ({type(e).__name__})") from None
             except httpx.HTTPError as e:
                 raise SyncError(f"не удалось связаться с сайтом на запросе {where} ({type(e).__name__})") from None
+
+    def _fetch(self, method, target, limit, where, **kwargs):
+        """Ответ читается кусками и обрывается на лимите: огромная страница или файл не должны съесть всю память."""
+        with self.http.stream(method, target, **kwargs) as response:
+            declared = response.headers.get("content-length", "")
+            if declared.isdigit() and int(declared) > limit:
+                raise SyncError(f"ответ на {where} слишком большой ({int(declared) // 1024 // 1024} МБ), пропущен")
+            chunks, total = [], 0
+            for chunk in response.iter_bytes():
+                total += len(chunk)
+                if total > limit:
+                    raise SyncError(f"ответ на {where} слишком большой (больше {limit // 1024 // 1024} МБ), пропущен")
+                chunks.append(chunk)
+            headers = [(k, v) for k, v in response.headers.multi_items()
+                       if k.lower() not in ("content-encoding", "content-length", "transfer-encoding")]
+            return httpx.Response(response.status_code, headers=headers, content=b"".join(chunks), request=response.request)
 
     def login(self):
         page = self._request("GET", "/login/index.php")
@@ -297,7 +313,7 @@ class MoodleClient:
 
     def download(self, url):
         """(имя файла, содержимое). Ссылка на ресурс может вести на сам файл или на страницу с файлом."""
-        response = self._request("GET", url)
+        response = self._request("GET", url, max_bytes=MAX_FILE_BYTES)
         if response.status_code >= 400:
             raise SyncError(f"ссылка {self._short(url)} ответила кодом {response.status_code}")
         if "text/html" in response.headers.get("content-type", "").lower():
@@ -306,7 +322,8 @@ class MoodleClient:
             m = PLUGINFILE_RE.search(response.text)
             if not m:
                 raise SyncError(f"на странице {self._short(url)} нет файла")
-            response = self._request("GET", urljoin(str(response.url), html.unescape(m.group(1))))
+            response = self._request("GET", urljoin(str(response.url), html.unescape(m.group(1))),
+                                     max_bytes=MAX_FILE_BYTES)
             if response.status_code >= 400:
                 raise SyncError(f"файл по ссылке {self._short(url)} ответил кодом {response.status_code}")
         content = response.content
@@ -381,13 +398,15 @@ def merged_records(conn, schedule_dir):
     группы из свежей подгрузки. Подгруженный файл, который не читается, пропускается."""
     records = disk_records(schedule_dir)
     override = {}
-    for item in list_synced_files(conn, with_content=True):
+    for item in list_synced_files(conn):
         try:
-            ext = file_extension(item["file_name"], item["content"])
+            content = get_synced_content(conn, item["key"])  # по одному файлу: все сразу в памяти не держим
+            ext = file_extension(item["file_name"], content or b"")
             if not ext:
                 raise ValueError("не таблица Excel")
-            for r in parse_bytes(item["content"], ext, schedule_dir):
+            for r in parse_bytes(content, ext, schedule_dir):
                 override.setdefault(group_key(r), []).append(r)
+            del content
         except Exception:
             logger.exception("подгруженный файл %s не читается, использую запасные источники", item["key"])
     if not override:
@@ -435,12 +454,13 @@ def is_due(conn, now=None):
     return now - datetime.fromisoformat(last) >= timedelta(hours=wait)
 
 
-def _fetch_all(sources, client_factory, list_only):
+def _fetch_all(sources, client_factory, list_only, on_file=None):
     """Сетевая часть (идёт в отдельном потоке): вход, поиск файлов, скачивание.
-    Возвращает (downloads, listing, errors): downloads [(название, имя файла, байты)]."""
+    Каждый файл сразу отдаётся в on_file(название, имя файла, байты) и забывается: в памяти одновременно
+    не больше одного файла. Возвращает (скачано файлов, listing, errors)."""
     login, password = credentials()
     client = client_factory(sources["base_url"], login, password)
-    downloads, listing, errors = [], [], []
+    downloaded, listing, errors = 0, [], []
     try:
         client.login()
         targets = []
@@ -472,12 +492,15 @@ def _fetch_all(sources, client_factory, list_only):
                 seen.add(link)
                 try:
                     file_name, content = client.download(link)
-                    downloads.append((name, file_name, content))
                 except SyncError as e:
                     errors.append(f"«{name}»: {e}")
+                    continue
+                downloaded += 1
+                on_file(name, file_name, content)
+                del content
     finally:
         client.close()
-    return downloads, listing, errors
+    return downloaded, listing, errors
 
 
 async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
@@ -494,8 +517,24 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
         return report
 
     factory = client_factory or (lambda base, login, password: MoodleClient(base, login, password))
+    loop = asyncio.get_running_loop()
+    min_ratio = float(sources.get("min_ratio", DEFAULT_MIN_RATIO))
+    stored = {item["key"]: item for item in list_synced_files(conn)}
+    state = {"disk_counts": None}
+
+    def on_file(name, file_name, content):
+        """Вызывается из потока скачивания: разбор и сохранение идут в основном потоке, поток ждёт конца."""
+        async def handle():
+            try:
+                state["disk_counts"] = await _process(conn, schedule_dir, report, stored, name, file_name, content,
+                                                      min_ratio, state["disk_counts"])
+            except Exception as e:
+                logger.error("подгрузка: файл %s: %s", file_name, scrub(f"{type(e).__name__}: {e}"))
+                report.problem(f"{file_name}: не удалось обработать ({type(e).__name__}), осталась прошлая версия или запасной источник")
+        asyncio.run_coroutine_threadsafe(handle(), loop).result()
+
     try:
-        downloads, listing, errors = await asyncio.to_thread(_fetch_all, sources, factory, list_only)
+        downloaded, listing, errors = await asyncio.to_thread(_fetch_all, sources, factory, list_only, on_file)
     except SyncError as e:
         report.problem(f"подгрузка не удалась: {e}. Бот работает на запасных источниках.")
         return report
@@ -519,19 +558,8 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
 
     for error in errors:
         report.problem(error)
-    if not downloads and not errors:
+    if not downloaded and not errors:
         report.problem("ни одного подходящего файла не нашлось: проверьте include/exclude и ссылки в настройках. Бот работает на запасных источниках.")
-
-    min_ratio = float(sources.get("min_ratio", DEFAULT_MIN_RATIO))
-    stored = {item["key"]: item for item in list_synced_files(conn)}
-    disk_counts = None
-    for name, file_name, content in downloads:
-        try:
-            disk_counts = await _process(conn, schedule_dir, report, stored, name, file_name, content,
-                                         min_ratio, disk_counts)
-        except Exception as e:
-            logger.error("подгрузка: файл %s: %s", file_name, scrub(f"{type(e).__name__}: {e}"))
-            report.problem(f"{file_name}: не удалось обработать ({type(e).__name__}), осталась прошлая версия или запасной источник")
     return report
 
 
