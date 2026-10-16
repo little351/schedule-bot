@@ -564,4 +564,4 @@ def test_user_stats_counts_without_personal_data():
     text = format_stats(stats)
     assert "Всего пользователей: 4" in text and "2 курс: 2" in text
     assert "4 группа (49.03.04, 2 курс): 2" in text
-    assert "@a" not in text and "Б" not in text  # ни username, ни имён
+    assert "@" not in text and "id" not in text.lower().split()  # ни username, ни ID
