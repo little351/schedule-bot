@@ -19,7 +19,7 @@ from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
     get_week_schedule_grid, get_today_day_name, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
-    touch_user, list_users, restore_users, users_without_profile, set_user_profile
+    touch_user, list_users, user_stats, get_program_name, restore_users, users_without_profile, set_user_profile
 )
 from formatting import format_week_text, format_day_text, with_donation_note
 
@@ -264,6 +264,33 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Хранилище пользователей: {storage_name()}")
     for text in format_users_messages(rows):
         await update.message.reply_text(text)
+
+
+def format_stats(stats, program_name=lambda code: code):
+    """Текст /stats: только счётчики, без личных данных."""
+    lines = [f"Всего пользователей: {stats['total']}", f"Без выбранной группы: {stats['no_group']}", ""]
+    lines.append("Новые (первое обращение): "
+                 f"за сутки {stats['new'][1]}, за 7 дней {stats['new'][7]}, за 30 дней {stats['new'][30]}")
+    lines.append("Активные (последнее обращение): "
+                 f"за сутки {stats['active'][1]}, за 7 дней {stats['active'][7]}, за 30 дней {stats['active'][30]}")
+    if stats["no_first_seen"] or stats["no_last_seen"]:
+        lines.append(f"Без даты обращения: {max(stats['no_first_seen'], stats['no_last_seen'])} "
+                     "(записи из старой копии, в «новых» и «активных» не учтены)")
+    if stats["courses"]:
+        lines += ["", "По курсам:"]
+        lines += [f"{c} курс: {n}" for c, n in sorted(stats["courses"].items(), key=lambda kv: (kv[0] is None, kv[0]))]
+        lines += ["", "По направлениям:"]
+        lines += [f"{program_name(p)} ({p}): {n}"
+                  for p, n in sorted(stats["programs"].items(), key=lambda kv: (-kv[1], kv[0] or ""))]
+        lines += ["", "Популярные группы:"]
+        lines += [f"{name} ({p}, {c} курс): {n}" for (p, c, name), n in stats["top_groups"]]
+    return "\n".join(lines)
+
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    stats = user_stats(list_users(conn))
+    await update.message.reply_text(f"Хранилище пользователей: {storage_name()}\n\n"
+                                    + format_stats(stats, lambda code: get_program_name(conn, code)))
 
 
 # --- рассылка (только владелец) ---
@@ -554,6 +581,7 @@ def build_application():
     if OWNER_ID.isdigit():
         # всем остальным /users не отвечает вовсе: команда нигде не публикуется
         application.add_handler(CommandHandler("users", users_command, filters=filters.User(user_id=int(OWNER_ID))))
+        application.add_handler(CommandHandler("stats", stats_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CommandHandler("backup", backup_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CommandHandler("broadcast", broadcast_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
