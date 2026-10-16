@@ -150,9 +150,16 @@
   .group-select[hidden] {
     display: none;
   }
+  .pickers .group-select {
+    flex: 0 1 auto;  /* не влезает - сжимается, лишний текст обрезается, строка не переносится */
+  }
   .group-select {
     box-sizing: border-box;
     min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: clip;
     -webkit-appearance: none;
     appearance: none;
     background-color: var(--card);
@@ -411,7 +418,7 @@ function renderPickers(tight = false) {
   programSelect.title = program ? program.name : "";
 
   const entry = program && program.courses.find(c => String(c.course) === String(chosen.course));
-  const placeholder = chosen.group ? "" : `<option value="" selected disabled>${compact ? "Группа" : "Выбери группу"}</option>`;
+  const placeholder = chosen.group ? "" : `<option value="" selected disabled>Группа</option>`;
   groupSelect.innerHTML = placeholder + optionsHtml(
     (entry ? entry.groups : []).map(g => ({ value: g, label: groupLabel(g) })), chosen.group);
   fitPickers();
