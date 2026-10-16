@@ -122,7 +122,7 @@
   .page-header {
     margin-bottom: 14px;
   }
-  /* в строке заголовка: «Расписание» слева, выбор курса справа; ниже направление и группа в одном ряду */
+  /* заголовок «Расписание», под ним курс, направление и группа в одной строке */
   .title-row {
     display: flex;
     align-items: center;
@@ -134,9 +134,6 @@
     margin: 0;
     flex: none;
     white-space: nowrap;
-  }
-  .title-row .group-select {
-    flex: 0 1 auto;
   }
   @media (max-width: 300px) {
     .page-header h1 { font-size: 20px; }
@@ -263,9 +260,9 @@
   <div class="page-header">
     <div class="title-row">
       <h1>Расписание</h1>
-      <select class="group-select" id="courseSelect"></select>
     </div>
     <div class="pickers">
+      <select class="group-select" id="courseSelect"></select>
       <select class="group-select" id="programSelect" hidden></select>
       <select class="group-select" id="groupSelect"></select>
     </div>
@@ -429,7 +426,7 @@ function renderPickers(tight = false) {
 
 function pickersOverflow() {
   const box = document.querySelector(".pickers");
-  const selects = [programSelect, groupSelect].filter(s => !s.hidden);
+  const selects = [courseSelect, programSelect, groupSelect].filter(s => !s.hidden);
   const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
   const total = selects.reduce((sum, s) => sum + (parseFloat(s.style.width) || s.offsetWidth), 0) + gap * (selects.length - 1);
   return total > box.clientWidth;
