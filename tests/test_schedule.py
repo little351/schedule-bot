@@ -537,3 +537,31 @@ def test_week_text_ends_with_donation_note_within_telegram_limit(tmp_path, recor
         assert text.endswith("вкусным → \\+79995567597")
         longest = max(longest, len(text))
     assert longest < 4096  # лимит Telegram на одно сообщение
+
+
+def test_user_stats_counts_without_personal_data():
+    from datetime import datetime, timezone
+    from database import user_stats
+
+    now = datetime(2026, 10, 16, 12, 0, tzinfo=timezone.utc)
+    rows = [  # (id, username, имя, группа, first_seen, last_seen, направление, курс)
+        (1, "a", "А", "4 группа", "2026-10-16T08:00:00+00:00", "2026-10-16T09:00:00+00:00", "49.03.04", 2),
+        (2, None, "Б", "4 группа", "2026-10-10T08:00:00+00:00", "2026-10-12T09:00:00+00:00", "49.03.04", 2),
+        (3, None, "В", "Т2-07-24", "2026-09-01T08:00:00+00:00", "2026-10-01T09:00:00+00:00", "49.03.02", 3),
+        (4, None, None, None, None, None, None, None),  # запись без группы и дат (до учёта)
+    ]
+    stats = user_stats(rows, now)
+    assert stats["total"] == 4 and stats["no_group"] == 1
+    assert stats["new"] == {1: 1, 7: 2, 30: 2}
+    assert stats["active"] == {1: 1, 7: 2, 30: 3}
+    assert stats["no_first_seen"] == 1 and stats["no_last_seen"] == 1
+    assert stats["courses"] == {2: 2, 3: 1}
+    assert stats["programs"] == {"49.03.04": 2, "49.03.02": 1}
+    assert stats["top_groups"][0] == (("49.03.04", 2, "4 группа"), 2)
+
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    from bot import format_stats
+    text = format_stats(stats)
+    assert "Всего пользователей: 4" in text and "2 курс: 2" in text
+    assert "4 группа (49.03.04, 2 курс): 2" in text
+    assert "@" not in text and "id" not in text.lower().split()  # ни username, ни ID

@@ -298,6 +298,40 @@ def list_users(conn):
     return conn.execute(query).fetchall()
 
 
+def user_stats(rows, now=None, top=10):
+    """Счётчики по пользователям из list_users(): без имён и ID. now - aware datetime (по умолчанию сейчас, UTC).
+    Даты first_seen/last_seen хранятся в UTC ISO; у записей до появления учёта и из резервной копии их может не быть."""
+    now = now or datetime.now(timezone.utc)
+
+    def parse(value):
+        try:
+            d = datetime.fromisoformat(value) if value else None
+        except ValueError:
+            return None
+        return d.replace(tzinfo=timezone.utc) if d and d.tzinfo is None else d
+
+    stats = {"total": len(rows), "no_group": 0, "no_first_seen": 0, "no_last_seen": 0,
+             "new": {1: 0, 7: 0, 30: 0}, "active": {1: 0, 7: 0, 30: 0},
+             "courses": {}, "programs": {}, "groups": {}}
+    for _, _, _, group_name, first_seen, last_seen, program, course in rows:
+        if not group_name:
+            stats["no_group"] += 1
+        else:
+            stats["courses"][course] = stats["courses"].get(course, 0) + 1
+            stats["programs"][program] = stats["programs"].get(program, 0) + 1
+            key = (program, course, group_name)
+            stats["groups"][key] = stats["groups"].get(key, 0) + 1
+        first, last = parse(first_seen), parse(last_seen)
+        stats["no_first_seen"] += first is None
+        stats["no_last_seen"] += last is None
+        for days in (1, 7, 30):
+            limit = now - timedelta(days=days)
+            stats["new"][days] += bool(first and first >= limit)
+            stats["active"][days] += bool(last and last >= limit)
+    stats["top_groups"] = sorted(stats["groups"].items(), key=lambda kv: (-kv[1], kv[0][0] or "", kv[0][2]))[:top]
+    return stats
+
+
 def get_week_schedule_grid(conn, group: GroupRef, week_sheet):
     rows = conn.execute(
         "SELECT day, time, subject FROM lessons "
