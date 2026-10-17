@@ -249,10 +249,21 @@ def test_sync_command_reports_and_reloads_schedule(env, monkeypatch):
     class Update:
         message = Msg()
 
+    class App:
+        def create_task(self, coro):
+            return asyncio.ensure_future(coro)
+
     class Ctx:
         args = []
+        application = App()
 
-    asyncio.run(bot.sync_command(Update(), Ctx()))
+    async def go():
+        await bot.sync_command(Update(), Ctx())
+        assert "Запускаю" in sent[0] and len(sent) == 1  # команда вернулась сразу, отчёт придёт позже
+        while bot.sync_running or len(sent) == 1:
+            await asyncio.sleep(0.01)
+
+    asyncio.run(go())
     assert "t2-09-26.xls: новый" in sent[-1] and "Из подгрузки" in sent[-1]
     assert PASSWORD not in "".join(sent)
     assert lms_sync.get_sync_state(conn, "last_ok") == "1"
