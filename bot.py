@@ -336,20 +336,38 @@ async def run_lms_sync(list_only=False):
     return report
 
 
+sync_running = False
+
+
 async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/sync - запустить подгрузку расписания вручную; /sync list - какие файлы видны на страницах курса."""
     list_only = bool(context.args) and context.args[0].lower() == "list"
+    if sync_running:
+        await update.message.reply_text("Подгрузка уже идёт, дождись отчёта.")
+        return
     await update.message.reply_text("Смотрю страницы курса..." if list_only else "Запускаю подгрузку расписания...")
-    try:
-        report = await run_lms_sync(list_only=list_only)
-        text = report.text() or "Нечего сообщить."
-        if not list_only:
-            text += "\n\n" + lms_sync.source_summary(conn)
-    except Exception as e:
-        logger.exception("/sync: ошибка")
-        text = lms_sync.scrub(f"Подгрузка упала с ошибкой {type(e).__name__}. Бот работает на запасных источниках.")
-    for part in _chunks(text):
-        await update.message.reply_text(part)
+
+    async def run():
+        # в фоне: вебхук должен ответить Telegram сразу, иначе он повторяет команду по кругу
+        global sync_running
+        sync_running = True
+        try:
+            report = await run_lms_sync(list_only=list_only)
+            text = report.text() or "Нечего сообщить."
+            if not list_only:
+                text += "\n\n" + lms_sync.source_summary(conn)
+        except Exception as e:
+            logger.exception("/sync: ошибка")
+            text = lms_sync.scrub(f"Подгрузка упала с ошибкой {type(e).__name__}. Бот работает на запасных источниках.")
+        finally:
+            sync_running = False
+        try:
+            for part in _chunks(text):
+                await update.message.reply_text(part)
+        except Exception:
+            logger.exception("/sync: не удалось отправить отчёт")
+
+    context.application.create_task(run())
 
 
 async def lms_scheduler(application):
