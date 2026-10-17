@@ -20,11 +20,11 @@ from schedule_parsers.common import load_config
 from database import (
     init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
-    get_week_schedule_grid, get_today_day_name, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
+    get_week_schedule_grid, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
     touch_user, list_users, user_stats, get_program_name, restore_users, users_without_profile, set_user_profile,
     get_sync_state, set_sync_state
 )
-from formatting import format_week_text, format_day_text, with_donation_note
+from formatting import format_week_text, with_donation_note
 
 TOKEN = os.environ.get("BOT_TOKEN") or ""
 WEBAPP_URL = os.environ.get("WEBAPP_URL") or os.environ.get("PUBLIC_URL") or "https://breeding-salvation-splashing.ngrok-free.dev"
@@ -72,7 +72,7 @@ START_TEXT = (
     "1. Выбери курс, направление и группу кнопками ниже. Сменить их можно в любой момент: /group "
     "(или просто напиши номер группы).\n"
     "2. /app — открыть расписание в мини-приложении.\n"
-    "3. Расписание прямо в чате: /day — сегодня, /week — эта неделя, "
+    "3. Расписание прямо в чате: /week — эта неделя, "
     "/nweek — следующая, /weekdate 05.10 — неделя по дате.\n\n"
     "⚠️ Бот неофициальный: расписание загружается вручную и может измениться или содержать "
     "неточности, поэтому сверяйся с официальным. Бот работает на бесплатном хостинге: после простоя "
@@ -84,12 +84,11 @@ DONE_TEXT = "Готово, запомнил: {title}.\nВыбери, что по
 
 
 def actions_markup():
-    """Кнопки под выбранной группой: то же, что команды /app, /day, /week, /nweek, /weekdate, /group."""
+    """Кнопки под выбранной группой: то же, что команды /app, /week, /nweek, /weekdate, /group."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📱 Мини-приложение", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton("Сегодня", callback_data="a:day"), InlineKeyboardButton("Неделя", callback_data="a:week")],
-        [InlineKeyboardButton("След. неделя", callback_data="a:nweek"), InlineKeyboardButton("По дате", callback_data="a:date")],
-        [InlineKeyboardButton("Сменить группу", callback_data="a:group")],
+        [InlineKeyboardButton("Неделя", callback_data="a:week"), InlineKeyboardButton("След. неделя", callback_data="a:nweek")],
+        [InlineKeyboardButton("По дате", callback_data="a:date"), InlineKeyboardButton("Сменить группу", callback_data="a:group")],
     ])
 
 
@@ -181,9 +180,7 @@ async def on_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     action = (query.data or "").split(":", 1)[-1]
     # обработчики команд читают update.message и update.effective_user: подставляем сообщение с кнопкой и нажавшего
     shim = SimpleNamespace(message=query.message, effective_user=query.from_user, callback_query=query)
-    if action == "day":
-        await day(shim, context)
-    elif action == "week":
+    if action == "week":
         await week(shim, context)
     elif action == "nweek":
         await nweek(shim, context)
@@ -546,7 +543,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await update.message.reply_text(
-            "Не понял. Выбери группу через /group или используй /week, /nweek, /day, /weekdate, /app"
+            "Не понял. Выбери группу через /group или используй /week, /nweek, /weekdate, /app"
         )
 
 
@@ -611,21 +608,6 @@ async def weekdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     week_sheet = get_week_sheet_for_date(conn, group, target_date)
     await _send_week(update, group, week_sheet, "Расписание на эту дату не найдено.")
-
-
-async def day(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-    group = get_user_group(conn, telegram_id)
-    if not group:
-        await update.message.reply_text(NO_GROUP_MSG)
-        return
-
-    week_sheet = get_current_week_sheet(conn, group)
-    day_name = get_today_day_name()
-    grid = get_week_schedule_grid(conn, group, week_sheet)
-    text = format_day_text(group.title, week_sheet, day_name, grid)
-
-    await update.message.reply_text(text, parse_mode="MarkdownV2")
 
 
 async def app_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -693,12 +675,11 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def post_init(application):
     await application.bot.set_my_commands([
         BotCommand("start", "Начать / указать группу"),
+        BotCommand("app", "Открыть Mini App"),
         BotCommand("group", "Сменить направление или группу"),
         BotCommand("week", "Расписание на эту неделю"),
         BotCommand("nweek", "Расписание на следующую неделю"),
-        BotCommand("day", "Расписание на сегодня"),
         BotCommand("weekdate", "Расписание на неделю по дате"),
-        BotCommand("app", "Открыть Mini App"),
     ])
 
 
@@ -712,7 +693,6 @@ def build_application():
     application.add_handler(CallbackQueryHandler(on_action, pattern=r"^a:"))
     application.add_handler(CommandHandler("week", week))
     application.add_handler(CommandHandler("nweek", nweek))
-    application.add_handler(CommandHandler("day", day))
     application.add_handler(CommandHandler("weekdate", weekdate))
     application.add_handler(CommandHandler("app", app_command))
     if OWNER_ID.isdigit():
