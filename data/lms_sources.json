@@ -4,171 +4,213 @@
   "pages": [
     {
       "label": "1 курс, 1 поток (гр.1-6)",
-      "url": "/course/view.php?id=15179"
+      "url": "/course/view.php?id=15179",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 2 поток (гр.7-9)",
-      "url": "/course/view.php?id=15180"
+      "url": "/course/view.php?id=15180",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 3 поток (гр.10-16)",
-      "url": "/course/view.php?id=15181"
+      "url": "/course/view.php?id=15181",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 1 поток (гр.1-5)",
-      "url": "/course/view.php?id=15320"
+      "url": "/course/view.php?id=15320",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 2 поток (гр.6-9)",
-      "url": "/course/view.php?id=15321"
+      "url": "/course/view.php?id=15321",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 3 поток (гр.10-16)",
-      "url": "/course/view.php?id=15322"
+      "url": "/course/view.php?id=15322",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 1 поток (гр.1-5)",
-      "url": "/course/view.php?id=15323"
+      "url": "/course/view.php?id=15323",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 2 поток (гр.6-9)",
-      "url": "/course/view.php?id=15325"
+      "url": "/course/view.php?id=15325",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 3 поток (гр.10-16)",
-      "url": "/course/view.php?id=15324"
+      "url": "/course/view.php?id=15324",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 1 поток (гр.1-5)",
-      "url": "/course/view.php?id=15327"
+      "url": "/course/view.php?id=15327",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 2 поток (гр.6-9)",
-      "url": "/course/view.php?id=15326"
+      "url": "/course/view.php?id=15326",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 3 поток (гр.10-16)",
-      "url": "/course/view.php?id=15328"
+      "url": "/course/view.php?id=15328",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 44.03.01 Педагогическое образование",
-      "url": "/course/view.php?id=19086"
+      "url": "/course/view.php?id=19086",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 42.03.01 Реклама и связи с общественностью",
-      "url": "/course/view.php?id=17599"
+      "url": "/course/view.php?id=17599",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 51.03.05 Режиссура театрализованных представлений и праздников",
-      "url": "/course/view.php?id=15204"
+      "url": "/course/view.php?id=15204",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 38.03.02 Менеджмент",
-      "url": "/course/view.php?id=15190"
+      "url": "/course/view.php?id=15190",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 44.03.01 Педагогическое образование",
-      "url": "/course/view.php?id=15375"
+      "url": "/course/view.php?id=15375",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 42.03.01 Реклама и связи с общественностью",
-      "url": "/course/view.php?id=15374"
+      "url": "/course/view.php?id=15374",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 38.03.02 Менеджмент",
-      "url": "/course/view.php?id=15373"
+      "url": "/course/view.php?id=15373",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 51.03.05 Режиссура театрализованных представлений и праздников",
-      "url": "/course/view.php?id=15358"
+      "url": "/course/view.php?id=15358",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 44.03.01 Педагогическое образование",
-      "url": "/course/view.php?id=15378"
+      "url": "/course/view.php?id=15378",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 38.03.02 Менеджмент",
-      "url": "/course/view.php?id=15377"
+      "url": "/course/view.php?id=15377",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 42.03.01 Реклама и связи с общественностью",
-      "url": "/course/view.php?id=15376"
+      "url": "/course/view.php?id=15376",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 51.03.05 Режиссура театрализованных представлений и праздников",
-      "url": "/course/view.php?id=15359"
+      "url": "/course/view.php?id=15359",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 38.03.02 Менеджмент",
-      "url": "/course/view.php?id=15385"
+      "url": "/course/view.php?id=15385",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 44.03.01 Педагогическое образование",
-      "url": "/course/view.php?id=15384"
+      "url": "/course/view.php?id=15384",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 42.03.01 Реклама и связи с общественностью",
-      "url": "/course/view.php?id=15383"
+      "url": "/course/view.php?id=15383",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 51.03.05 Режиссура театрализованных представлений и праздников",
-      "url": "/course/view.php?id=15360"
+      "url": "/course/view.php?id=15360",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 49.03.01 Физическая культура, Профиль (направленность) Физкультурно-оздоровительна",
-      "url": "/course/view.php?id=19137"
+      "url": "/course/view.php?id=19137",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 49.03.03 Рекреация и спортивно-оздоровительный туризм",
-      "url": "/course/view.php?id=15203"
+      "url": "/course/view.php?id=15203",
+      "include": "расписание занятий"
     },
     {
       "label": "1 курс, 49.03.02 Физическая культура для лиц с отклонениями в состоянии здоровья (адаптивн",
-      "url": "/course/view.php?id=15202"
+      "url": "/course/view.php?id=15202",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 49.03.01 Физическая культура, Профиль (направленность) Физкультурно-оздоровительна",
-      "url": "/course/view.php?id=19138"
+      "url": "/course/view.php?id=19138",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 49.03.02 Физическая культура для лиц с отклонениями в состоянии здоровья (адаптивн",
-      "url": "/course/view.php?id=15368"
+      "url": "/course/view.php?id=15368",
+      "include": "расписание занятий"
     },
     {
       "label": "2 курс, 49.03.03 Рекреация и спортивно-оздоровительный туризм",
-      "url": "/course/view.php?id=15361"
+      "url": "/course/view.php?id=15361",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 49.03.01 Физическая культура, Профиль (направленность) \"Физкультурно-оздоровительн",
-      "url": "/course/view.php?id=19139"
+      "url": "/course/view.php?id=19139",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 49.03.02 Физическая культура для лиц с отклонениями в состоянии здоровья (адаптивн",
-      "url": "/course/view.php?id=15369"
+      "url": "/course/view.php?id=15369",
+      "include": "расписание занятий"
     },
     {
       "label": "3 курс, 49.03.03 Рекреация и спортивно-оздоровительный туризм",
-      "url": "/course/view.php?id=15362"
+      "url": "/course/view.php?id=15362",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 43.03.03 Гостиничное дело",
-      "url": "/course/view.php?id=24452"
+      "url": "/course/view.php?id=24452",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 49.03.01 Физическая культура.",
-      "url": "/course/view.php?id=19136"
+      "url": "/course/view.php?id=19136",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 49.03.02 Физическая культура для лиц с отклонениями в состоянии здоровья (адаптивн",
-      "url": "/course/view.php?id=15370"
+      "url": "/course/view.php?id=15370",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 43.03.02 Туризм",
-      "url": "/course/view.php?id=15366"
+      "url": "/course/view.php?id=15366",
+      "include": "расписание занятий"
     },
     {
       "label": "4 курс, 49.03.03 Рекреация и спортивно-оздоровительный туризм",
-      "url": "/course/view.php?id=15363"
+      "url": "/course/view.php?id=15363",
+      "include": "расписание занятий"
     }
   ],
   "resources": []
