@@ -339,4 +339,4 @@ def test_action_buttons_call_the_command_handlers(env, monkeypatch):
     asyncio.run(bot.on_action(Update(), Ctx()))
     assert "дату" in sent[-1]
     labels = [b.text for row in bot.actions_markup().inline_keyboard for b in row]
-    assert len(labels) == 6 and bot.actions_markup().inline_keyboard[0][0].web_app
+    assert len(labels) == 5 and "Сегодня" not in labels and bot.actions_markup().inline_keyboard[0][0].web_app
