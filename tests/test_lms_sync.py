@@ -296,3 +296,14 @@ def test_run_stops_when_time_is_up(env, monkeypatch):
     monkeypatch.setattr(lms_sync, "time", fake_time)  # подменяем только в модуле подгрузки, не во всём процессе
     report = run(env, FakeMoodle())
     assert any("вышел срок" in p for p in report.problems)
+
+
+def test_files_left_over_from_old_runs_are_not_shown(env):
+    """Файл, которого уже нет на страницах курсов (например, от прошлого обхода сайта), в расписание не попадает,
+    хотя в базе остаётся."""
+    schedule_dir, conn = env
+    run(env, FakeMoodle())
+    lms_sync.save_synced_file(conn, "старый магистерский.xls", "старый магистерский.xls", b"x", "sha", "2026-10-12T00:00:00+00:00", "{}", 1)
+    assert "старый магистерский.xls" in {i["key"] for i in list_synced_files(conn)}
+    assert "старый магистерский.xls" not in lms_sync.active_keys(conn)
+    assert lms_sync.active_keys(conn)
