@@ -3,6 +3,7 @@ import csv
 import io
 import logging
 import os
+from types import SimpleNamespace
 import re
 import secrets
 from datetime import datetime
@@ -79,11 +80,17 @@ START_TEXT = (
     "Если ничего не происходит — подожди и повтори."
 )
 
-DONE_TEXT = (
-    "Готово, запомнил: {title}.\n"
-    "/app — расписание в мини-приложении, /day, /week, /nweek, /weekdate — расписание в чате, "
-    "/group — сменить группу."
-)
+DONE_TEXT = "Готово, запомнил: {title}.\nВыбери, что показать:"
+
+
+def actions_markup():
+    """Кнопки под выбранной группой: то же, что команды /app, /day, /week, /nweek, /weekdate, /group."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📱 Мини-приложение", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton("Сегодня", callback_data="a:day"), InlineKeyboardButton("Неделя", callback_data="a:week")],
+        [InlineKeyboardButton("След. неделя", callback_data="a:nweek"), InlineKeyboardButton("По дате", callback_data="a:date")],
+        [InlineKeyboardButton("Сменить группу", callback_data="a:group")],
+    ])
 
 
 # --- выбор курса, направления и группы кнопками ---
@@ -153,7 +160,7 @@ async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("Такой группы нет в расписании. Попробуй /group ещё раз.")
             return
         set_user_group(conn, query.from_user.id, group)
-        await query.edit_message_text(DONE_TEXT.format(title=group.title))
+        await query.edit_message_text(DONE_TEXT.format(title=group.title), reply_markup=actions_markup())
         return
 
     if parts[0] == "c" and len(parts) >= 2 and parts[1].isdigit():
@@ -165,6 +172,26 @@ async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         text, markup = picker_screen()
     await query.edit_message_text(text, reply_markup=markup)
+
+
+async def on_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Кнопки под выбранной группой вызывают те же обработчики, что и команды."""
+    query = update.callback_query
+    await query.answer()
+    action = (query.data or "").split(":", 1)[-1]
+    # обработчики команд читают update.message и update.effective_user: подставляем сообщение с кнопкой и нажавшего
+    shim = SimpleNamespace(message=query.message, effective_user=query.from_user, callback_query=query)
+    if action == "day":
+        await day(shim, context)
+    elif action == "week":
+        await week(shim, context)
+    elif action == "nweek":
+        await nweek(shim, context)
+    elif action == "group":
+        await group_command(shim, context)
+    elif action == "date":
+        context.user_data["await_date"] = True
+        await query.message.reply_text("Напиши дату, например 05.10 или 05.10.2026. Покажу неделю, в которую она попадает.")
 
 
 async def track_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -485,6 +512,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     telegram_id = update.effective_user.id
 
+    # после кнопки «По дате» следующее сообщение с датой показывает неделю
+    if context.user_data.pop("await_date", False) and parse_input_date(text):
+        context.args = [text]
+        await weekdate(update, context)
+        return
+
     # владелец может переслать боту сообщения /users: пользователи из них добавляются в базу
     if _is_owner(update):
         restored = parse_users_backup(text)
@@ -505,7 +538,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if len(matches) == 1:
         set_user_group(conn, telegram_id, matches[0])
-        await update.message.reply_text(DONE_TEXT.format(title=matches[0].title))
+        await update.message.reply_text(DONE_TEXT.format(title=matches[0].title), reply_markup=actions_markup())
     elif matches:
         await update.message.reply_text(
             "Такая группа есть на нескольких направлениях, выбери свою:",
@@ -676,6 +709,7 @@ def build_application():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("group", group_command))
     application.add_handler(CallbackQueryHandler(on_pick, pattern=r"^(p|c|g|b)(:|$)"))
+    application.add_handler(CallbackQueryHandler(on_action, pattern=r"^a:"))
     application.add_handler(CommandHandler("week", week))
     application.add_handler(CommandHandler("nweek", nweek))
     application.add_handler(CommandHandler("day", day))
