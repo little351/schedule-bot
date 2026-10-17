@@ -565,3 +565,28 @@ def test_user_stats_counts_without_personal_data():
     assert "Всего пользователей: 4" in text and "2 курс: 2" in text
     assert "4 группа (49.03.04, 2 курс): 2" in text
     assert "@" not in text and "id" not in text.lower().split()  # ни username, ни ID
+
+
+def test_lms_check_reports_each_step_and_hides_password():
+    import httpx
+    from lms_check import run_checks
+
+    login_form = ('<form id="login"><input name="logintoken" value="tok123"><input name="username"></form>')
+    seen = {}
+
+    def handler(request):
+        if request.method == "POST":
+            seen["body"] = request.content.decode()
+            return httpx.Response(200, text='<a href="/login/logout.php">Выход</a>')
+        return httpx.Response(200, text=login_form)
+
+    lines = run_checks("https://lms.example", "user1", "s3cretpass", do_login=True, transport=httpx.MockTransport(handler))
+    text = "\n".join(lines)
+    assert "токен формы (logintoken): есть" in text and "вход выполнен" in text
+    assert "logintoken=tok123" in seen["body"] and "s3cretpass" not in text and "user1" not in text
+
+    def hangs(request):
+        raise httpx.ReadTimeout("slow")
+
+    lines = run_checks("https://lms.example", do_login=True, transport=httpx.MockTransport(hangs))
+    assert "страница входа: ReadTimeout" in "\n".join(lines)  # шаг, на котором сайт молчит, виден в отчёте

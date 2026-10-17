@@ -293,6 +293,17 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     + format_stats(stats, lambda code: get_program_name(conn, code)))
 
 
+async def lms_check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Диагностика доступа к сайту вуза: на каком шаге обрывается вход. Пароль в ответ не попадает."""
+    import lms_check
+    do_login = bool(context.args) and context.args[0].lower() == "login"
+    await update.message.reply_text("Проверяю доступ к сайту вуза, это займёт до минуты...")
+    lines = await asyncio.to_thread(
+        lms_check.run_checks, login=os.environ.get("LMS_LOGIN", "").strip(),
+        password=os.environ.get("LMS_PASSWORD", ""), do_login=do_login)
+    await update.message.reply_text("\n".join(lines))
+
+
 # --- рассылка (только владелец) ---
 BROADCAST_PAUSE = 0.05  # около 20 сообщений в секунду, лимит Telegram для рассылки - 30
 BROADCAST_MAX_LEN = 4000
@@ -582,6 +593,7 @@ def build_application():
         # всем остальным /users не отвечает вовсе: команда нигде не публикуется
         application.add_handler(CommandHandler("users", users_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CommandHandler("stats", stats_command, filters=filters.User(user_id=int(OWNER_ID))))
+        application.add_handler(CommandHandler("lms_check", lms_check_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CommandHandler("backup", backup_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CommandHandler("broadcast", broadcast_command, filters=filters.User(user_id=int(OWNER_ID))))
         application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
