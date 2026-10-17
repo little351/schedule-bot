@@ -307,3 +307,36 @@ def test_files_left_over_from_old_runs_are_not_shown(env):
     assert "старый магистерский.xls" in {i["key"] for i in list_synced_files(conn)}
     assert "старый магистерский.xls" not in lms_sync.active_keys(conn)
     assert lms_sync.active_keys(conn)
+
+
+def test_action_buttons_call_the_command_handlers(env, monkeypatch):
+    import bot
+    schedule_dir, conn = env
+    monkeypatch.setattr(bot, "conn", conn)
+    sent = []
+
+    class Msg:
+        async def reply_text(self, text, **kw):
+            sent.append(text)
+
+    class Query:
+        data = "a:week"
+        message = Msg()
+        from_user = type("U", (), {"id": 123})()
+
+        async def answer(self):
+            pass
+
+    class Update:
+        callback_query = Query()
+
+    class Ctx:
+        user_data = {}
+
+    asyncio.run(bot.on_action(Update(), Ctx()))
+    assert sent == [bot.NO_GROUP_MSG]  # группа не выбрана: тот же ответ, что у /week
+    Query.data = "a:date"
+    asyncio.run(bot.on_action(Update(), Ctx()))
+    assert "дату" in sent[-1]
+    labels = [b.text for row in bot.actions_markup().inline_keyboard for b in row]
+    assert len(labels) == 6 and bot.actions_markup().inline_keyboard[0][0].web_app
