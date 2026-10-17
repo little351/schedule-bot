@@ -314,12 +314,26 @@ def disk_records(schedule_dir):
     return parse_all(schedule_dir)
 
 
+def active_keys(conn):
+    """Файлы, которые были на страницах курсов при последней подгрузке; None, если подгрузка так не запускалась."""
+    raw = get_sync_state(conn, "active_keys")
+    if not raw:
+        return None
+    try:
+        return set(json.loads(raw))
+    except ValueError:
+        return None
+
+
 def merged_records(conn, schedule_dir):
     """Расписание для бота: файлы из папки data/ (репозиторий и загрузки владельца), поверх них
     группы из свежей подгрузки. Подгруженный файл, который не читается, пропускается."""
     records = disk_records(schedule_dir)
     override = {}
+    active = active_keys(conn)
     for item in list_synced_files(conn, with_content=True):
+        if active is None or item["key"] not in active:
+            continue  # файл остался от прошлых запусков и сейчас на страницах курсов не лежит
         try:
             ext = file_extension(item["file_name"], item["content"])
             if not ext:
@@ -475,6 +489,15 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
         except Exception as e:
             logger.error("подгрузка: файл %s: %s", file_name, scrub(f"{type(e).__name__}: {e}"))
             report.problem(f"{file_name}: не удалось обработать ({type(e).__name__}), осталась прошлая версия или запасной источник")
+    stored_now = {item["key"] for item in list_synced_files(conn)}
+    seen = {file_name.lower() for _, file_name, content in downloads} & stored_now
+    if seen:
+        previous = active_keys(conn)
+        if errors and previous:
+            seen |= previous  # часть страниц не открылась: прежние файлы не выбрасываем
+        if previous != seen:
+            set_sync_state(conn, "active_keys", json.dumps(sorted(seen), ensure_ascii=False))
+            report.changed = True
     gc.collect()
     report.info(f"Память после обработки: {memory_mb() or '?'} МБ")
     return report
