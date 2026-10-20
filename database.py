@@ -7,14 +7,14 @@ from typing import NamedTuple
 
 try:
     from zoneinfo import ZoneInfo
-    _LOCAL_TZ = ZoneInfo("Europe/Moscow")
+    LOCAL_TZ = ZoneInfo("Europe/Moscow")
 except Exception:  # нет базы часовых поясов в системе: Москва - это UTC+3 без перехода на летнее время
-    _LOCAL_TZ = timezone(timedelta(hours=3))
+    LOCAL_TZ = timezone(timedelta(hours=3))
 
 
 def now_local():
     """Текущее время по Москве (сервер живёт в UTC, а «сегодня» для студентов - московское)."""
-    return datetime.now(_LOCAL_TZ).replace(tzinfo=None)
+    return datetime.now(LOCAL_TZ).replace(tzinfo=None)
 
 # колонки таблицы users, добавленные после первой версии (миграция идёт при старте)
 USER_EXTRA_COLUMNS = [
