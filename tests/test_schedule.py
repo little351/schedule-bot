@@ -590,3 +590,15 @@ def test_lms_check_reports_each_step_and_hides_password():
 
     lines = run_checks("https://lms.example", do_login=True, transport=httpx.MockTransport(hangs))
     assert "страница входа: ReadTimeout" in "\n".join(lines)  # шаг, на котором сайт молчит, виден в отчёте
+
+
+def test_subgroup_after_group_number_in_code():
+    """Сестринское дело: «группы Т1-12/1-26, Т1-12/2-26», в столбце «группа» стоят 1 и 2."""
+    from schedule_parsers.common import GROUP_CODE_RE
+    from schedule_parsers.matrix_by_discipline import _row_groups
+    header = "Специальность 34.02.01 Сестринское дело, курс 1, группы Т1-12/1-26, Т1-12/2-26"
+    groups = GROUP_CODE_RE.findall(header)
+    assert groups == ["Т1-12/1-26", "Т1-12/2-26"]
+    assert GROUP_CODE_RE.findall("группы Т2-07-26/1, Т2-07-26/2") == ["Т2-07-26/1", "Т2-07-26/2"]
+    assert _row_groups("1", groups) == [(1, "Т1-12/1-26")]
+    assert _row_groups("2", groups) == [(2, "Т1-12/2-26")]
