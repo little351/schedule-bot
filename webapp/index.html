@@ -224,25 +224,51 @@
   }
 
   /* --- Вкладка "Другое" --- */
-  .sub-tabs {
+  .menu-card {
     display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    overflow-x: auto;
-  }
-  .sub-tab {
+    align-items: center;
+    gap: 16px;
+    width: 100%;
     background: var(--card);
-    color: var(--hint);
     border: none;
-    border-radius: 18px;
-    padding: 8px 14px;
-    font-size: 14px;
-    white-space: nowrap;
-    flex: 0 0 auto;
+    border-radius: 24px;
+    padding: 18px 16px;
+    margin-bottom: 12px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: left;
   }
-  .sub-tab.active {
-    background: var(--accent);
-    color: #ffffff;
+  .menu-card:active { background: var(--card-pressed); }
+  .menu-icon {
+    flex: 0 0 auto;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+  }
+  .menu-icon.orange { background: rgba(255, 159, 10, 0.18); }
+  .menu-icon.purple { background: rgba(175, 82, 222, 0.2); }
+  .menu-title { flex: 1; }
+  .menu-arrow { color: var(--hint); font-size: 22px; }
+  .screen-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .screen-head h1 { margin: 0; }
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 30px;
+    line-height: 1;
+    padding: 0 8px 4px 0;
   }
   .rand-card {
     position: relative;
@@ -411,7 +437,30 @@
     font-family: inherit;
   }
   .note-form-row { display: flex; gap: 8px; }
-  .note-form-row input[type="date"] { flex: 1; min-width: 0; }
+  .note-form-row .date-input { flex: 1; min-width: 0; }
+  .note-form input.bad { border-color: #ff453a; }
+  .note-error { color: #ff453a; font-size: 12px; min-height: 0; }
+  .cal-btn {
+    position: relative;
+    flex: 0 0 auto;
+    width: 44px;
+    background: var(--card-pressed);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    overflow: hidden;
+  }
+  .cal-btn input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    border: none;
+    padding: 0;
+  }
   .note-add {
     background: var(--accent);
     color: #ffffff;
@@ -533,27 +582,34 @@
 </div>
 
 <div id="otherTab" style="display:none;">
-  <h1>Другое</h1>
-
-  <div class="sub-tabs">
-    <button class="sub-tab active" id="subNotes">📝 Заметки и дедлайны</button>
-    <button class="sub-tab" id="subRandom">🎲 Рандомайзер</button>
+  <div id="otherMenu">
+    <h1>Другое</h1>
+    <button class="menu-card" data-screen="paneNotes">
+      <span class="menu-icon orange">📝</span><span class="menu-title">Заметки и дедлайны</span><span class="menu-arrow">›</span>
+    </button>
+    <button class="menu-card" data-screen="paneRandom">
+      <span class="menu-icon purple">🎲</span><span class="menu-title">Рандомайзер</span><span class="menu-arrow">›</span>
+    </button>
   </div>
 
-  <div id="paneNotes">
+  <div id="paneNotes" class="other-screen" style="display:none;">
+    <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Заметки и дедлайны</h1></div>
     <div class="note-form">
       <input type="text" id="noteSubject" list="noteSubjects" placeholder="Предмет" maxlength="100" autocomplete="off">
       <datalist id="noteSubjects"></datalist>
       <input type="text" id="noteText" placeholder="Заметка или задание" maxlength="500" autocomplete="off">
       <div class="note-form-row">
-        <input type="date" id="noteDue" aria-label="Дедлайн">
-        <button class="note-add" id="noteAdd">Добавить</button>
+        <input type="text" class="date-input" id="noteDue" placeholder="Дедлайн: ДД.ММ или ДД.ММ.ГГГГ" inputmode="numeric" maxlength="10" autocomplete="off">
+        <label class="cal-btn" aria-label="Выбрать дату в календаре">📅<input type="date" id="noteDuePicker"></label>
       </div>
+      <div class="note-error" id="noteError"></div>
+      <div class="note-form-row"><button class="note-add" id="noteAdd" style="flex:1;padding:12px;">Добавить</button></div>
     </div>
     <div id="notesList"></div>
   </div>
 
-  <div id="paneRandom" style="display:none;">
+  <div id="paneRandom" class="other-screen" style="display:none;">
+  <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Рандомайзер</h1></div>
   <div class="rand-card" id="randCard">
     <button class="rand-gear" id="randGear" aria-label="Настройки">⚙️</button>
     <div class="rand-title" id="randTitle"></div>
@@ -834,18 +890,22 @@ for (const tab of tabs) {
   });
 }
 
-// --- Подвкладки раздела «Другое» ---
-const subTabs = [
-  { pane: document.getElementById("paneNotes"), btn: document.getElementById("subNotes") },
-  { pane: document.getElementById("paneRandom"), btn: document.getElementById("subRandom") },
-];
-for (const sub of subTabs) {
-  sub.btn.addEventListener("click", () => {
-    for (const t of subTabs) {
-      t.pane.style.display = t === sub ? "" : "none";
-      t.btn.classList.toggle("active", t === sub);
-    }
+// --- Раздел «Другое»: список пунктов и отдельные экраны с кнопкой «назад» ---
+const otherMenu = document.getElementById("otherMenu");
+const otherScreens = [...document.querySelectorAll(".other-screen")];
+function showOther(id) {
+  otherMenu.style.display = id ? "none" : "";
+  for (const sc of otherScreens) sc.style.display = sc.id === id ? "" : "none";
+  window.scrollTo(0, 0);
+}
+for (const card of document.querySelectorAll(".menu-card")) {
+  card.addEventListener("click", () => {
+    showOther(card.dataset.screen);
+    if (card.dataset.screen === "paneNotes" && !notesLoaded) loadNotes();
   });
+}
+for (const back of document.querySelectorAll(".back-btn")) {
+  back.addEventListener("click", () => showOther(null));
 }
 
 // --- Заметки и дедлайны по предметам (хранятся на сервере по id пользователя) ---
@@ -853,6 +913,44 @@ const notesList = document.getElementById("notesList");
 const noteSubject = document.getElementById("noteSubject");
 const noteText = document.getElementById("noteText");
 const noteDue = document.getElementById("noteDue");
+const noteDuePicker = document.getElementById("noteDuePicker");
+const noteError = document.getElementById("noteError");
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+
+function parseDueInput(text) {
+  // ДД.ММ или ДД.ММ.ГГГГ (разделитель . / - или пробел) -> ГГГГ-ММ-ДД; "" -> null; ошибка -> undefined.
+  // Без года берётся текущий, а если такая дата уже прошла - следующий.
+  const t = text.trim();
+  if (!t) return null;
+  const m = t.match(/^(\d{1,2})[.\/\- ](\d{1,2})(?:[.\/\- ](\d{2}|\d{4}))?$/);
+  if (!m) return undefined;
+  const day = Number(m[1]), month = Number(m[2]);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let year;
+  if (m[3]) {
+    year = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+  } else {
+    year = today.getFullYear();
+    if (new Date(year, month - 1, day) < today) year += 1;
+  }
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return undefined;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+noteDuePicker.addEventListener("change", () => {
+  // дата из календаря подставляется в поле
+  if (!noteDuePicker.value) return;
+  const [y, m, d] = noteDuePicker.value.split("-");
+  noteDue.value = `${d}.${m}.${y}`;
+  noteDue.classList.remove("bad");
+  noteError.textContent = "";
+});
+noteDue.addEventListener("input", () => {
+  noteDue.classList.remove("bad");
+  noteError.textContent = "";
+});
 const noteAdd = document.getElementById("noteAdd");
 let notesLoaded = false;
 
@@ -968,21 +1066,24 @@ async function loadNotes() {
 
 noteAdd.addEventListener("click", async () => {
   if (!noteSubject.value.trim() && !noteText.value.trim()) return;
+  const due = parseDueInput(noteDue.value);
+  if (due === undefined) {
+    noteDue.classList.add("bad");
+    noteError.textContent = "Не понял дату. Пиши так: 25.10 или 25.10.2026";
+    return;
+  }
   noteAdd.disabled = true;
   try {
     renderNotes((await notesApi("POST", "", {
-      subject: noteSubject.value, text: noteText.value, due_date: noteDue.value || null,
+      subject: noteSubject.value, text: noteText.value, due_date: due,
     })).notes);
     noteText.value = "";
     noteDue.value = "";
+    noteDuePicker.value = "";
   } catch (err) {
     notesError(err);
   }
   noteAdd.disabled = false;
-});
-
-document.getElementById("tabOther").addEventListener("click", () => {
-  if (!notesLoaded) loadNotes();
 });
 
 // --- Рандомайзер: по умолчанию "Идти на пару или нет" 50/50, настройки живут только до закрытия приложения ---
