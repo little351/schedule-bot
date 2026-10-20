@@ -74,10 +74,6 @@ class Workbook:
         self.path = path
         self.sheets = sheets  # список Sheet в порядке следования в файле
 
-    @property
-    def sheet_names(self):
-        return [s.name for s in self.sheets]
-
 
 def _open_xlsx(path):
     import openpyxl.reader.excel as xl_reader

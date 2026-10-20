@@ -462,9 +462,6 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
 
     if list_only:
         for url, names in listing:
-            if not names and url.startswith("просмотрено"):
-                report.info(url)
-                continue
             report.info(f"{url}: файлов {len(names)}")
             report.lines.extend(f"  • {name}" for name in names[:60])
         for error in errors:

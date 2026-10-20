@@ -19,6 +19,7 @@ def trim_trailing_empty(slots):
         return None
     return slots[:last_idx + 1]
 
+
 def format_week_text(group_name, week_sheet, grid):
     lines = [f"*Неделя {escape_md(week_sheet)}*", f"*Расписание {escape_md(group_name)}*", ""]
     for day in DAYS_ORDER:
@@ -38,28 +39,6 @@ def format_week_text(group_name, week_sheet, grid):
             lines.append(f"*{PRACTICE_SLOT}* — {escape_md(practice)}")
         lines.append("")
     return "\n".join(lines).strip()
-
-
-def format_day_text(group_name, week_sheet, day_name, grid):
-    if day_name not in grid:
-        return f"На {day_name.lower()} пар нет \\(выходной\\)\\."
-
-    subjects = [grid[day_name][t] for t in TIME_SLOTS]
-    trimmed = trim_trailing_empty(subjects)
-    practice = grid[day_name].get(PRACTICE_SLOT)
-    if trimmed is None and not practice:
-        return f"На {escape_md(day_name.lower())} пар нет\\."
-
-    lines = [f"*{day_name}*, неделя {escape_md(week_sheet)}", f"*Расписание {escape_md(group_name)}*", ""]
-    for t, subj in zip(TIME_SLOTS, trimmed or []):
-        display_time = escape_md(t.replace(".", ":"))
-        if subj:
-            lines.append(f"*{display_time}* — {escape_md(subj)}")
-        else:
-            lines.append(f"*{display_time}* —")
-    if practice:
-        lines.append(f"*{PRACTICE_SLOT}* — {escape_md(practice)}")
-    return "\n".join(lines)
 
 
 def with_donation_note(text):

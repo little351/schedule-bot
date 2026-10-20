@@ -151,7 +151,6 @@
     flex: 0 1 auto;  /* не влезает - сжимается, лишний текст обрезается, строка не переносится */
   }
   .group-select {
-    box-sizing: border-box;
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
@@ -1105,7 +1104,7 @@ function dueInfo(due) {
   const target = new Date(y, m - 1, d);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diff = Math.round((target - today) / 86400000);
-  const label = `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}`;
+  const label = `${pad2(d)}.${pad2(m)}`;
   if (diff < 0) return { text: `просрочено, было до ${label}`, cls: "late" };
   if (diff === 0) return { text: "сегодня", cls: "soon" };
   if (diff === 1) return { text: "завтра", cls: "soon" };
@@ -1166,7 +1165,7 @@ function renderNotes(notes) {
   }
 }
 
-function notesError(err) {
+function notesError() {
   notesList.textContent = "";
   const msg = document.createElement("div");
   msg.className = "notes-empty";
@@ -1178,7 +1177,7 @@ async function changeNotes(method, path, body) {
   try {
     renderNotes((await notesApi(method, path, body)).notes);
   } catch (err) {
-    notesError(err);
+    notesError();
   }
 }
 
@@ -1195,7 +1194,7 @@ async function loadNotes() {
     renderNotes(data.notes);
     notesLoaded = true;
   } catch (err) {
-    notesError(err);
+    notesError();
   }
 }
 
@@ -1216,7 +1215,7 @@ noteAdd.addEventListener("click", async () => {
     noteDue.value = "";
     noteDuePicker.value = "";
   } catch (err) {
-    notesError(err);
+    notesError();
   }
   noteAdd.disabled = false;
 });

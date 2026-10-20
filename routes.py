@@ -8,7 +8,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from database import (
-    DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS, WEEKDAY_MAP, GroupRef, find_groups, get_catalog, get_day_lessons,
+    DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS, WEEKDAY_MAP, GroupRef, get_catalog, get_day_lessons,
     get_groups, get_relative_week_sheet, get_user_group, get_week_schedule_grid, set_user_group,
     touch_user, NOTES_LIMIT, add_note, count_notes, delete_note, get_group_subjects, list_notes, update_note,
 )

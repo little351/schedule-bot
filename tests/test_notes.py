@@ -77,7 +77,7 @@ def test_note_validation(tmp_path):
 
 
 def test_teachers_file_is_valid_and_served(tmp_path):
-    from routes import TEACHERS_FILE, load_teachers
+    from routes import load_teachers
     departments = load_teachers()
     assert departments and all(d["name"] and d["teachers"] for d in departments)
     assert all(t["name"] and t["id"] and t["position"] for d in departments for t in d["teachers"])
