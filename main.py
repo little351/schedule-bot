@@ -1,7 +1,9 @@
 import asyncio
+import hashlib
+import hmac
 import os
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
@@ -12,6 +14,9 @@ from routes import build_router
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "hook")
 WEBHOOK_PATH = f"/telegram/{WEBHOOK_SECRET}"
+# Telegram присылает этот токен в заголовке каждого обновления: без него запрос не от Telegram.
+# Выводится из токена бота, поэтому одинаков при каждом запуске и не угадывается снаружи
+TELEGRAM_SECRET_TOKEN = hashlib.sha256(f"webhook:{TOKEN}".encode()).hexdigest()
 
 app = FastAPI()
 application = build_application()
@@ -32,7 +37,7 @@ async def startup():
 
     await application.initialize()
     await post_init(application)
-    await application.bot.set_webhook(url=f"{PUBLIC_URL}{WEBHOOK_PATH}")
+    await application.bot.set_webhook(url=f"{PUBLIC_URL}{WEBHOOK_PATH}", secret_token=TELEGRAM_SECRET_TOKEN)
     # автоподгрузка расписания с сайта вуза: работает, только если заданы LMS_LOGIN и LMS_PASSWORD
     app.state.lms_task = asyncio.create_task(lms_scheduler(application))
 
@@ -47,6 +52,9 @@ async def shutdown():
 
 @app.post(WEBHOOK_PATH)
 async def telegram_webhook(request: Request):
+    received = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not hmac.compare_digest(received, TELEGRAM_SECRET_TOKEN):
+        raise HTTPException(status_code=403)
     data = await request.json()
     update = Update.de_json(data, application.bot)
     await application.process_update(update)
