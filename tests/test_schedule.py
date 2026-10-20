@@ -601,3 +601,19 @@ def test_subgroup_after_group_number_in_code():
     assert GROUP_CODE_RE.findall("группы Т2-07-26/1, Т2-07-26/2") == ["Т2-07-26/1", "Т2-07-26/2"]
     assert _row_groups("1", groups) == [(1, "Т1-12/1-26")]
     assert _row_groups("2", groups) == [(2, "Т1-12/2-26")]
+
+
+def test_seventh_pair_is_shown(tmp_path):
+    """Вечерние группы (Сестринское дело) учатся до 7-й пары 20:20-21:50."""
+    from datetime import datetime
+    from database import get_day_lessons, get_week_schedule_grid
+    from formatting import format_week_text
+    conn = init_db(str(tmp_path / "s.db"))
+    base = {"program": "34.02.01", "program_name": "Сестринское дело", "course": 1, "group": "Т1-12/1-26",
+            "week_sheet": "05.10", "day": "Понедельник", "date": datetime(2026, 10, 5)}
+    save_schedule(conn, [{**base, "time": "18.30-20.00", "subject": "Шестая"},
+                         {**base, "time": "20.20-21.50", "subject": "Седьмая"}])
+    group = GroupRef("34.02.01", 1, "Т1-12/1-26")
+    _, lessons = get_day_lessons(conn, group, datetime(2026, 10, 5))
+    assert [(x["time_start"], x["subject"]) for x in lessons] == [("18:30", "Шестая"), ("20:20", "Седьмая")]
+    assert "Седьмая" in format_week_text(group.title, "05.10", get_week_schedule_grid(conn, group, "05.10"))
