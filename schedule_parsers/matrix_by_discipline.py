@@ -123,10 +123,10 @@ def _room_for(room, marker, weekday, slot):
 def _group_numbers(code, position):
     """Номера, по которым группу называют в ячейке преподавателя: суффикс '/2', номер в коде, место в шапке."""
     numbers = []
-    m = re.search(r"/(\d)$", code)
+    m = re.search(r"/(\d)(?:-\d{2})?$", code)
     if m:
         numbers.append(int(m.group(1)))
-    m = re.search(r"-(\d+)-\d{2}", code)
+    m = re.search(r"-(\d+)(?:/\d)?-\d{2}", code)
     if m:
         numbers.append(int(m.group(1)))
     numbers.append(position)

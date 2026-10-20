@@ -17,7 +17,8 @@ DEFAULT_SLOT_TIMES = {
 PROGRAM_RE = re.compile(r"(\d{2}\.\d{2}\.\d{2})\s+(.+?)(?=\s*(?:[,;(*\n]|[Пп]рофиль|$))", re.DOTALL)
 GROUPS_PREFIX_RE = re.compile(r"\bгрупп[аы]?\s+(?=[А-ЯA-Z]{1,2}\d)", re.IGNORECASE)
 COURSE_RE = re.compile(r"[Кк]урс\s+(\d+)")
-GROUP_CODE_RE = re.compile(r"[А-ЯA-Z]{1,2}\d-\d{1,2}[А-Я]?-\d{2}(?:/\d)?")
+# подгруппа может стоять в конце (Т2-07-26/2) или после номера группы (Т1-12/1-26)
+GROUP_CODE_RE = re.compile(r"[А-ЯA-Z]{1,2}\d-\d{1,2}[А-Я]?(?:/\d)?-\d{2}(?:/\d)?")
 
 
 def normalize_group(name) -> str:
