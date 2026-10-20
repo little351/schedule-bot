@@ -1,0 +1,25 @@
+{
+  "departments": [
+    {
+      "id": "vodnye-vidy-sporta",
+      "name": "Кафедра теории и методики водных видов спорта",
+      "source": "https://gtsolifk.ru/obrazovanie/kafedri/kafedra_teorii_i_metodiki_vodnih_vidov_sporta",
+      "teachers": [
+        {
+          "name": "Попов Олег Игоревич",
+          "position": "Заведующий кафедрой",
+          "about": "Доктор педагогических наук, профессор",
+          "phone": "+7 (495) 961-31-11, доб. 50-26",
+          "email": "popov.oi@gtsolifk.ru"
+        },
+        {
+          "name": "Булгакова Нина Жановна",
+          "position": "Профессор",
+          "about": "Доктор педагогических наук, заслуженный профессор",
+          "phone": "",
+          "email": ""
+        }
+      ]
+    }
+  ]
+}
