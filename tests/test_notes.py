@@ -93,3 +93,42 @@ def test_teachers_file_is_valid_and_served(tmp_path):
     assert load_teachers(str(bad)) == []
     client = make_client(tmp_path)
     assert client.get("/api/teachers").json()["departments"] == departments
+
+
+def test_schedule_api_trusts_only_signed_user(tmp_path):
+    """Чужой telegram_id в запросе ничего не даёт: пользователь берётся из подписи Telegram."""
+    from datetime import datetime
+    from database import GroupRef, get_user_group, save_schedule, set_user_group
+    conn = init_db(str(tmp_path / "s.db"))
+    rec = {"program": "49.03.04", "program_name": "Спорт", "course": 1, "week_sheet": "05.10",
+           "day": "Понедельник", "date": datetime(2026, 10, 5), "time": "8.50-10.20", "subject": "Пара"}
+    save_schedule(conn, [{**rec, "group": "1 группа"}, {**rec, "group": "2 группа"}])
+    set_user_group(conn, 7, GroupRef("49.03.04", 1, "1 группа"))
+    app = FastAPI()
+    app.include_router(build_router(conn, TOKEN))
+    client = TestClient(app)
+    body = {"telegram_id": 7, "group": "2 группа", "program": "49.03.04", "course": 1}
+    assert client.post("/api/group", json=body).status_code == 403
+    assert client.get("/api/day?telegram_id=7&date=2026-10-05").status_code == 403
+    assert client.get("/api/catalog?telegram_id=7").json()["current"] is None
+    assert get_user_group(conn, 7).name == "1 группа"
+    # свой выбор по подписи: telegram_id в теле игнорируется
+    r = client.post("/api/group", json={**body, "telegram_id": 7}, headers={"X-Init-Data": init_data(8)})
+    assert r.status_code == 200 and get_user_group(conn, 8).name == "2 группа" and get_user_group(conn, 7).name == "1 группа"
+    h = {"X-Init-Data": init_data(8)}
+    assert client.get("/api/catalog", headers=h).json()["current"]["group"] == "2 группа"
+    assert client.get("/api/day?date=2026-10-05", headers=h).json()["lessons"][0]["subject"] == "Пара"
+
+
+def test_webhook_rejects_requests_without_telegram_secret(monkeypatch):
+    monkeypatch.setenv("PUBLIC_URL", "https://example.org")
+    monkeypatch.setenv("BOT_TOKEN", "123:abc")
+    import importlib
+    import bot
+    monkeypatch.setattr(bot, "TOKEN", "123:abc")
+    import main
+    main = importlib.reload(main)
+    client = TestClient(main.app)
+    assert client.post(main.WEBHOOK_PATH, json={"update_id": 1}).status_code == 403
+    assert client.post(main.WEBHOOK_PATH, json={"update_id": 1},
+                       headers={"X-Telegram-Bot-Api-Secret-Token": "wrong"}).status_code == 403
