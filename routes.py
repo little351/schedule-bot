@@ -2,13 +2,13 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from database import (
     DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS, WEEKDAY_MAP, GroupRef, find_groups, get_catalog, get_day_lessons,
     get_groups, get_relative_week_sheet, get_user_group, get_week_schedule_grid, set_user_group,
-    touch_user,
+    touch_user, NOTES_LIMIT, add_note, count_notes, delete_note, get_group_subjects, list_notes, update_note,
 )
 from formatting import trim_trailing_empty
 from telegram_auth import validate_init_data
@@ -23,6 +23,37 @@ class GroupBody(BaseModel):
 
 class VisitBody(BaseModel):
     init_data: str
+
+
+class NoteBody(BaseModel):
+    subject: str = ""
+    text: str = ""
+    due_date: Optional[str] = None  # ГГГГ-ММ-ДД
+
+
+class NotePatch(BaseModel):
+    subject: Optional[str] = None
+    text: Optional[str] = None
+    due_date: Optional[str] = None  # пустая строка убирает дедлайн
+    done: Optional[bool] = None
+
+
+def _clean_note_fields(subject=None, text=None, due_date=None):
+    """Проверка и очистка полей заметки; возвращает только переданные поля."""
+    out = {}
+    if subject is not None:
+        out["subject"] = subject.strip()[:100]
+    if text is not None:
+        out["text"] = text.strip()[:500]
+    if due_date is not None:
+        due_date = due_date.strip()
+        if due_date:
+            try:
+                datetime.strptime(due_date, "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(status_code=400, detail="bad_date")
+        out["due_date"] = due_date or None
+    return out
 
 
 def build_day_slots(grid, day_name):
@@ -125,5 +156,47 @@ def build_router(conn, bot_token) -> APIRouter:
         touch_user(conn, user["id"], user.get("username"),
                    " ".join(filter(None, [user.get("first_name"), user.get("last_name")])) or None)
         return {"ok": True}
+
+    def note_user(init_data):
+        """Заметки видит и меняет только сам пользователь: личность берётся из подписанных данных Telegram."""
+        user = validate_init_data(init_data or "", bot_token)
+        if not user:
+            raise HTTPException(status_code=403, detail="bad_init_data")
+        return user["id"]
+
+    @router.get("/notes")
+    def notes(x_init_data: str = Header(default="")):
+        user_id = note_user(x_init_data)
+        group = get_user_group(conn, user_id)
+        return {"notes": list_notes(conn, user_id), "subjects": get_group_subjects(conn, group) if group else []}
+
+    @router.post("/notes")
+    def create_note(body: NoteBody, x_init_data: str = Header(default="")):
+        user_id = note_user(x_init_data)
+        fields = _clean_note_fields(body.subject, body.text, body.due_date)
+        fields.setdefault("due_date", None)
+        if not fields["subject"] and not fields["text"]:
+            raise HTTPException(status_code=400, detail="empty_note")
+        if count_notes(conn, user_id) >= NOTES_LIMIT:
+            raise HTTPException(status_code=400, detail="too_many_notes")
+        add_note(conn, user_id, fields["subject"], fields["text"], fields["due_date"])
+        return {"notes": list_notes(conn, user_id)}
+
+    @router.patch("/notes/{note_id}")
+    def change_note(note_id: int, body: NotePatch, x_init_data: str = Header(default="")):
+        user_id = note_user(x_init_data)
+        fields = _clean_note_fields(body.subject, body.text, body.due_date)
+        if body.done is not None:
+            fields["done"] = 1 if body.done else 0
+        if not update_note(conn, user_id, note_id, **fields):
+            raise HTTPException(status_code=404, detail="note_not_found")
+        return {"notes": list_notes(conn, user_id)}
+
+    @router.delete("/notes/{note_id}")
+    def remove_note(note_id: int, x_init_data: str = Header(default="")):
+        user_id = note_user(x_init_data)
+        if not delete_note(conn, user_id, note_id):
+            raise HTTPException(status_code=404, detail="note_not_found")
+        return {"notes": list_notes(conn, user_id)}
 
     return router

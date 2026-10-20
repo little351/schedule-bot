@@ -80,6 +80,13 @@ if PG_DSN:
             )
         """)
         cur.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS notes (
+                id BIGSERIAL PRIMARY KEY, telegram_id BIGINT NOT NULL, subject TEXT, text TEXT,
+                due_date TEXT, done INTEGER NOT NULL DEFAULT 0, created_at TEXT
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS notes_user ON notes (telegram_id)")
 
 
 def storage_name():
@@ -141,6 +148,13 @@ def init_db(path="schedule.db"):
         )
     """)
     conn.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_id INTEGER NOT NULL, subject TEXT, text TEXT,
+            due_date TEXT, done INTEGER NOT NULL DEFAULT 0, created_at TEXT
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS notes_user ON notes (telegram_id)")
     conn.commit()
     return conn
 
@@ -549,3 +563,89 @@ def find_groups(conn, text, program=None, course=None):
 def get_program_name(conn, code):
     row = conn.execute("SELECT name FROM programs WHERE code = ?", (code,)).fetchone()
     return row[0] if row else code
+
+
+# ---------- заметки и дедлайны по предметам (хранятся по id пользователя) ----------
+
+NOTES_LIMIT = 300  # заметок на одного пользователя
+NOTE_FIELDS = "id, subject, text, due_date, done, created_at"
+
+
+def _note_dict(row):
+    return {"id": row[0], "subject": row[1] or "", "text": row[2] or "", "due_date": row[3] or None,
+            "done": bool(row[4]), "created_at": row[5]}
+
+
+def list_notes(conn, telegram_id):
+    """Заметки пользователя: сначала несделанные, по дате дедлайна (без даты в конце), потом сделанные."""
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute(f"SELECT {NOTE_FIELDS} FROM notes WHERE telegram_id = %s", (telegram_id,))
+            rows = cur.fetchall()
+    else:
+        rows = conn.execute(f"SELECT {NOTE_FIELDS} FROM notes WHERE telegram_id = ?", (telegram_id,)).fetchall()
+    notes = [_note_dict(r) for r in rows]
+    notes.sort(key=lambda n: (n["done"], n["due_date"] is None, n["due_date"] or "", n["id"]))
+    return notes
+
+
+def count_notes(conn, telegram_id):
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM notes WHERE telegram_id = %s", (telegram_id,))
+            return cur.fetchone()[0]
+    return conn.execute("SELECT COUNT(*) FROM notes WHERE telegram_id = ?", (telegram_id,)).fetchone()[0]
+
+
+def add_note(conn, telegram_id, subject, text, due_date=None):
+    created = now_local().strftime("%Y-%m-%dT%H:%M:%S")
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute("INSERT INTO notes (telegram_id, subject, text, due_date, done, created_at) "
+                        "VALUES (%s, %s, %s, %s, 0, %s) RETURNING id", (telegram_id, subject, text, due_date, created))
+            return cur.fetchone()[0]
+    cur = conn.execute("INSERT INTO notes (telegram_id, subject, text, due_date, done, created_at) "
+                       "VALUES (?, ?, ?, ?, 0, ?)", (telegram_id, subject, text, due_date, created))
+    conn.commit()
+    return cur.lastrowid
+
+
+def update_note(conn, telegram_id, note_id, **fields):
+    """Меняет поля заметки пользователя (subject, text, due_date, done). Возвращает False, если заметки нет."""
+    allowed = {"subject", "text", "due_date", "done"}
+    fields = {k: v for k, v in fields.items() if k in allowed}
+    if not fields:
+        return True
+    names = list(fields)
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute(f"UPDATE notes SET {', '.join(n + ' = %s' for n in names)} "
+                        "WHERE id = %s AND telegram_id = %s", [fields[n] for n in names] + [note_id, telegram_id])
+            return cur.rowcount > 0
+    cur = conn.execute(f"UPDATE notes SET {', '.join(n + ' = ?' for n in names)} "
+                       "WHERE id = ? AND telegram_id = ?", [fields[n] for n in names] + [note_id, telegram_id])
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def delete_note(conn, telegram_id, note_id):
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute("DELETE FROM notes WHERE id = %s AND telegram_id = %s", (note_id, telegram_id))
+            return cur.rowcount > 0
+    cur = conn.execute("DELETE FROM notes WHERE id = ? AND telegram_id = ?", (note_id, telegram_id))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def get_group_subjects(conn, group: GroupRef, limit=60):
+    """Названия предметов из расписания группы (для подсказок в заметках): первая строка, без повторов."""
+    rows = conn.execute(
+        "SELECT DISTINCT subject FROM lessons WHERE group_name = ? AND program = ? AND course = ?",
+        (group.name, group.program, group.course)).fetchall()
+    names = set()
+    for (subject,) in rows:
+        first = (subject or "").strip().split("\n")[0].strip()
+        if first and len(first) <= 80:
+            names.add(first)
+    return sorted(names)[:limit]
