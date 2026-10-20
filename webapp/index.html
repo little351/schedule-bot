@@ -521,6 +521,7 @@
   .teacher-card { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
   .teacher-name { font-size: 16px; font-weight: 700; word-break: break-word; }
   .teacher-position { font-size: 14px; color: var(--accent); margin-top: 2px; }
+  .teacher-position::first-letter { text-transform: uppercase; }
   .teacher-about { font-size: 13px; color: var(--hint); margin-top: 4px; line-height: 1.4; }
   .teacher-link {
     display: block;
@@ -644,7 +645,7 @@
 
   <div id="paneTeachers" class="other-screen" style="display:none;">
     <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Преподаватели</h1></div>
-    <input type="search" class="teacher-search" id="teacherSearch" placeholder="Поиск по ФИО" autocomplete="off">
+    <input type="search" class="teacher-search" id="teacherSearch" placeholder="Поиск по ФИО или кафедре" autocomplete="off">
     <div id="teachersList"></div>
   </div>
 
@@ -968,7 +969,9 @@ function renderTeachers() {
   teachersList.textContent = "";
   let shown = 0;
   for (const dept of teacherDepartments) {
-    const people = (dept.teachers || []).filter((t) => !q || (t.name || "").toLowerCase().includes(q));
+    // кафедра подходит под запрос - показываем всех её сотрудников, иначе ищем по ФИО
+    const deptMatch = q && (dept.name || "").toLowerCase().includes(q);
+    const people = (dept.teachers || []).filter((t) => !q || deptMatch || (t.name || "").toLowerCase().includes(q));
     if (!people.length) continue;
     const title = document.createElement("div");
     title.className = "dept-title";
@@ -983,10 +986,18 @@ function renderTeachers() {
       title.textContent = dept.name;
     }
     teachersList.appendChild(title);
+    if (dept.note) {
+      const note = document.createElement("div");
+      note.className = "teacher-about";
+      note.style.margin = "-6px 4px 10px";
+      note.textContent = dept.note;
+      teachersList.appendChild(note);
+    }
     for (const t of people) {
       shown++;
       const card = document.createElement("div");
       card.className = "teacher-card";
+      card.dataset.teacherId = t.id || "";  // устойчивый id: к нему потом можно привязать отзывы
       const add = (cls, text) => {
         const el = document.createElement("div");
         el.className = cls;
@@ -1021,6 +1032,8 @@ async function loadTeachers() {
     const res = await fetch("/api/teachers");
     if (!res.ok) throw new Error(String(res.status));
     teacherDepartments = (await res.json()).departments || [];
+    const total = new Set(teacherDepartments.flatMap((d) => (d.teachers || []).map((t) => t.id || t.name))).size;
+    teacherSearch.placeholder = `Поиск по ФИО или кафедре (${total} чел.)`;
     teachersLoaded = true;
   } catch (err) {
     teachersList.textContent = "Не удалось загрузить список. Попробуй позже.";
