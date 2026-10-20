@@ -742,9 +742,14 @@ const programSelect = document.getElementById("programSelect");
 const courseSelect = document.getElementById("courseSelect");
 const groupSelect = document.getElementById("groupSelect");
 
+// текст из таблиц расписания вставляется в разметку только экранированным: «<» в ячейке не должен её ломать
+function esc(text) {
+  return String(text ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
 function optionsHtml(items, selected) {
   return items.map(i =>
-    `<option value="${i.value}"${String(i.value) === String(selected) ? " selected" : ""}>${i.label}</option>`
+    `<option value="${esc(i.value)}"${String(i.value) === String(selected) ? " selected" : ""}>${esc(i.label)}</option>`
   ).join("");
 }
 
@@ -849,19 +854,34 @@ courseSelect.addEventListener("change", () => {
   const keep = programs.find(p => p.code === chosen.program);  // то же направление, если оно есть на этом курсе
   chosen = { program: (keep || programs[0]).code, course: courseSelect.value, group: null };
   renderPickers();
+  askForGroup();
 });
 programSelect.addEventListener("change", () => {
   chosen = { ...chosen, program: programSelect.value, group: null };
   renderPickers();
+  askForGroup();
 });
+
+// курс или направление сменили, а группу ещё не выбрали: расписание прежней группы не показываем
+let pickingGroup = false;
+function askForGroup() {
+  pickingGroup = true;
+  dayRequest++;  // ответ на уже отправленный запрос дня больше не нужен
+  document.getElementById("container").innerHTML = '<div class="status">Выбери свою группу в списке выше.</div>';
+}
 groupSelect.addEventListener("change", () => {
+  pickingGroup = false;
   chosen.group = groupSelect.value;
   fitPickers();
   saveGroup();
 });
 
+let dayRequest = 0;  // номер последнего запроса дня: ответы на прежние (при быстром листании) отбрасываются
+
 async function loadDay() {
   const container = document.getElementById("container");
+  if (pickingGroup) return askForGroup();
+  const request = ++dayRequest;
   container.innerHTML = '<div class="status">Загрузка...</div>';
 
   if (!telegramId) {
@@ -871,9 +891,11 @@ async function loadDay() {
 
   try {
     const res = await fetch(`/api/day?telegram_id=${telegramId}&date=${fmtISO(selectedDate)}`, { headers: authHeaders });
+    if (request !== dayRequest) return;
 
     if (res.status === 404) {
       const data = await res.json();
+      if (request !== dayRequest) return;
       if (data.detail === "group_not_set") {
         container.innerHTML = '<div class="status">Выбери свою группу в списке выше.</div>';
       } else {
@@ -884,6 +906,7 @@ async function loadDay() {
     if (!res.ok) throw new Error("server error");
 
     const data = await res.json();
+    if (request !== dayRequest) return;
 
     if (data.lessons.length === 0) {
       container.innerHTML = '<div class="status">В этот день пар нет</div>';
@@ -894,14 +917,15 @@ async function loadDay() {
       <div class="lesson-card">
         <div class="lesson-body">
           <div class="lesson-top">
-            <div class="lesson-time">${lesson.time_start}<br>${lesson.time_end}</div>
-            <div class="lesson-subject">${lesson.subject}</div>
+            <div class="lesson-time">${esc(lesson.time_start)}<br>${esc(lesson.time_end)}</div>
+            <div class="lesson-subject">${esc(lesson.subject)}</div>
           </div>
         </div>
       </div>
     `).join("");
 
   } catch (err) {
+    if (request !== dayRequest) return;
     container.innerHTML = '<div class="status">Ошибка загрузки. Попробуй позже.</div>';
   }
 }
