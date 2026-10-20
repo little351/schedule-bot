@@ -340,3 +340,33 @@ def test_action_buttons_call_the_command_handlers(env, monkeypatch):
     assert "дату" in sent[-1]
     labels = [b.text for row in bot.actions_markup().inline_keyboard for b in row]
     assert len(labels) == 5 and "Сегодня" not in labels and bot.actions_markup().inline_keyboard[0][0].web_app
+
+
+def test_two_files_for_the_same_groups_both_stay(env):
+    """Основное расписание и отдельный файл (например, ФОД) для тех же групп не вытесняют друг друга."""
+    schedule_dir, conn = env
+    content = open(FILE_A, "rb").read()
+
+    class TwoFiles(FakeMoodle):
+        def __call__(self, request):
+            if request.url.path == "/course/view.php" and self.logged_in:
+                return httpx.Response(200, text=COURSE_PAGE + '<li><a href="https://lms.test/mod/resource/view.php?id=102">'
+                                      'Расписание ФОД Т2-09-26</a></li>')
+            return super().__call__(request)
+
+    site = TwoFiles(files={"100": ("t2-09-26.xls", content), "102": ("fod-t2-09-26.xls", content)})
+    report = run(env, site)
+    assert "заменил" not in report.text()
+    assert sorted(i["key"] for i in list_synced_files(conn)) == ["fod-t2-09-26.xls", "t2-09-26.xls"]
+    assert lms_sync.active_keys(conn) == {"fod-t2-09-26.xls", "t2-09-26.xls"}
+    run(env, site)  # повторный запуск ничего не удаляет
+    assert len(list_synced_files(conn)) == 2
+
+
+def test_source_summary_lists_only_used_files_in_moscow_time(env):
+    schedule_dir, conn = env
+    run(env, FakeMoodle())
+    lms_sync.save_synced_file(conn, "старый.xls", "старый.xls", b"x", "sha", "2026-10-12T21:30:00+00:00", "{}", 1)
+    text = lms_sync.source_summary(conn)
+    assert "t2-09-26.xls" in text and "старый.xls" not in text and "МСК" in text and "UTC" not in text
+    assert lms_sync._moscow_time("2026-10-12T21:30:00+00:00") == "13.10.2026 00:30 МСК"

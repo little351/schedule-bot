@@ -25,7 +25,7 @@ from urllib.parse import unquote, urljoin, urlparse
 import httpx
 
 from database import (
-    delete_synced_file, get_sync_state, list_synced_files, save_synced_file, set_sync_state,
+    LOCAL_TZ, delete_synced_file, get_sync_state, list_synced_files, save_synced_file, set_sync_state,
 )
 from schedule_parsers import parse_all, parse_file
 from schedule_parsers.common import load_config
@@ -478,11 +478,12 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
 
     min_ratio = float(sources.get("min_ratio", DEFAULT_MIN_RATIO))
     stored = {item["key"]: item for item in list_synced_files(conn)}
+    on_pages = {file_name.lower() for _, file_name, _ in downloads}
     disk_counts = None
     for name, file_name, content in downloads:
         try:
             disk_counts = await _process(conn, schedule_dir, report, stored, name, file_name, content,
-                                         min_ratio, disk_counts)
+                                         min_ratio, disk_counts, on_pages)
         except Exception as e:
             logger.error("подгрузка: файл %s: %s", file_name, scrub(f"{type(e).__name__}: {e}"))
             report.problem(f"{file_name}: не удалось обработать ({type(e).__name__}), осталась прошлая версия или запасной источник")
@@ -500,7 +501,7 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
     return report
 
 
-async def _process(conn, schedule_dir, report, stored, name, file_name, content, min_ratio, disk_counts):
+async def _process(conn, schedule_dir, report, stored, name, file_name, content, min_ratio, disk_counts, on_pages=()):
     ext = file_extension(file_name, content)
     if not ext:
         report.info(f"{file_name}: не таблица Excel (.xls/.xlsx), пропущен")
@@ -538,8 +539,10 @@ async def _process(conn, schedule_dir, report, stored, name, file_name, content,
                      json.dumps(new_counts, ensure_ascii=False), len(records))
     superseded = []
     for other_key, item in stored.items():
-        if other_key != key and set(json.loads(item["group_counts"])) <= set(new_counts):
-            delete_synced_file(conn, other_key)  # старый файл целиком покрыт новым: историю не копим
+        # старый файл целиком покрыт новым: историю не копим. Файл, который сейчас тоже лежит на страницах
+        # (например, отдельное расписание ФОД для тех же групп), не трогаем: это не старая версия, а второй файл
+        if other_key != key and other_key not in on_pages and set(json.loads(item["group_counts"])) <= set(new_counts):
+            delete_synced_file(conn, other_key)
             superseded.append(item["file_name"])
     stored[key] = {"key": key, "file_name": file_name, "sha256": sha, "group_counts": json.dumps(new_counts)}
     for gone in superseded:
@@ -550,14 +553,26 @@ async def _process(conn, schedule_dir, report, stored, name, file_name, content,
     return disk_counts
 
 
+def _moscow_time(iso):
+    """'2026-10-20T20:15:00+00:00' -> '20.10.2026 23:15 МСК' (как есть, если не разбирается)."""
+    try:
+        moment = datetime.fromisoformat(iso)
+    except (TypeError, ValueError):
+        return f"{iso} UTC"
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(LOCAL_TZ).strftime("%d.%m.%Y %H:%M МСК")
+
+
 def source_summary(conn):
-    """Что сейчас берётся из подгрузки: по строке на файл."""
-    items = list_synced_files(conn)
+    """Что сейчас берётся из подгрузки: по строке на файл (только файлы, которые бот использует)."""
+    active = active_keys(conn)
+    items = [item for item in list_synced_files(conn) if active is None or item["key"] in active]
     if not items:
         return "Из подгрузки пока ничего нет: расписание берётся из загруженных владельцем файлов и из репозитория."
     lines = ["Из подгрузки (имеют приоритет):"]
     for item in items:
-        lines.append(f"  • {item['file_name']}: занятий {item['records']}, получен {item['fetched_at']} UTC")
+        lines.append(f"  • {item['file_name']}: занятий {item['records']}, получен {_moscow_time(item['fetched_at'])}")
     return "\n".join(lines)
 
 
