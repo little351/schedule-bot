@@ -223,6 +223,173 @@
     background: #34c759;
   }
 
+  /* --- Вкладка "Другое" --- */
+  .sub-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  .sub-tab {
+    background: var(--card);
+    color: var(--hint);
+    border: none;
+    border-radius: 18px;
+    padding: 8px 14px;
+    font-size: 14px;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  .sub-tab.active {
+    background: var(--accent);
+    color: #ffffff;
+  }
+  .rand-card {
+    position: relative;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px 16px 24px;
+    text-align: center;
+  }
+  .rand-gear {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: var(--card-pressed);
+    color: var(--text);
+    font-size: 18px;
+    line-height: 36px;
+    padding: 0;
+    transition: transform 0.4s ease;
+  }
+  .rand-gear.open { transform: rotate(90deg); background: var(--accent); }
+  .rand-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 4px 44px 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    word-break: break-word;
+  }
+  .rand-settings {
+    display: none;
+    text-align: left;
+    background: var(--card-pressed);
+    border-radius: 12px;
+    padding: 12px;
+    margin: 14px 0 4px;
+  }
+  .rand-settings.open { display: block; }
+  .rand-settings label {
+    display: block;
+    font-size: 12px;
+    color: var(--hint);
+    margin-bottom: 6px;
+  }
+  .rand-settings input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-size: 15px;
+    font-family: inherit;
+    margin-bottom: 14px;
+  }
+  .rand-settings input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .rand-split {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .rand-split .y { color: #34c759; }
+  .rand-split .n { color: #ff453a; }
+  .rand-reset {
+    margin-top: 12px;
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 13px;
+    padding: 0;
+  }
+
+  .coin-wrap { perspective: 700px; height: 150px; margin: 20px 0 8px; display: flex; align-items: center; justify-content: center; }
+  .coin {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    transform-style: preserve-3d;
+    transition: transform 1.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .coin.jump { animation: coin-jump 1.8s ease-out; }
+  @keyframes coin-jump {
+    0% { margin-top: 0; }
+    35% { margin-top: -50px; }
+    100% { margin-top: 0; }
+  }
+  .coin-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    font-weight: 800;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.25), 0 6px 18px rgba(0, 0, 0, 0.5);
+  }
+  .coin-yes { background: radial-gradient(circle at 30% 30%, #5ee07d, #1f9d43); color: #fff; }
+  .coin-no { background: radial-gradient(circle at 30% 30%, #ff7b72, #c4281f); color: #fff; transform: rotateY(180deg); }
+  .rand-result {
+    font-size: 40px;
+    font-weight: 800;
+    min-height: 50px;
+    color: var(--hint);
+  }
+  .rand-result.yes { color: #34c759; }
+  .rand-result.no { color: #ff453a; }
+  .rand-result.pop { animation: rand-pop 0.45s ease-out; }
+  @keyframes rand-pop {
+    0% { transform: scale(0.5); opacity: 0.3; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .rand-btn {
+    margin-top: 14px;
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 32px;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .rand-btn:disabled { opacity: 0.5; }
+  .confetti {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 12px;
+    pointer-events: none;
+    animation: confetti-fly 0.9s ease-out forwards;
+  }
+  @keyframes confetti-fly {
+    0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+  }
+
   /* --- Нижняя панель вкладок --- */
   .tab-bar {
     position: fixed;
@@ -301,6 +468,37 @@
   </div>
 </div>
 
+<div id="otherTab" style="display:none;">
+  <h1>Другое</h1>
+
+  <div class="sub-tabs">
+    <button class="sub-tab active" id="subRandom">🎲 Рандомайзер</button>
+  </div>
+
+  <div class="rand-card" id="randCard">
+    <button class="rand-gear" id="randGear" aria-label="Настройки">⚙️</button>
+    <div class="rand-title" id="randTitle"></div>
+
+    <div class="rand-settings" id="randSettings">
+      <label for="randTitleInput">Что разыгрываем</label>
+      <input type="text" id="randTitleInput" maxlength="60">
+      <label for="randYesRange">Шансы</label>
+      <input type="range" id="randYesRange" min="1" max="99" step="1">
+      <div class="rand-split"><span class="y" id="randYesLabel"></span><span class="n" id="randNoLabel"></span></div>
+      <button class="rand-reset" id="randReset">Сбросить на «50 на 50»</button>
+    </div>
+
+    <div class="coin-wrap">
+      <div class="coin" id="coin">
+        <div class="coin-face coin-yes">ДА</div>
+        <div class="coin-face coin-no">НЕТ</div>
+      </div>
+    </div>
+    <div class="rand-result" id="randResult"></div>
+    <button class="rand-btn" id="randBtn">Бросить</button>
+  </div>
+</div>
+
 <div class="tab-bar">
   <button class="tab-btn active" id="tabSchedule">
     <span class="tab-icon">📅</span>
@@ -309,6 +507,10 @@
   <button class="tab-btn" id="tabImportant">
     <span class="tab-icon">⚠️</span>
     Важное
+  </button>
+  <button class="tab-btn" id="tabOther">
+    <span class="tab-icon">🎲</span>
+    Другое
   </button>
 </div>
 
@@ -538,24 +740,114 @@ document.getElementById("nextBtn").addEventListener("click", () => {
 });
 
 // --- Переключение вкладок ---
-const scheduleTab = document.getElementById("scheduleTab");
-const importantTab = document.getElementById("importantTab");
-const tabScheduleBtn = document.getElementById("tabSchedule");
-const tabImportantBtn = document.getElementById("tabImportant");
+const tabs = [
+  { page: document.getElementById("scheduleTab"), btn: document.getElementById("tabSchedule") },
+  { page: document.getElementById("importantTab"), btn: document.getElementById("tabImportant") },
+  { page: document.getElementById("otherTab"), btn: document.getElementById("tabOther") },
+];
+for (const tab of tabs) {
+  tab.btn.addEventListener("click", () => {
+    for (const t of tabs) {
+      t.page.style.display = t === tab ? "" : "none";
+      t.btn.classList.toggle("active", t === tab);
+    }
+  });
+}
 
-tabScheduleBtn.addEventListener("click", () => {
-  scheduleTab.style.display = "";
-  importantTab.style.display = "none";
-  tabScheduleBtn.classList.add("active");
-  tabImportantBtn.classList.remove("active");
+// --- Рандомайзер: по умолчанию "Идти на пару или нет" 50/50, настройки живут только до закрытия приложения ---
+const DEFAULT_TITLE = "Идти на пару или нет";
+const rand = { title: DEFAULT_TITLE, yes: 50 };
+const randEl = {
+  card: document.getElementById("randCard"),
+  title: document.getElementById("randTitle"),
+  gear: document.getElementById("randGear"),
+  settings: document.getElementById("randSettings"),
+  titleInput: document.getElementById("randTitleInput"),
+  range: document.getElementById("randYesRange"),
+  yesLabel: document.getElementById("randYesLabel"),
+  noLabel: document.getElementById("randNoLabel"),
+  reset: document.getElementById("randReset"),
+  coin: document.getElementById("coin"),
+  result: document.getElementById("randResult"),
+  btn: document.getElementById("randBtn"),
+};
+
+function renderRand() {
+  randEl.title.textContent = rand.title || DEFAULT_TITLE;
+  randEl.yesLabel.textContent = `Да ${rand.yes}%`;
+  randEl.noLabel.textContent = `Нет ${100 - rand.yes}%`;
+}
+
+function randomUnit() {
+  // криптослучайное число в [0, 1)
+  const buf = new Uint32Array(1);
+  window.crypto.getRandomValues(buf);
+  return buf[0] / 4294967296;
+}
+
+randEl.gear.addEventListener("click", () => {
+  const open = randEl.settings.classList.toggle("open");
+  randEl.gear.classList.toggle("open", open);
+});
+randEl.titleInput.addEventListener("input", () => {
+  rand.title = randEl.titleInput.value.trim();
+  renderRand();
+});
+randEl.range.addEventListener("input", () => {
+  rand.yes = Number(randEl.range.value);
+  renderRand();
+});
+randEl.reset.addEventListener("click", () => {
+  rand.yes = 50;
+  rand.title = DEFAULT_TITLE;
+  randEl.range.value = 50;
+  randEl.titleInput.value = DEFAULT_TITLE;
+  renderRand();
 });
 
-tabImportantBtn.addEventListener("click", () => {
-  scheduleTab.style.display = "none";
-  importantTab.style.display = "";
-  tabImportantBtn.classList.add("active");
-  tabScheduleBtn.classList.remove("active");
+let coinTurns = 0;  // сколько полуоборотов монета уже сделала
+
+function confetti(color) {
+  for (let i = 0; i < 18; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 70 + Math.random() * 90;
+    c.style.background = color;
+    c.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
+    c.style.setProperty("--dy", `${Math.sin(angle) * dist - 30}px`);
+    c.style.setProperty("--rot", `${Math.random() * 720 - 360}deg`);
+    randEl.card.appendChild(c);
+    setTimeout(() => c.remove(), 1000);
+  }
+}
+
+randEl.btn.addEventListener("click", () => {
+  randEl.btn.disabled = true;
+  randEl.result.className = "rand-result";
+  randEl.result.textContent = "";
+  const yes = randomUnit() * 100 < rand.yes;
+  // монета делает несколько оборотов и останавливается нужной стороной: «да» при чётном числе полуоборотов
+  let turns = coinTurns + 8 + Math.floor(Math.random() * 3) * 2;
+  if ((turns % 2 === 0) !== yes) turns += 1;
+  coinTurns = turns;
+  randEl.coin.classList.remove("jump");
+  void randEl.coin.offsetWidth;
+  randEl.coin.classList.add("jump");
+  randEl.coin.style.transform = `rotateY(${turns * 180}deg)`;
+  setTimeout(() => {
+    randEl.result.textContent = yes ? "ДА!" : "НЕТ";
+    randEl.result.className = "rand-result " + (yes ? "yes" : "no") + " pop";
+    confetti(yes ? "#34c759" : "#ff453a");
+    randEl.btn.disabled = false;
+    randEl.btn.textContent = "Бросить ещё раз";
+    try { tg.HapticFeedback?.notificationOccurred(yes ? "success" : "warning"); } catch (e) {}
+  }, 1850);
 });
+
+randEl.range.value = rand.yes;
+randEl.titleInput.value = rand.title;
+renderRand();
 
 // --- Копирование номера карты ---
 document.getElementById("copyBtn").addEventListener("click", async (e) => {
