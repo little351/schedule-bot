@@ -6,7 +6,7 @@ import os
 from types import SimpleNamespace
 import re
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError
 from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from telegram.ext import (
@@ -18,7 +18,7 @@ from parser import parse_file
 from schedule_parsers import upload_dir
 from schedule_parsers.common import load_config
 from database import (
-    init_db, set_user_group, get_user_group, save_schedule,
+    LOCAL_TZ, init_db, set_user_group, get_user_group, save_schedule,
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
     get_week_schedule_grid, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
     touch_user, list_users, user_stats, get_program_name, restore_users, users_without_profile, set_user_profile,
@@ -203,13 +203,47 @@ async def track_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.exception("не удалось записать пользователя %s", user.id)
 
 
+def _moscow_date(value):
+    """'2026-10-09T22:30:00+00:00' (UTC) -> '10.10.2026' по Москве; дата без времени - как есть; пусто - None."""
+    if not value:
+        return None
+    try:
+        moment = datetime.fromisoformat(value)
+    except ValueError:
+        return value[:10]
+    if len(value) > 10:  # время есть: переводим из UTC в Москву
+        moment = (moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)).astimezone(LOCAL_TZ)
+    return moment.strftime("%d.%m.%Y")
+
+
+def _seen_range(first_seen, last_seen):
+    """Даты первого и последнего обращения по Москве: '01.09.2026–09.10.2026', одна дата или '?'."""
+    first, last = _moscow_date(first_seen), _moscow_date(last_seen)
+    if first and last and first != last:
+        return f"{first}–{last}"
+    return last or first or "?"
+
+
+def _parse_seen(text):
+    """Обратно к (first_seen, last_seen) в ISO: '01.09.2026–09.10.2026', '09.10.2026', '2026-10-09' (старый вид) или '?'."""
+    def iso(part):
+        try:
+            return datetime.strptime(part, "%d.%m.%Y").strftime("%Y-%m-%d")
+        except ValueError:
+            return part
+    if text == "?":
+        return None, None
+    first, _, last = text.partition("–")
+    return (iso(first), iso(last)) if last else (iso(first), iso(first))
+
+
 def format_users_messages(rows):
     """Список пользователей, разбитый на сообщения короче лимита Telegram (4096)."""
     header = f"Пользователей: {len(rows)}"
     lines = []
     for telegram_id, username, first_name, group_name, first_seen, last_seen, program, course in rows:
         handle = f"@{username}" if username else "(без username)"
-        last = (last_seen or "?")[:10]
+        last = _seen_range(first_seen, last_seen)
         if group_name and program:
             group = f"{group_name} ({program}, {course or 1} курс)"
         else:
@@ -246,8 +280,9 @@ def format_users_csv(rows):
     return out.getvalue().encode("utf-8-sig")
 
 
-# строка списка /users: «@ivan · Иван · 4 группа (49.03.04, 2 курс) · 2026-10-09 · id 123»;
-# в старом формате курса нет: «4 группа (49.03.04)», такие пользователи получают 1 курс
+# строка списка /users: «@ivan · Иван · 4 группа (49.03.04, 2 курс) · 01.09.2026–09.10.2026 · id 123»
+# (первое и последнее обращение по Москве); в старых форматах курса нет: «4 группа (49.03.04)», такие
+# пользователи получают 1 курс, а дата одна: «2026-10-09»
 USER_LINE_RE = re.compile(r"^(?:@(\S+)|\(без username\)) · (.*?) · (.*?) · (\S+) · id (-?\d+)\s*$", re.MULTILINE)
 GROUP_PROGRAM_RE = re.compile(r"^(.*?)\s*\((\d{2}\.\d{2}\.\d{2})(?:, (\d) курс)?\)$")
 
@@ -261,9 +296,9 @@ def parse_users_backup(text):
         if m:
             group, program, course = m.group(1), m.group(2), int(m.group(3) or 1)
         group = None if group.startswith("группа не выбрана") else group
-        last = None if last == "?" else last
+        first_seen, last_seen = _parse_seen(last)
         first_name = None if first_name == "—" else first_name
-        rows.append((int(telegram_id), username or None, first_name, group, last, last, program, course))
+        rows.append((int(telegram_id), username or None, first_name, group, first_seen, last_seen, program, course))
     if rows:
         return rows
     for record in csv.DictReader(io.StringIO(text.lstrip("\ufeff"))):
@@ -284,7 +319,7 @@ def _is_owner(update):
 
 async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = format_users_csv(list_users(conn))
-    name = f"users-{datetime.now().strftime('%Y-%m-%d')}.csv"
+    name = f"users-{now_local().strftime('%Y-%m-%d')}.csv"
     await update.message.reply_document(document=io.BytesIO(data), filename=name,
                                         caption="Резервная копия списка пользователей")
 
@@ -581,11 +616,19 @@ def parse_input_date(text):
     for fmt in formats:
         try:
             dt = datetime.strptime(text, fmt)
-            if "%Y" not in fmt and "%y" not in fmt:
-                dt = dt.replace(year=now_local().year)
-            return dt
         except ValueError:
             continue
+        if "%Y" not in fmt and "%y" not in fmt:
+            # без года - ближайшая к сегодняшнему дню такая дата: в декабре «10.01» - это январь следующего года
+            today = now_local()
+            candidates = []
+            for year in (today.year - 1, today.year, today.year + 1):
+                try:
+                    candidates.append(dt.replace(year=year))
+                except ValueError:
+                    pass  # 29.02 не в високосный год
+            dt = min(candidates, key=lambda d: abs(d - today), default=None)
+        return dt
     return None
 
 
@@ -685,25 +728,28 @@ async def post_init(application):
 
 def build_application():
     application = Application.builder().token(TOKEN).post_init(post_init).build()
+    # только новые сообщения: правка уже отправленной команды или текста не должна запускать её ещё раз
+    # (у правки нет update.message, и обработчик падал с ошибкой)
+    new_message = filters.UpdateType.MESSAGE
     # group=-1: учёт пользователей идёт раньше остальных обработчиков и их не заменяет
     application.add_handler(TypeHandler(Update, track_user), group=-1)
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("group", group_command))
+    application.add_handler(CommandHandler("start", start, filters=new_message))
+    application.add_handler(CommandHandler("group", group_command, filters=new_message))
     application.add_handler(CallbackQueryHandler(on_pick, pattern=r"^(p|c|g|b)(:|$)"))
     application.add_handler(CallbackQueryHandler(on_action, pattern=r"^a:"))
-    application.add_handler(CommandHandler("week", week))
-    application.add_handler(CommandHandler("nweek", nweek))
-    application.add_handler(CommandHandler("weekdate", weekdate))
-    application.add_handler(CommandHandler("app", app_command))
+    application.add_handler(CommandHandler("week", week, filters=new_message))
+    application.add_handler(CommandHandler("nweek", nweek, filters=new_message))
+    application.add_handler(CommandHandler("weekdate", weekdate, filters=new_message))
+    application.add_handler(CommandHandler("app", app_command, filters=new_message))
     if OWNER_ID.isdigit():
         # всем остальным команды владельца не отвечают вовсе: они нигде не публикуются
-        owner = filters.User(user_id=int(OWNER_ID))
+        owner = filters.User(user_id=int(OWNER_ID)) & new_message
         for command, callback in [("users", users_command), ("stats", stats_command), ("lms_check", lms_check_command),
                                   ("backup", backup_command), ("sync", sync_command), ("broadcast", broadcast_command)]:
             application.add_handler(CommandHandler(command, callback, filters=owner))
         application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
-    application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(filters.Document.ALL & new_message, handle_document))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & new_message, handle_message))
     return application
 
 
