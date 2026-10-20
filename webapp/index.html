@@ -390,6 +390,70 @@
     100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
   }
 
+  /* --- Заметки и дедлайны --- */
+  .note-form {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .note-form input {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 15px;
+    font-family: inherit;
+  }
+  .note-form-row { display: flex; gap: 8px; }
+  .note-form-row input[type="date"] { flex: 1; min-width: 0; }
+  .note-add {
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .note-add:disabled { opacity: 0.5; }
+  .note-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .note-check {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--hint);
+    background: none;
+    color: #fff;
+    font-size: 14px;
+    padding: 0;
+    line-height: 22px;
+  }
+  .note-item.done .note-check { background: #34c759; border-color: #34c759; }
+  .note-body { flex: 1; min-width: 0; }
+  .note-subject { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 2px; word-break: break-word; }
+  .note-text { font-size: 15px; line-height: 1.4; word-break: break-word; white-space: pre-wrap; }
+  .note-item.done .note-text, .note-item.done .note-subject { text-decoration: line-through; opacity: 0.5; }
+  .note-due { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--hint); }
+  .note-due.soon { color: #ff9f0a; font-weight: 600; }
+  .note-due.late { color: #ff453a; font-weight: 600; }
+  .note-del { flex: 0 0 auto; background: none; border: none; color: var(--hint); font-size: 18px; padding: 0 2px; }
+  .notes-empty { text-align: center; color: var(--hint); font-size: 14px; padding: 24px 0; }
+
   /* --- Нижняя панель вкладок --- */
   .tab-bar {
     position: fixed;
@@ -472,9 +536,24 @@
   <h1>Другое</h1>
 
   <div class="sub-tabs">
-    <button class="sub-tab active" id="subRandom">🎲 Рандомайзер</button>
+    <button class="sub-tab active" id="subNotes">📝 Заметки и дедлайны</button>
+    <button class="sub-tab" id="subRandom">🎲 Рандомайзер</button>
   </div>
 
+  <div id="paneNotes">
+    <div class="note-form">
+      <input type="text" id="noteSubject" list="noteSubjects" placeholder="Предмет" maxlength="100" autocomplete="off">
+      <datalist id="noteSubjects"></datalist>
+      <input type="text" id="noteText" placeholder="Заметка или задание" maxlength="500" autocomplete="off">
+      <div class="note-form-row">
+        <input type="date" id="noteDue" aria-label="Дедлайн">
+        <button class="note-add" id="noteAdd">Добавить</button>
+      </div>
+    </div>
+    <div id="notesList"></div>
+  </div>
+
+  <div id="paneRandom" style="display:none;">
   <div class="rand-card" id="randCard">
     <button class="rand-gear" id="randGear" aria-label="Настройки">⚙️</button>
     <div class="rand-title" id="randTitle"></div>
@@ -496,6 +575,7 @@
     </div>
     <div class="rand-result" id="randResult"></div>
     <button class="rand-btn" id="randBtn">Бросить</button>
+  </div>
   </div>
 </div>
 
@@ -753,6 +833,157 @@ for (const tab of tabs) {
     }
   });
 }
+
+// --- Подвкладки раздела «Другое» ---
+const subTabs = [
+  { pane: document.getElementById("paneNotes"), btn: document.getElementById("subNotes") },
+  { pane: document.getElementById("paneRandom"), btn: document.getElementById("subRandom") },
+];
+for (const sub of subTabs) {
+  sub.btn.addEventListener("click", () => {
+    for (const t of subTabs) {
+      t.pane.style.display = t === sub ? "" : "none";
+      t.btn.classList.toggle("active", t === sub);
+    }
+  });
+}
+
+// --- Заметки и дедлайны по предметам (хранятся на сервере по id пользователя) ---
+const notesList = document.getElementById("notesList");
+const noteSubject = document.getElementById("noteSubject");
+const noteText = document.getElementById("noteText");
+const noteDue = document.getElementById("noteDue");
+const noteAdd = document.getElementById("noteAdd");
+let notesLoaded = false;
+
+async function notesApi(method, path, body) {
+  const res = await fetch("/api/notes" + path, {
+    method,
+    headers: { "Content-Type": "application/json", "X-Init-Data": tg.initData || "" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
+
+function dueInfo(due) {
+  // подпись и цвет дедлайна: просрочено, сегодня/завтра, обычный
+  const [y, m, d] = due.split("-").map(Number);
+  const target = new Date(y, m - 1, d);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((target - today) / 86400000);
+  const label = `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}`;
+  if (diff < 0) return { text: `просрочено, было до ${label}`, cls: "late" };
+  if (diff === 0) return { text: "сегодня", cls: "soon" };
+  if (diff === 1) return { text: "завтра", cls: "soon" };
+  return { text: `до ${label}`, cls: "" };
+}
+
+function renderNotes(notes) {
+  notesList.textContent = "";
+  if (!notes.length) {
+    const empty = document.createElement("div");
+    empty.className = "notes-empty";
+    empty.textContent = "Пока пусто. Добавь заметку или дедлайн по предмету.";
+    notesList.appendChild(empty);
+    return;
+  }
+  for (const n of notes) {
+    const item = document.createElement("div");
+    item.className = "note-item" + (n.done ? " done" : "");
+
+    const check = document.createElement("button");
+    check.className = "note-check";
+    check.textContent = n.done ? "✓" : "";
+    check.setAttribute("aria-label", "Сделано");
+    check.addEventListener("click", () => changeNotes("PATCH", `/${n.id}`, { done: !n.done }));
+
+    const body = document.createElement("div");
+    body.className = "note-body";
+    if (n.subject) {
+      const subj = document.createElement("div");
+      subj.className = "note-subject";
+      subj.textContent = n.subject;
+      body.appendChild(subj);
+    }
+    if (n.text) {
+      const text = document.createElement("div");
+      text.className = "note-text";
+      text.textContent = n.text;
+      body.appendChild(text);
+    }
+    if (n.due_date) {
+      const info = dueInfo(n.due_date);
+      const due = document.createElement("div");
+      due.className = "note-due " + (n.done ? "" : info.cls);
+      due.textContent = "⏰ " + info.text;
+      body.appendChild(due);
+    }
+
+    const del = document.createElement("button");
+    del.className = "note-del";
+    del.textContent = "✕";
+    del.setAttribute("aria-label", "Удалить");
+    del.addEventListener("click", () => {
+      if (confirm("Удалить заметку?")) changeNotes("DELETE", `/${n.id}`);
+    });
+
+    item.append(check, body, del);
+    notesList.appendChild(item);
+  }
+}
+
+function notesError(err) {
+  notesList.textContent = "";
+  const msg = document.createElement("div");
+  msg.className = "notes-empty";
+  msg.textContent = tg.initData ? "Не удалось загрузить заметки. Попробуй позже." : "Заметки работают, только если открыть приложение из Telegram.";
+  notesList.appendChild(msg);
+}
+
+async function changeNotes(method, path, body) {
+  try {
+    renderNotes((await notesApi(method, path, body)).notes);
+  } catch (err) {
+    notesError(err);
+  }
+}
+
+async function loadNotes() {
+  try {
+    const data = await notesApi("GET", "");
+    const list = document.getElementById("noteSubjects");
+    list.textContent = "";
+    for (const name of data.subjects || []) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      list.appendChild(opt);
+    }
+    renderNotes(data.notes);
+    notesLoaded = true;
+  } catch (err) {
+    notesError(err);
+  }
+}
+
+noteAdd.addEventListener("click", async () => {
+  if (!noteSubject.value.trim() && !noteText.value.trim()) return;
+  noteAdd.disabled = true;
+  try {
+    renderNotes((await notesApi("POST", "", {
+      subject: noteSubject.value, text: noteText.value, due_date: noteDue.value || null,
+    })).notes);
+    noteText.value = "";
+    noteDue.value = "";
+  } catch (err) {
+    notesError(err);
+  }
+  noteAdd.disabled = false;
+});
+
+document.getElementById("tabOther").addEventListener("click", () => {
+  if (!notesLoaded) loadNotes();
+});
 
 // --- Рандомайзер: по умолчанию "Идти на пару или нет" 50/50, настройки живут только до закрытия приложения ---
 const DEFAULT_TITLE = "Идти на пару или нет";
