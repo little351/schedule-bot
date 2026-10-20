@@ -5,7 +5,6 @@
 пишутся только коды ответов, время и признаки (есть ли токен формы, капча, ссылка «Выход»).
 """
 import os
-import re
 import socket
 import ssl
 import time
@@ -13,10 +12,9 @@ from urllib.parse import urlparse
 
 import httpx
 
+from lms_sync import CAPTCHA_MARKERS, LOGINTOKEN_RE
+
 DEFAULT_BASE_URL = "https://lms.sportedu.ru"
-LOGINTOKEN_RE = re.compile(r'name=["\']logintoken["\'][^>]*value=["\']([^"\']*)["\']|'
-                           r'value=["\']([^"\']*)["\'][^>]*name=["\']logintoken["\']')
-CAPTCHA_MARKERS = ("g-recaptcha", "recaptcha/api", "h-captcha", "hcaptcha")
 
 
 def _timed(step, func, timeout_note=""):

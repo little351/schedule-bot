@@ -335,8 +335,6 @@ async def lms_check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 
-
-
 LMS_FAIL_REPEAT_DAYS = 3  # об одной и той же неполадке подгрузки напоминаем не чаще
 
 
@@ -419,6 +417,7 @@ async def lms_scheduler(application):
         except Exception:
             logger.exception("плановая подгрузка расписания: ошибка")
         await asyncio.sleep(1800)
+
 
 # --- рассылка (только владелец) ---
 BROADCAST_PAUSE = 0.05  # около 20 сообщений в секунду, лимит Telegram для рассылки - 30
@@ -620,9 +619,10 @@ async def app_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
+
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # менять расписание может только владелец; без OWNER_ID загрузка файлов отключена
-    if not OWNER_ID.isdigit() or update.effective_user.id != int(OWNER_ID):
+    if not _is_owner(update):
         return
 
     document = update.message.document
@@ -696,13 +696,11 @@ def build_application():
     application.add_handler(CommandHandler("weekdate", weekdate))
     application.add_handler(CommandHandler("app", app_command))
     if OWNER_ID.isdigit():
-        # всем остальным /users не отвечает вовсе: команда нигде не публикуется
-        application.add_handler(CommandHandler("users", users_command, filters=filters.User(user_id=int(OWNER_ID))))
-        application.add_handler(CommandHandler("stats", stats_command, filters=filters.User(user_id=int(OWNER_ID))))
-        application.add_handler(CommandHandler("lms_check", lms_check_command, filters=filters.User(user_id=int(OWNER_ID))))
-        application.add_handler(CommandHandler("backup", backup_command, filters=filters.User(user_id=int(OWNER_ID))))
-        application.add_handler(CommandHandler("sync", sync_command, filters=filters.User(user_id=int(OWNER_ID))))
-        application.add_handler(CommandHandler("broadcast", broadcast_command, filters=filters.User(user_id=int(OWNER_ID))))
+        # всем остальным команды владельца не отвечают вовсе: они нигде не публикуются
+        owner = filters.User(user_id=int(OWNER_ID))
+        for command, callback in [("users", users_command), ("stats", stats_command), ("lms_check", lms_check_command),
+                                  ("backup", backup_command), ("sync", sync_command), ("broadcast", broadcast_command)]:
+            application.add_handler(CommandHandler(command, callback, filters=owner))
         application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))

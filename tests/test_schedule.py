@@ -506,7 +506,7 @@ def test_broadcast_needs_confirmation_and_is_sent_once(tmp_path, monkeypatch):
 def test_practice_period_is_shown_instead_of_empty_week(tmp_path, records):
     from datetime import datetime
     from database import get_day_lessons, get_week_schedule_grid
-    from formatting import format_day_text, format_week_text
+    from formatting import format_week_text
 
     conn = init_db(str(tmp_path / "practice.db"))
     save_schedule(conn, records)
@@ -516,7 +516,6 @@ def test_practice_period_is_shown_instead_of_empty_week(tmp_path, records):
     assert lessons == [{"time_start": "Практика", "time_end": "",
                         "subject": "Производственная практика: Научно-исследовательская работа (26.11–14.12)"}]
     grid = get_week_schedule_grid(conn, group, week_sheet)
-    assert "Практика" in format_day_text(group.title, week_sheet, "Вторник", grid)
     assert "Практика" in format_week_text(group.title, week_sheet, grid)
     # до начала практики в этой группе идут обычные пары
     _, before = get_day_lessons(conn, group, datetime(2026, 11, 24))

@@ -433,7 +433,6 @@ def set_sync_state(conn, key, value):
     conn.commit()
 
 
-
 def get_week_schedule_grid(conn, group: GroupRef, week_sheet):
     rows = conn.execute(
         "SELECT day, time, subject FROM lessons "
@@ -449,10 +448,6 @@ def get_week_schedule_grid(conn, group: GroupRef, week_sheet):
 
 def get_current_week_sheet(conn, group: GroupRef):
     return get_week_sheet_for_date(conn, group, now_local())
-
-
-def get_today_day_name():
-    return WEEKDAY_MAP[now_local().weekday()]
 
 
 def get_day_lessons(conn, group: GroupRef, target_date):
@@ -544,10 +539,6 @@ def get_catalog(conn):
          "courses": [{"course": c, "groups": groups} for c, groups in sorted(p["courses"].items())]}
         for p in sorted(catalog.values(), key=lambda p: p["code"])
     ]
-
-
-def group_short_name(group_name):
-    return GroupRef("", 0, group_name).short_name
 
 
 def find_groups(conn, text, program=None, course=None):
