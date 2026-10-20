@@ -696,6 +696,8 @@ tg.ready();
 tg.expand();
 
 const telegramId = tg.initDataUnsafe?.user?.id;
+// сервер узнаёт пользователя по подписанным данным Telegram, а не по id из запроса
+const authHeaders = { "X-Init-Data": tg.initData || "" };
 
 const DAY_ABBR = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 let selectedDate = new Date();
@@ -812,7 +814,7 @@ function pickersOverflow() {
 
 async function loadGroups() {
   try {
-    const res = await fetch(`/api/catalog?telegram_id=${telegramId || 0}`);
+    const res = await fetch(`/api/catalog?telegram_id=${telegramId || 0}`, { headers: authHeaders });
     if (!res.ok) throw new Error("server error");
     const data = await res.json();
     catalog = data.programs;
@@ -833,7 +835,7 @@ async function saveGroup() {
   if (!telegramId) return;
   const res = await fetch("/api/group", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders },
     body: JSON.stringify({
       telegram_id: telegramId, group: chosen.group, program: chosen.program, course: Number(chosen.course),
     }),
@@ -868,7 +870,7 @@ async function loadDay() {
   }
 
   try {
-    const res = await fetch(`/api/day?telegram_id=${telegramId}&date=${fmtISO(selectedDate)}`);
+    const res = await fetch(`/api/day?telegram_id=${telegramId}&date=${fmtISO(selectedDate)}`, { headers: authHeaders });
 
     if (res.status === 404) {
       const data = await res.json();

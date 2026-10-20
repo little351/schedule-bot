@@ -30,7 +30,7 @@ def load_teachers(path=TEACHERS_FILE):
 
 
 class GroupBody(BaseModel):
-    telegram_id: int
+    telegram_id: int = 0  # учитывается только без токена бота (локальный api.py)
     group: str
     program: Optional[str] = None
     course: Optional[int] = None
@@ -90,6 +90,18 @@ def _group_json(group):
 def build_router(conn, bot_token) -> APIRouter:
     router = APIRouter(prefix="/api")
 
+    def request_user(init_data, telegram_id, required=True):
+        """Кто спрашивает: id из подписанных данных Telegram (заголовок X-Init-Data), чтобы нельзя было
+        подставить чужой id. Без токена бота (локальный api.py) берётся telegram_id из запроса."""
+        if not bot_token:
+            return telegram_id
+        user = validate_init_data(init_data or "", bot_token)
+        if user:
+            return user["id"]
+        if required:
+            raise HTTPException(status_code=403, detail="bad_init_data")
+        return 0
+
     def require_group(telegram_id):
         group = get_user_group(conn, telegram_id)
         if not group:
@@ -97,8 +109,8 @@ def build_router(conn, bot_token) -> APIRouter:
         return group
 
     @router.get("/day")
-    def get_day(telegram_id: int, date: str):
-        group = require_group(telegram_id)
+    def get_day(date: str, telegram_id: int = 0, x_init_data: str = Header(default="")):
+        group = require_group(request_user(x_init_data, telegram_id))
         try:
             target_date = datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
@@ -118,8 +130,8 @@ def build_router(conn, bot_token) -> APIRouter:
         }
 
     @router.get("/schedule")
-    def get_schedule(telegram_id: int, offset: int = 0):
-        group = require_group(telegram_id)
+    def get_schedule(telegram_id: int = 0, offset: int = 0, x_init_data: str = Header(default="")):
+        group = require_group(request_user(x_init_data, telegram_id))
         week_sheet = get_relative_week_sheet(conn, group, offset)
         if not week_sheet:
             raise HTTPException(status_code=404, detail="week_not_found")
@@ -137,32 +149,35 @@ def build_router(conn, bot_token) -> APIRouter:
         return {"departments": load_teachers()}
 
     @router.get("/catalog")
-    def catalog(telegram_id: int = 0):
-        """Направления -> курсы -> группы и текущий выбор пользователя."""
-        return {"programs": get_catalog(conn), "current": _group_json(get_user_group(conn, telegram_id))}
+    def catalog(telegram_id: int = 0, x_init_data: str = Header(default="")):
+        """Направления -> курсы -> группы и текущий выбор пользователя (без подписи - только список)."""
+        user_id = request_user(x_init_data, telegram_id, required=False)
+        return {"programs": get_catalog(conn), "current": _group_json(get_user_group(conn, user_id) if user_id else None)}
 
     @router.get("/groups")
-    def list_groups(telegram_id: int = 0):
+    def list_groups(telegram_id: int = 0, x_init_data: str = Header(default="")):
         # старый вариант списка (его вызывают закешированные версии мини-приложения)
-        current = get_user_group(conn, telegram_id)
+        user_id = request_user(x_init_data, telegram_id, required=False)
+        current = get_user_group(conn, user_id) if user_id else None
         groups = get_groups(conn, current.program, current.course) if current else get_groups(conn)
         return {"groups": [g.name for g in groups], "current": current.name if current else None}
 
     @router.post("/group")
-    def choose_group(body: GroupBody):
+    def choose_group(body: GroupBody, x_init_data: str = Header(default="")):
+        user_id = request_user(x_init_data, body.telegram_id)
         if body.program and body.course is not None:
             group = GroupRef(body.program, body.course, body.group)
             if group not in get_groups(conn):
                 raise HTTPException(status_code=400, detail="unknown_group")
         else:
             # старый вариант без направления: ищем по названию, предпочитая направление пользователя
-            current = get_user_group(conn, body.telegram_id)
+            current = get_user_group(conn, user_id)
             matches = [g for g in get_groups(conn) if g.name == body.group]
             if not matches:
                 raise HTTPException(status_code=400, detail="unknown_group")
             group = next((g for g in matches if current and (g.program, g.course) == (current.program, current.course)),
                          matches[0])
-        set_user_group(conn, body.telegram_id, group)
+        set_user_group(conn, user_id, group)
         return _group_json(group)
 
     @router.post("/visit")
