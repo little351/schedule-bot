@@ -1,4 +1,6 @@
 """HTTP API мини-приложения. Используется и боевым сервером (main.py), и локальным (api.py)."""
+import json
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -12,6 +14,19 @@ from database import (
 )
 from formatting import trim_trailing_empty
 from telegram_auth import validate_init_data
+
+
+TEACHERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "teachers.json")
+
+
+def load_teachers(path=TEACHERS_FILE):
+    """Кафедры и преподаватели из data/teachers.json; нет файла или он испорчен - пустой список."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            departments = json.load(f).get("departments", [])
+    except (OSError, ValueError, AttributeError):
+        return []
+    return [d for d in departments if isinstance(d, dict) and d.get("name")]
 
 
 class GroupBody(BaseModel):
@@ -116,6 +131,10 @@ def build_router(conn, bot_token) -> APIRouter:
             if slots:
                 days_out.append({"day": day_name, "slots": slots})
         return {"group": group.name, "program": group.program, "week_sheet": week_sheet, "days": days_out}
+
+    @router.get("/teachers")
+    def teachers():
+        return {"departments": load_teachers()}
 
     @router.get("/catalog")
     def catalog(telegram_id: int = 0):

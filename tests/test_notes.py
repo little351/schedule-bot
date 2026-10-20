@@ -74,3 +74,22 @@ def test_note_validation(tmp_path):
     assert client.post("/api/notes", json={"text": "x", "due_date": "31.12"}, headers=h).status_code == 400
     note = client.post("/api/notes", json={"text": "я" * 900, "subject": "п" * 300}, headers=h).json()["notes"][0]
     assert len(note["text"]) == 500 and len(note["subject"]) == 100
+
+
+def test_teachers_file_is_valid_and_served(tmp_path):
+    from routes import TEACHERS_FILE, load_teachers
+    departments = load_teachers()
+    assert departments and all(d["name"] and d["teachers"] for d in departments)
+    assert all(t["name"] and t["id"] and t["position"] for d in departments for t in d["teachers"])
+    assert len(departments) == 34 and len({t["id"] for d in departments for t in d["teachers"]}) == 376
+    # один id - один человек: одинаковый id только у одинакового ФИО
+    names = {}
+    for d in departments:
+        for t in d["teachers"]:
+            assert names.setdefault(t["id"], t["name"]) == t["name"]
+    assert load_teachers(str(tmp_path / "нет.json")) == []
+    bad = tmp_path / "bad.json"
+    bad.write_text("{не json", encoding="utf-8")
+    assert load_teachers(str(bad)) == []
+    client = make_client(tmp_path)
+    assert client.get("/api/teachers").json()["departments"] == departments

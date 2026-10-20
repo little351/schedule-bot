@@ -1,0 +1,2105 @@
+{
+ "source": "Кафедры и кадровый состав РУС «ГЦОЛИФК» (по данным сайта gtsolifk.ru), файл от владельца бота, 20.10.2026",
+ "departments": [
+  {
+   "id": "inostrannykh-yazykov-i-lingvistiki",
+   "name": "Кафедра иностранных языков и лингвистики",
+   "teachers": [
+    {
+     "id": "komova-elena-viktorovna",
+     "name": "Комова Елена Викторовна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "litvinov-sergey-vladimirovich",
+     "name": "Литвинов Сергей Владимирович",
+     "position": "профессор"
+    },
+    {
+     "id": "myagkova-svetlana-nikolaevna",
+     "name": "Мягкова Светлана Николаевна",
+     "position": "профессор"
+    },
+    {
+     "id": "udalova-marina-yurevna",
+     "name": "Удалова Марина Юрьевна",
+     "position": "доцент"
+    },
+    {
+     "id": "pereverzeva-natalya-aleksandrovna",
+     "name": "Переверзева Наталья Александровна",
+     "position": "доцент"
+    },
+    {
+     "id": "volkova-marina-sergeevna",
+     "name": "Волкова Марина Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "kapustina-yuliya-aleksandrovna",
+     "name": "Капустина Юлия Александровна",
+     "position": "доцент"
+    },
+    {
+     "id": "varichev-aleksandr-mikhaylovich",
+     "name": "Варичев Александр Михайлович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "belyakova-ekaterina-aleksandrovna",
+     "name": "Белякова Екатерина Александровна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "khodyreva-irina-nikolaevna",
+     "name": "Ходырева Ирина Николаевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "babel-tatyana-anatolevna",
+     "name": "Бабель Татьяна Анатольевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "finagina-oksana-alekseevna",
+     "name": "Финагина Оксана Алексеевна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "boksa-kikboksinga-i-vostochnykh-boevykh-iskusstv-im-k-v-grad",
+   "name": "Кафедра бокса, кикбоксинга и восточных боевых искусств им. К.В. Градополова",
+   "teachers": [
+    {
+     "id": "gorbachev-stanislav-sergeevich",
+     "name": "Горбачев Станислав Сергеевич",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "kalmykov-evgeniy-viktorovich",
+     "name": "Калмыков Евгений Викторович",
+     "position": "профессор"
+    },
+    {
+     "id": "kleshchev-vadim-nikolaevich",
+     "name": "Клещев Вадим Николаевич",
+     "position": "профессор"
+    },
+    {
+     "id": "kiselev-vladimir-andreevich",
+     "name": "Киселев Владимир Андреевич",
+     "position": "профессор"
+    },
+    {
+     "id": "epov-oleg-georgievich",
+     "name": "Эпов Олег Георгиевич",
+     "position": "профессор"
+    },
+    {
+     "id": "orlov-yuriy-leonidovich",
+     "name": "Орлов Юрий Леонидович",
+     "position": "доцент"
+    },
+    {
+     "id": "demchenko-natalya-sergeevna",
+     "name": "Демченко Наталья Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "mandych-ivan-nikolaevich",
+     "name": "Мандыч Иван Николаевич",
+     "position": "доцент"
+    },
+    {
+     "id": "bagomedov-khizri-abdurashidovich",
+     "name": "Багомедов Хизри Абдурашидович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "fedorov-aleksey-dmitrievich",
+     "name": "Федоров Алексей Дмитриевич",
+     "position": "преподаватель"
+    },
+    {
+     "id": "sudakov-denis-alekseevich",
+     "name": "Судаков Денис Алексеевич",
+     "position": "преподаватель"
+    },
+    {
+     "id": "isaeva-mariya-sergeevna",
+     "name": "Исаева Мария Сергеевна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "dichenko-marina-aleksandrovna",
+     "name": "Диченко Марина Александровна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "biokhimii-i-bioenergetiki-sporta-im-n-i-volkova",
+   "name": "Кафедра биохимии и биоэнергетики спорта им. Н.И. Волкова",
+   "teachers": [
+    {
+     "id": "tambovtseva-ritta-viktorovna",
+     "name": "Тамбовцева Ритта Викторовна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "sechin-dmitriy-ivanovich",
+     "name": "Сечин Дмитрий Иванович",
+     "position": "доцент, заведующий лабораторией"
+    },
+    {
+     "id": "nikulina-irina-aleksandrovna",
+     "name": "Никулина Ирина Александровна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "volkov-vasiliy-vasilevich",
+     "name": "Волков Василий Васильевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "pletneva-elena-viktorovna",
+     "name": "Плетнева Елена Викторовна",
+     "position": "старший преподаватель, специалист по учебно-методической работе"
+    },
+    {
+     "id": "orlova-anastasiya-vladimirovna",
+     "name": "Орлова Анастасия Владимировна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "biomekhaniki-i-estestvennonauchnykh-distsiplin",
+   "name": "Кафедра биомеханики и естественнонаучных дисциплин",
+   "teachers": [
+    {
+     "id": "popov-grigoriy-ivanovich",
+     "name": "Попов Григорий Иванович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "furaev-aleksandr-nikolaevich",
+     "name": "Фураев Александр Николаевич",
+     "position": "профессор"
+    },
+    {
+     "id": "yashkina-elena-nikolaevna",
+     "name": "Яшкина Елена Николаевна",
+     "position": "доцент"
+    },
+    {
+     "id": "markaryan-vartanush-stepanovna",
+     "name": "Маркарян Вартануш Степановна",
+     "position": "доцент"
+    },
+    {
+     "id": "konyukhov-vladimir-georgievich",
+     "name": "Конюхов Владимир Георгиевич",
+     "position": "доцент"
+    },
+    {
+     "id": "vagin-andrey-yurevich",
+     "name": "Вагин Андрей Юрьевич",
+     "position": "доцент"
+    },
+    {
+     "id": "tarkhanov-ivan-vladimirovich",
+     "name": "Тарханов Иван Владимирович",
+     "position": "доцент"
+    },
+    {
+     "id": "perlova-vera-vladimirovna",
+     "name": "Перлова Вера Владимировна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "ganina-marta-vladimirovna",
+     "name": "Ганина Марта Владимировна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "lebedeva-olga-anatolevna",
+     "name": "Лебедева Ольга Анатольевна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "anatomii-i-biologicheskoy-antropologii",
+   "name": "Кафедра анатомии и биологической антропологии",
+   "teachers": [
+    {
+     "id": "grichanova-tatyana-gennadevna",
+     "name": "Гричанова Татьяна Геннадьевна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "savostyanova-evgeniya-borisovna",
+     "name": "Савостьянова Евгения Борисовна",
+     "position": "доцент"
+    },
+    {
+     "id": "silaeva-lyudmila-viktorovna",
+     "name": "Силаева Людмила Викторовна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "ilin-aleksandr-borisovich",
+     "name": "Ильин Александр Борисович",
+     "position": "доцент"
+    },
+    {
+     "id": "meshtel-aleksandr-vitalievich",
+     "name": "Мештель Александр Виталиевич",
+     "position": "преподаватель"
+    },
+    {
+     "id": "glazunova-elena-aleksandrovna",
+     "name": "Глазунова Елена Александровна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "anisimova-marina-valerevna",
+     "name": "Анисимова Марина Валерьевна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "futbola",
+   "name": "Кафедра футбола",
+   "teachers": [
+    {
+     "id": "leksakov-andrey-vladimirovich",
+     "name": "Лексаков Андрей Владимирович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "kotov-yuriy-nikolaevich",
+     "name": "Котов Юрий Николаевич",
+     "position": "профессор"
+    },
+    {
+     "id": "belyakov-aleksandr-konstantinovich",
+     "name": "Беляков Александр Константинович",
+     "position": "доцент"
+    },
+    {
+     "id": "makeev-pavel-viktorovich",
+     "name": "Макеев Павел Викторович",
+     "position": "доцент"
+    },
+    {
+     "id": "orlov-aleksey-viktorovich",
+     "name": "Орлов Алексей Викторович",
+     "position": "доцент"
+    },
+    {
+     "id": "polishkis-mikhail-mikhaylovich",
+     "name": "Полишкис Михаил Михайлович",
+     "position": "доцент"
+    },
+    {
+     "id": "shagin-nikita-igorevich",
+     "name": "Шагин Никита Игоревич",
+     "position": "доцент"
+    },
+    {
+     "id": "chigarev-nikolay-nikolaevich",
+     "name": "Чигарев Николай Николаевич",
+     "position": "доцент"
+    },
+    {
+     "id": "pokataev-andrey-vyacheslavovich",
+     "name": "Покатаев Андрей Вячеславович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "shalygin-denis-aleksandrovich",
+     "name": "Шалыгин Денис Александрович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "divankuliev-dovlet-gaipovich",
+     "name": "Диванкулиев Довлет Гаипович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "shadrin-aleksandr-sergeevich",
+     "name": "Шадрин Александр Сергеевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "nesmelov-aleksandr-alekseevich",
+     "name": "Несмелов Александр Алексеевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "furukina-mariya-sergeevna",
+     "name": "Фурукина Мария Сергеевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "kolyshkina-ekaterina-olegovna",
+     "name": "Колышкина Екатерина Олеговна",
+     "position": "преподаватель, специалист по учебно-методической работе"
+    },
+    {
+     "id": "varganova-olga-aleksandrovna",
+     "name": "Варганова Ольга Александровна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "abagero-irina-vladimirovna",
+     "name": "Абагеро Ирина Владимировна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "varganova-anastasiya-antonovna",
+     "name": "Варганова Анастасия Антоновна",
+     "position": "заведующий лабораторией"
+    }
+   ]
+  },
+  {
+   "id": "fitnesa-rekreatsii-i-turizma",
+   "name": "Кафедра фитнеса, рекреации и туризма",
+   "note": "Список на сайте мог быть неполным: возможно, здесь не все сотрудники кафедры.",
+   "teachers": [
+    {
+     "id": "pavlov-evgeniy-aleksandrovich",
+     "name": "Павлов Евгений Александрович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "dusenko-svetlana-viktorovna",
+     "name": "Дусенко Светлана Викторовна",
+     "position": "профессор"
+    },
+    {
+     "id": "avilova-natalya-leonidovna",
+     "name": "Авилова Наталья Леонидовна",
+     "position": "профессор"
+    },
+    {
+     "id": "adamova-ilona-vladimirovna",
+     "name": "Адамова Илона Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "petracheva-irina-vitalevna",
+     "name": "Петрачева Ирина Витальевна",
+     "position": "доцент"
+    },
+    {
+     "id": "chepkasova-irina-vladimirovna",
+     "name": "Чепкасова Ирина Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "sirakovskaya-yana-vadimovna",
+     "name": "Сираковская Яна Вадимовна",
+     "position": "доцент"
+    },
+    {
+     "id": "tsapuk-dmitriy-anatolevich",
+     "name": "Цапук Дмитрий Анатольевич",
+     "position": "доцент"
+    },
+    {
+     "id": "rezenova-mariya-vladimirovna",
+     "name": "Резенова Мария Владимировна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "shevchenko-irina-yurevna",
+     "name": "Шевченко Ирина Юрьевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "andropova-elena-mikhaylovna",
+     "name": "Андропова Елена Михайловна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "gridchina-lyudmila-anatolevna",
+     "name": "Гридчина Людмила Анатольевна",
+     "position": "старший преподаватель, специалист по учебно-методической работе"
+    },
+    {
+     "id": "rogacheva-olga-alekseevna",
+     "name": "Рогачева Ольга Алексеевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "mitin-aleksandr-alekseevich",
+     "name": "Митин Александр Алексеевич",
+     "position": "преподаватель"
+    },
+    {
+     "id": "surovtsova-veronika-yurevna",
+     "name": "Суровцова Вероника Юрьевна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "makhrova-ekaterina-vadimovna",
+     "name": "Махрова Екатерина Вадимовна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "bronnikova-yuliya-konstantinovna",
+     "name": "Бронникова Юлия Константиновна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "samoylov-nikita-sergeevich",
+     "name": "Самойлов Никита Сергеевич",
+     "position": "инструктор по спорту"
+    }
+   ]
+  },
+  {
+   "id": "fizicheskoy-reabilitatsii-massazha-i-ozdorovitelnoy-fiziches",
+   "name": "Кафедра физической реабилитации, массажа и оздоровительной физической культуры им. И.М. Саркизова-Серазини",
+   "teachers": [
+    {
+     "id": "tkachenko-svetlana-anatolevna",
+     "name": "Ткаченко Светлана Анатольевна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "dobrynina-lyudmila-aleksandrovna",
+     "name": "Добрынина Людмила Александровна",
+     "position": "доцент"
+    },
+    {
+     "id": "ermolaeva-yuliya-anatolevna",
+     "name": "Ермолаева Юлия Анатольевна",
+     "position": "доцент"
+    },
+    {
+     "id": "vlasova-natalya-anatolevna",
+     "name": "Власова Наталья Анатольевна",
+     "position": "доцент"
+    },
+    {
+     "id": "lunina-natalya-vladimirovna",
+     "name": "Лунина Наталья Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "shvygina-natalya-vladimirovna",
+     "name": "Швыгина Наталья Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "mikhaylova-marina-gennadevna",
+     "name": "Михайлова Марина Геннадьевна",
+     "position": "доцент"
+    },
+    {
+     "id": "ivanova-nadezhda-leonidovna",
+     "name": "Иванова Надежда Леонидовна",
+     "position": "доцент"
+    },
+    {
+     "id": "salamatov-mikhail-borisovich",
+     "name": "Саламатов Михаил Борисович",
+     "position": "доцент"
+    },
+    {
+     "id": "larin-aleksandr-vladimirovich",
+     "name": "Ларин Александр Владимирович",
+     "position": "доцент"
+    },
+    {
+     "id": "kostyaeva-viktoriya-vasilevna",
+     "name": "Костяева Виктория Васильевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "mikhaylin-grigoriy-andreevich",
+     "name": "Михайлин Григорий Андреевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "lopukhov-oleg-evgenevich",
+     "name": "Лопухов Олег Евгеньевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "sobchuk-irina-vladimirovna",
+     "name": "Собчук Ирина Владимировна",
+     "position": "старший преподаватель, специалист по учебно-методической работе"
+    },
+    {
+     "id": "chulyukova-natalya-aleksandrovna",
+     "name": "Чулюкова Наталья Александровна",
+     "position": "преподаватель, специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "fiziologii",
+   "name": "Кафедра физиологии",
+   "teachers": [
+    {
+     "id": "melnikov-andrey-aleksandrovich",
+     "name": "Мельников Андрей Александрович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "sonkin-valentin-dmitrievich",
+     "name": "Сонькин Валентин Дмитриевич",
+     "position": "профессор"
+    },
+    {
+     "id": "zakhareva-natalya-nikolaevna",
+     "name": "Захарьева Наталья Николаевна",
+     "position": "профессор"
+    },
+    {
+     "id": "levushkin-sergey-petrovich",
+     "name": "Левушкин Сергей Петрович",
+     "position": "профессор"
+    },
+    {
+     "id": "belyaev-fedor-pavlovich",
+     "name": "Беляев Федор Павлович",
+     "position": "доцент"
+    },
+    {
+     "id": "bogdanova-tatyana-borisovna",
+     "name": "Богданова Татьяна Борисовна",
+     "position": "доцент"
+    },
+    {
+     "id": "andreeva-albina-maratovna",
+     "name": "Андреева Альбина Маратовна",
+     "position": "доцент"
+    },
+    {
+     "id": "shiryaeva-taisiya-petrovna",
+     "name": "Ширяева Таисия Петровна",
+     "position": "доцент"
+    },
+    {
+     "id": "belitskaya-lyubov-aleksandrovna",
+     "name": "Белицкая Любовь Александровна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "utkina-tatyana-sergeevna",
+     "name": "Уткина Татьяна Сергеевна",
+     "position": "заведующая лабораторией"
+    },
+    {
+     "id": "mazurin-veniamin-borisovich",
+     "name": "Мазурин Вениамин Борисович",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "peganov-aleksandr-yurevich",
+     "name": "Пеганов Александр Юрьевич",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-khokkeya-im-a-v-tarasova",
+   "name": "Кафедра теории и методики хоккея им. А.В. Тарасова",
+   "teachers": [
+    {
+     "id": "uryupin-nikolay-nikolaevich",
+     "name": "Урюпин Николай Николаевич",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "krutskikh-vladislav-vyacheslavovich",
+     "name": "Крутских Владислав Вячеславович",
+     "position": "доцент"
+    },
+    {
+     "id": "cherenkov-dmitriy-robertovich",
+     "name": "Черенков Дмитрий Робертович",
+     "position": "доцент"
+    },
+    {
+     "id": "davydov-aleksey-petrovich",
+     "name": "Давыдов Алексей Петрович",
+     "position": "доцент"
+    },
+    {
+     "id": "sasin-aleksey-nikolaevich",
+     "name": "Сасин Алексей Николаевич",
+     "position": "заведующий лабораторией"
+    },
+    {
+     "id": "kostichkin-pavel-viktorovich",
+     "name": "Костичкин Павел Викторович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "russu-andrey-anatolevich",
+     "name": "Руссу Андрей Анатольевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "zakharov-artemiy-andreevich",
+     "name": "Захаров Артемий Андреевич",
+     "position": "ассистент"
+    },
+    {
+     "id": "shmeleva-svetlana-anatolevna",
+     "name": "Шмелева Светлана Анатольевна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-fekhtovaniya-sovremennogo-pyatiborya-i-str",
+   "name": "Кафедра теории и методики фехтования, современного пятиборья и стрелковых видов спорта",
+   "teachers": [
+    {
+     "id": "ryzhkova-larisa-gennadevna",
+     "name": "Рыжкова Лариса Геннадьевна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "movshovich-alek-davydovich",
+     "name": "Мовшович Алек Давыдович",
+     "position": "профессор"
+    },
+    {
+     "id": "moiseev-aleksandr-borisovich",
+     "name": "Моисеев Александр Борисович",
+     "position": "доцент"
+    },
+    {
+     "id": "shamis-vladislav-viktorovich",
+     "name": "Шамис Владислав Викторович",
+     "position": "доцент"
+    },
+    {
+     "id": "borodin-aleksey-yurevich",
+     "name": "Бородин Алексей Юрьевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "polishkite-kotrina",
+     "name": "Полишките Котрина",
+     "position": "преподаватель"
+    },
+    {
+     "id": "neposhlova-elizaveta-mikhaylovna",
+     "name": "Непошлова Елизавета Михайловна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "taktashov-eduard-islyamovich",
+     "name": "Такташов Эдуард Ислямович",
+     "position": "начальник тира"
+    },
+    {
+     "id": "krivova-elena-borisovna",
+     "name": "Кривова Елена Борисовна",
+     "position": "инженер"
+    },
+    {
+     "id": "burina-tatyana-sergeevna",
+     "name": "Бурина Татьяна Сергеевна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-tyazheloatleticheskikh-vidov-sporta-im-a-s",
+   "name": "Кафедра теории и методики тяжелоатлетических видов спорта им. А.С. Медведева",
+   "teachers": [
+    {
+     "id": "skotnikov-vitaliy-fedorovich",
+     "name": "Скотников Виталий Федорович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "smirnov-vyacheslav-evgenevich",
+     "name": "Смирнов Вячеслав Евгеньевич",
+     "position": "доцент"
+    },
+    {
+     "id": "gromov-vasiliy-andreevich",
+     "name": "Громов Василий Андреевич",
+     "position": "доцент"
+    },
+    {
+     "id": "atlas-aleksandr-aleksandrovich",
+     "name": "Атлас Александр Александрович",
+     "position": "доцент"
+    },
+    {
+     "id": "solovev-vasiliy-borisovich",
+     "name": "Соловьев Василий Борисович",
+     "position": "доцент"
+    },
+    {
+     "id": "vorobev-sergey-viktorovich",
+     "name": "Воробьев Сергей Викторович",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "kurbonzoda-shodmoni-burkhon",
+     "name": "Курбонзода Шодмони Бурхон",
+     "position": "лаборант"
+    },
+    {
+     "id": "vorobev-viktor-sergeevich",
+     "name": "Воробьев Виктор Сергеевич",
+     "position": "заведующий лабораторией"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-tennisa-nastolnogo-tennisa-i-badmintona",
+   "name": "Кафедра теории и методики тенниса, настольного тенниса и бадминтона",
+   "teachers": [
+    {
+     "id": "dzhumok-aleksandr-aleksandrovich",
+     "name": "Джумок Александр Александрович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "barchukova-galina-vasilevna",
+     "name": "Барчукова Галина Васильевна",
+     "position": "профессор"
+    },
+    {
+     "id": "ivanova-tatyana-semenovna",
+     "name": "Иванова Татьяна Семеновна",
+     "position": "профессор"
+    },
+    {
+     "id": "laptev-aleksey-ivanovich",
+     "name": "Лаптев Алексей Иванович",
+     "position": "доцент"
+    },
+    {
+     "id": "ivanov-leonid-yurevich",
+     "name": "Иванов Леонид Юрьевич",
+     "position": "доцент"
+    },
+    {
+     "id": "stepanova-mariya-evgenevna",
+     "name": "Степанова Мария Евгеньевна",
+     "position": "доцент"
+    },
+    {
+     "id": "abitaev-isa-omarovich",
+     "name": "Абитаев Иса Омарович",
+     "position": "преподаватель"
+    },
+    {
+     "id": "rakitina-marina-anatolevna",
+     "name": "Ракитина Марина Анатольевна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "melnichuk-konstantin-nikolaevich",
+     "name": "Мельничук Константин Николаевич",
+     "position": "преподаватель"
+    },
+    {
+     "id": "ivanova-karina-aleksandrovna",
+     "name": "Иванова Карина Александровна",
+     "position": "ассистент"
+    },
+    {
+     "id": "egorov-sergey-vladimirovich",
+     "name": "Егоров Сергей Владимирович",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "egorova-nadezhda-vasilevna",
+     "name": "Егорова Надежда Васильевна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "shipunov-saveliy-dmitrievich",
+     "name": "Шипунов Савелий Дмитриевич",
+     "position": "заведующий лабораторией"
+    },
+    {
+     "id": "shabanova-anastasiya-vitalevna",
+     "name": "Шабанова Анастасия Витальевна",
+     "position": "ассистент"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-tantsevalnogo-sporta",
+   "name": "Кафедра теории и методики танцевального спорта",
+   "teachers": [
+    {
+     "id": "singina-nadezhda-fedorovna",
+     "name": "Сингина Надежда Фёдоровна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "filatov-sergey-vladimirovich",
+     "name": "Филатов Сергей Владимирович",
+     "position": "доцент"
+    },
+    {
+     "id": "mikhaylov-ilya-aleksandrovich",
+     "name": "Михайлов Илья Александрович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "pazina-natalya-aleksandrovna",
+     "name": "Пазина Наталья Александровна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "golivkin-andrey-petrovich",
+     "name": "Голивкин Андрей Петрович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "denisov-vitaliy-andreevich",
+     "name": "Денисов Виталий Андреевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "rakitina-tatyana-mikhaylovna",
+     "name": "Ракитина Татьяна Михайловна",
+     "position": "старший преподаватель"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-lyzhnykh-vidov-sporta",
+   "name": "Кафедра теории и методики лыжных видов спорта",
+   "teachers": [
+    {
+     "id": "batalov-aleksey-grigorevich",
+     "name": "Баталов Алексей Григорьевич",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "burdina-marina-evgenevna",
+     "name": "Бурдина Марина Евгеньевна",
+     "position": "доцент"
+    },
+    {
+     "id": "dubrovinskiy-sergey-sergeevich",
+     "name": "Дубровинский Сергей Сергеевич",
+     "position": "доцент"
+    },
+    {
+     "id": "senatskaya-valentina-gennadevna",
+     "name": "Сенатская Валентина Геннадьевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "shchukin-andrey-vladimirovich",
+     "name": "Щукин Андрей Владимирович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "lunina-anzhelika-viktorovna",
+     "name": "Лунина Анжелика Викторовна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "khitrova-anna-andreevna",
+     "name": "Хитрова Анна Андреевна",
+     "position": "старший преподаватель, специалист по учебно-методической работе"
+    },
+    {
+     "id": "dzunovich-anna-sergeevna",
+     "name": "Дзунович Анна Сергеевна",
+     "position": "специалист по учебно-методической работе, преподаватель"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-legkoy-atletiki-im-n-g-ozolina",
+   "name": "Кафедра теории и методики лёгкой атлетики им. Н.Г. Озолина",
+   "teachers": [
+    {
+     "id": "mirzoev-oktay-mirza-ogly-oktay-mirzoevich",
+     "name": "Мирзоев Октай Мирза оглы (Октай Мирзоевич)",
+     "position": "исполняющий обязанности заведующего кафедрой"
+    },
+    {
+     "id": "syachin-vladimir-dmitrievich",
+     "name": "Сячин Владимир Дмитриевич",
+     "position": "профессор"
+    },
+    {
+     "id": "mironenko-igor-nikolaevich",
+     "name": "Мироненко Игорь Николаевич",
+     "position": "профессор"
+    },
+    {
+     "id": "gridasova-elena-yakovlevna",
+     "name": "Гридасова Елена Яковлевна",
+     "position": "доцент"
+    },
+    {
+     "id": "nikonov-vladimir-igorevich",
+     "name": "Никонов Владимир Игоревич",
+     "position": "доцент"
+    },
+    {
+     "id": "ketlerova-evgeniya-svyatoslavna",
+     "name": "Кетлерова Евгения Святославна",
+     "position": "доцент"
+    },
+    {
+     "id": "tatarinov-ivan-dmitrievich",
+     "name": "Татаринов Иван Дмитриевич",
+     "position": "доцент"
+    },
+    {
+     "id": "stepanova-anastasiya-maksimovna",
+     "name": "Степанова Анастасия Максимовна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "uskov-ivan-vladimirovich",
+     "name": "Усков Иван Владимирович",
+     "position": "старший преподаватель, специалист по учебно-методической работе"
+    },
+    {
+     "id": "pavlovskiy-mikhail-aleksandrovich",
+     "name": "Павловский Михаил Александрович",
+     "position": "специалист по учебно-методической работе, ассистент"
+    },
+    {
+     "id": "fazliev-ilnaz-faritovich",
+     "name": "Фазлиев Ильназ Фаритович",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-konkobezhnogo-sporta-figurnogo-kataniya-na",
+   "name": "Кафедра теории и методики конькобежного спорта, фигурного катания на коньках и кёрлинга",
+   "teachers": [
+    {
+     "id": "razinov-yuriy-ivanovich",
+     "name": "Разинов Юрий Иванович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "zhgun-elena-vyacheslavovna",
+     "name": "Жгун Елена Вячеславовна",
+     "position": "доцент"
+    },
+    {
+     "id": "shevchenko-ekaterina-izosimovna",
+     "name": "Шевченко Екатерина Изосимовна",
+     "position": "доцент"
+    },
+    {
+     "id": "kitaeva-natalya-vladimirovna",
+     "name": "Китаева Наталья Владимировна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "kuznetsova-larisa-vladimirovna",
+     "name": "Кузнецова Лариса Владимировна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "tavrikov-evgeniy-evgenevich",
+     "name": "Тавриков Евгений Евгеньевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "ilyanova-anastasiya-valerevna",
+     "name": "Ильянова Анастасия Валерьевна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "mikhaylyuk-vinera-rimovna",
+     "name": "Михайлюк Винера Римовна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "smirnova-anastasiya-vladimirovna",
+     "name": "Смирнова Анастасия Владимировна",
+     "position": "ассистент"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-kompyuternogo-sporta-shakhmat-i-tsifrovykh",
+   "name": "Кафедра теории и методики компьютерного спорта, шахмат и цифровых технологий",
+   "teachers": [
+    {
+     "id": "novoselov-mikhail-alekseevich",
+     "name": "Новоселов Михаил Алексеевич",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "gabbazova-asyya-yakupovna",
+     "name": "Габбазова Асыя Якуповна",
+     "position": "доцент"
+    },
+    {
+     "id": "ermakov-aleksey-valerevich",
+     "name": "Ермаков Алексей Валерьевич",
+     "position": "доцент"
+    },
+    {
+     "id": "antonova-nadezhda-pavlovna",
+     "name": "Антонова Надежда Павловна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "akimushkin-roman-valerevich",
+     "name": "Акимушкин Роман Валерьевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "chigrov-andrey-sergeevich",
+     "name": "Чигров Андрей Сергеевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "barybin-denis-aleksandrovich",
+     "name": "Барыбин Денис Александрович",
+     "position": "преподаватель"
+    },
+    {
+     "id": "zubov-dmitriy-sergeevich",
+     "name": "Зубов Дмитрий Сергеевич",
+     "position": "преподаватель"
+    },
+    {
+     "id": "loginov-sergey-evgenevich",
+     "name": "Логинов Сергей Евгеньевич",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-edinoborstv",
+   "name": "Кафедра теории и методики единоборств",
+   "teachers": [
+    {
+     "id": "ivanchenko-mikhail-mikhaylovich",
+     "name": "Иванченко Михаил Михайлович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "tabakov-sergey-evgenevich",
+     "name": "Табаков Сергей Евгеньевич",
+     "position": "профессор"
+    },
+    {
+     "id": "shevtsov-aleksey-viktorovich",
+     "name": "Шевцов Алексей Викторович",
+     "position": "профессор"
+    },
+    {
+     "id": "popov-dmitriy-vladimirovich",
+     "name": "Попов Дмитрий Владимирович",
+     "position": "профессор"
+    },
+    {
+     "id": "konakov-aleksandr-vladimirovich",
+     "name": "Конаков Александр Владимирович",
+     "position": "профессор"
+    },
+    {
+     "id": "dmitriev-roman-mikhaylovich",
+     "name": "Дмитриев Роман Михайлович",
+     "position": "профессор"
+    },
+    {
+     "id": "garkin-nikolay-ivanovich",
+     "name": "Гаркин Николай Иванович",
+     "position": "доцент"
+    },
+    {
+     "id": "kolesov-andrey-anatolevich",
+     "name": "Колесов Андрей Анатольевич",
+     "position": "доцент"
+    },
+    {
+     "id": "ermakov-aleksey-valerevich",
+     "name": "Ермаков Алексей Валерьевич",
+     "position": "доцент"
+    },
+    {
+     "id": "makhmudov-mekhtikhan-magomedkhanovich",
+     "name": "Махмудов Мехтихан Магомедханович",
+     "position": "доцент"
+    },
+    {
+     "id": "bokova-evgeniya-rashidovna",
+     "name": "Бокова Евгения Рашидовна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "maryanyan-suren-aramovich",
+     "name": "Марьянян Сурен Арамович",
+     "position": "ассистент"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-grebnogo-i-parusnogo-sporta-im-a-f-komarov",
+   "name": "Кафедра теории и методики гребного и парусного спорта им. А.Ф. Комарова",
+   "teachers": [
+    {
+     "id": "krylov-leonid-yurevich",
+     "name": "Крылов Леонид Юрьевич",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "dolgova-evgeniya-vitalevna",
+     "name": "Долгова Евгения Витальевна",
+     "position": "доцент"
+    },
+    {
+     "id": "epifanova-liliya-nikolaevna",
+     "name": "Епифанова Лилия Николаевна",
+     "position": "доцент"
+    },
+    {
+     "id": "koloskov-filipp-aleksandrovich",
+     "name": "Колосков Филипп Александрович",
+     "position": "преподаватель"
+    },
+    {
+     "id": "ilchenko-mariya-anatolevna",
+     "name": "Ильченко Мария Анатольевна",
+     "position": "специалист по учебно-методической работе, преподаватель"
+    },
+    {
+     "id": "bereza-ekaterina-ivanovna",
+     "name": "Береза Екатерина Ивановна",
+     "position": "ассистент"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-gimnastiki",
+   "name": "Кафедра теории и методики гимнастики",
+   "teachers": [
+    {
+     "id": "novikova-larisa-aleksandrovna",
+     "name": "Новикова Лариса Александровна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "lisitskaya-tatyana-solomonovna",
+     "name": "Лисицкая Татьяна Соломоновна",
+     "position": "профессор"
+    },
+    {
+     "id": "kuvshinnikova-svetlana-anushevanovna",
+     "name": "Кувшинникова Светлана Анушевановна",
+     "position": "профессор"
+    },
+    {
+     "id": "andreasyan-knarik-borisovna",
+     "name": "Андреасян Кнарик Борисовна",
+     "position": "доцент"
+    },
+    {
+     "id": "beklemisheva-elena-valerevna",
+     "name": "Беклемишева Елена Валерьевна",
+     "position": "доцент"
+    },
+    {
+     "id": "ivlev-mikhail-petrovich",
+     "name": "Ивлев Михаил Петрович",
+     "position": "доцент"
+    },
+    {
+     "id": "kozlov-valeriy-vladimirovich",
+     "name": "Козлов Валерий Владимирович",
+     "position": "доцент"
+    },
+    {
+     "id": "kolesnikova-ekaterina-sergeevna",
+     "name": "Колесникова Екатерина Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "mikhalina-galina-mikhaylovna",
+     "name": "Михалина Галина Михайловна",
+     "position": "доцент, специалист по учебно-методической работе"
+    },
+    {
+     "id": "parakhin-viktor-aleksandrovich",
+     "name": "Парахин Виктор Александрович",
+     "position": "доцент"
+    },
+    {
+     "id": "rostovtseva-marina-yurevna",
+     "name": "Ростовцева Марина Юрьевна",
+     "position": "доцент"
+    },
+    {
+     "id": "kletsov-konstantin-gennadevich",
+     "name": "Клецов Константин Геннадьевич",
+     "position": "доцент"
+    },
+    {
+     "id": "igonova-ekaterina-sergeevna",
+     "name": "Игонова Екатерина Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "popova-elena-yurevna",
+     "name": "Попова Елена Юрьевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "dubovitskaya-irina-alekseevna",
+     "name": "Дубовицкая Ирина Алексеевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "ivashina-valeriya-vladimirovna",
+     "name": "Ивашина Валерия Владимировна",
+     "position": "старший преподаватель, специалист по учебно-методической работе"
+    },
+    {
+     "id": "markhakshinova-viktoriya-nikolaevna",
+     "name": "Мархакшинова Виктория Николаевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "zakharchuk-mariya-sergeevna",
+     "name": "Захарчук Мария Сергеевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "serochudinova-natalya-sergeevna",
+     "name": "Серочудинова Наталья Сергеевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "bulgacheva-polina-vitalevna",
+     "name": "Булгачева Полина Витальевна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "sergeeva-veronika-alekseevna",
+     "name": "Сергеева Вероника Алексеевна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "semenova-larisa-anatolevna",
+     "name": "Семенова Лариса Анатольевна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "kalitkina-kristina-vitalevna",
+     "name": "Калиткина Кристина Витальевна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-voleybola",
+   "name": "Кафедра теории и методики волейбола",
+   "teachers": [
+    {
+     "id": "bulykina-larisa-vladimirovna",
+     "name": "Булыкина Лариса Владимировна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "guba-vladimir-petrovich",
+     "name": "Губа Владимир Петрович",
+     "position": "профессор"
+    },
+    {
+     "id": "grigorev-viktor-anatolevich",
+     "name": "Григорьев Виктор Анатольевич",
+     "position": "доцент"
+    },
+    {
+     "id": "ananin-aleksandr-sergeevich",
+     "name": "Ананьин Александр Сергеевич",
+     "position": "доцент"
+    },
+    {
+     "id": "efimov-aleksey-sergeevich",
+     "name": "Ефимов Алексей Сергеевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "pshenichnaya-aleksandra-mikhaylovna",
+     "name": "Пшеничная Александра Михайловна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "sukhanova-alevtina-vasilevna",
+     "name": "Суханова Алевтина Васильевна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "pavlova-nina-vladimirovna",
+     "name": "Павлова Нина Владимировна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-vodnykh-vidov-sporta",
+   "name": "Кафедра теории и методики водных видов спорта",
+   "teachers": [
+    {
+     "id": "popov-oleg-igorevich",
+     "name": "Попов Олег Игоревич",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "bulgakova-nina-zhanovna",
+     "name": "Булгакова Нина Жановна",
+     "position": "профессор"
+    },
+    {
+     "id": "maksimova-mariya-nikolaevna",
+     "name": "Максимова Мария Николаевна",
+     "position": "профессор"
+    },
+    {
+     "id": "solomatin-viktor-radievich",
+     "name": "Соломатин Виктор Радиевич",
+     "position": "профессор"
+    },
+    {
+     "id": "chebotareva-irina-vladimirovna",
+     "name": "Чеботарева Ирина Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "kolesov-andrey-dmitrievich",
+     "name": "Колесов Андрей Дмитриевич",
+     "position": "доцент"
+    },
+    {
+     "id": "nikitina-svetlana-mikhaylovna",
+     "name": "Никитина Светлана Михайловна",
+     "position": "доцент"
+    },
+    {
+     "id": "pavlova-tatyana-nikolaevna",
+     "name": "Павлова Татьяна Николаевна",
+     "position": "доцент"
+    },
+    {
+     "id": "voytenko-yuriy-leonidovich",
+     "name": "Войтенко Юрий Леонидович",
+     "position": "доцент"
+    },
+    {
+     "id": "tabakova-elena-anatolevna",
+     "name": "Табакова Елена Анатольевна",
+     "position": "доцент"
+    },
+    {
+     "id": "mekhteleva-elena-aleksandrovna",
+     "name": "Мехтелева Елена Александровна",
+     "position": "доцент"
+    },
+    {
+     "id": "chistova-natalya-aleksandrovna",
+     "name": "Чистова Наталья Александровна",
+     "position": "доцент"
+    },
+    {
+     "id": "shakina-elena-evgenevna",
+     "name": "Шакина Елена Евгеньевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "vistin-dmitriy-lenardovich",
+     "name": "Вистинь Дмитрий Ленардович",
+     "position": "заведующий лабораторией"
+    },
+    {
+     "id": "korpacheva-alla-vyacheslavovna",
+     "name": "Корпачева Алла Вячеславовна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "sologub-svetlana-lvovna",
+     "name": "Сологуб Светлана Львовна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-velosipednogo-sporta-triatlona-i-golfa",
+   "name": "Кафедра теории и методики велосипедного спорта, триатлона и гольфа",
+   "teachers": [
+    {
+     "id": "zakharov-andrey-anatolevich",
+     "name": "Захаров Андрей Анатольевич",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "yakovlev-boris-anatolevich",
+     "name": "Яковлев Борис Анатольевич",
+     "position": "доцент"
+    },
+    {
+     "id": "dyshakov-aleksey-sergeevich",
+     "name": "Дышаков Алексей Сергеевич",
+     "position": "доцент"
+    },
+    {
+     "id": "butkov-dmitriy-alekseevich",
+     "name": "Бутков Дмитрий Алексеевич",
+     "position": "доцент"
+    },
+    {
+     "id": "yakovleva-natalya-borisovna",
+     "name": "Яковлева Наталья Борисовна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "logachev-valeriy-vladimirovich",
+     "name": "Логачев Валерий Владимирович",
+     "position": "инженер"
+    },
+    {
+     "id": "tyurina-irina-anatolevna",
+     "name": "Тюрина Ирина Анатольевна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "ostrovenko-dmitriy-aleksandrovich",
+     "name": "Островенко Дмитрий Александрович",
+     "position": "заведующий лабораторией"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-basketbola",
+   "name": "Кафедра теории и методики баскетбола",
+   "teachers": [
+    {
+     "id": "chernov-sergey-viktorovich",
+     "name": "Чернов Сергей Викторович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "makeeva-vera-stepanovna",
+     "name": "Макеева Вера Степановна",
+     "position": "профессор"
+    },
+    {
+     "id": "loseva-irina-vladimirovna",
+     "name": "Лосева Ирина Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "lapshin-nikolay-aleksandrovich",
+     "name": "Лапшин Николай Александрович",
+     "position": "доцент"
+    },
+    {
+     "id": "fesenko-mariya-sergeevna",
+     "name": "Фесенко Мария Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "laptev-sergey-olegovich",
+     "name": "Лаптев Сергей Олегович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "sorokin-sergey-aleksandrovich",
+     "name": "Сорокин Сергей Александрович",
+     "position": "старший преподаватель, заведующий лабораторией"
+    },
+    {
+     "id": "kamenev-andrey-leonidovich",
+     "name": "Каменев Андрей Леонидович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "komina-elena-nikolaevna",
+     "name": "Комина Елена Николаевна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teorii-i-metodiki-adaptivnoy-fizicheskoy-kultury",
+   "name": "Кафедра теории и методики адаптивной физической культуры",
+   "teachers": [
+    {
+     "id": "rubtsova-natalya-olegovna",
+     "name": "Рубцова Наталья Олеговна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "mozdokova-yuliya-stepanovna",
+     "name": "Моздокова Юлия Степановна",
+     "position": "профессор"
+    },
+    {
+     "id": "gromova-olga-vladimirovna",
+     "name": "Громова Ольга Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "artamonova-tatyana-viktorovna",
+     "name": "Артамонова Татьяна Викторовна",
+     "position": "доцент"
+    },
+    {
+     "id": "zhukov-yuriy-yurevich",
+     "name": "Жуков Юрий Юрьевич",
+     "position": "доцент"
+    },
+    {
+     "id": "spirina-irina-konstantinovna",
+     "name": "Спирина Ирина Константиновна",
+     "position": "доцент"
+    },
+    {
+     "id": "gorokhova-nataliya-petrovna",
+     "name": "Горохова Наталия Петровна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "zhurina-mariya-yurevna",
+     "name": "Журина Мария Юрьевна",
+     "position": "заведующий лабораторией, старший преподаватель"
+    },
+    {
+     "id": "karaulov-sergey-vladimirovich",
+     "name": "Караулов Сергей Владимирович",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "teoretiko-metodicheskikh-osnov-fizicheskoy-kultury-i-sporta",
+   "name": "Кафедра теоретико-методических основ физической культуры и спорта",
+   "teachers": [
+    {
+     "id": "vovk-sergey-ivanovich",
+     "name": "Вовк Сергей Иванович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "polyanskiy-valeriy-petrovich",
+     "name": "Полянский Валерий Петрович",
+     "position": "профессор"
+    },
+    {
+     "id": "kim-tatyana-konstantinovna",
+     "name": "Ким Татьяна Константиновна",
+     "position": "профессор"
+    },
+    {
+     "id": "gasanova-matveeva-zemfira-arif-kyzy",
+     "name": "Гасанова-Матвеева Земфира Ариф кызы",
+     "position": "доцент"
+    },
+    {
+     "id": "machkanova-elena-vyacheslavovna",
+     "name": "Мачканова Елена Вячеславовна",
+     "position": "доцент"
+    },
+    {
+     "id": "rabadanov-magomedrasul-nadirovich",
+     "name": "Рабаданов Магомедрасул Надирович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "borisyuk-darya-valerevna",
+     "name": "Борисюк Дарья Валерьевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "sologub-svetlana-lvovna",
+     "name": "Сологуб Светлана Львовна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "truneva-tatyana-vladimirovna",
+     "name": "Трунева Татьяна Владимировна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "osipova-anastasiya-aleksandrovna",
+     "name": "Осипова Анастасия Александровна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "krivenkov-aleksey-aleksandrovich",
+     "name": "Кривенков Алексей Александрович",
+     "position": "ассистент"
+    },
+    {
+     "id": "bereza-ekaterina-ivanovna",
+     "name": "Береза Екатерина Ивановна",
+     "position": "ассистент"
+    }
+   ]
+  },
+  {
+   "id": "sportivnoy-meditsiny",
+   "name": "Кафедра спортивной медицины",
+   "teachers": [
+    {
+     "id": "smolenskiy-andrey-vadimovich",
+     "name": "Смоленский Андрей Вадимович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "belichenko-oleg-igorevich",
+     "name": "Беличенко Олег Игоревич",
+     "position": "профессор"
+    },
+    {
+     "id": "miroshnikov-aleksandr-borisovich",
+     "name": "Мирошников Александр Борисович",
+     "position": "профессор"
+    },
+    {
+     "id": "zolicheva-svetlana-yurevna",
+     "name": "Золичева Светлана Юрьевна",
+     "position": "доцент"
+    },
+    {
+     "id": "tarasov-aleksandr-viktorovich",
+     "name": "Тарасов Александр Викторович",
+     "position": "доцент"
+    },
+    {
+     "id": "grigoreva-olga-valentinovna",
+     "name": "Григорьева Ольга Валентиновна",
+     "position": "доцент"
+    },
+    {
+     "id": "karenov-sergey-rudolfovich",
+     "name": "Карьёнов Сергей Рудольфович",
+     "position": "доцент"
+    },
+    {
+     "id": "kosinova-valeriya-pavlovna",
+     "name": "Косинова Валерия Павловна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "sokolova-natalya-leonidovna",
+     "name": "Соколова Наталья Леонидовна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "nikulenkova-galina-grigorevna",
+     "name": "Никуленкова Галина Григорьевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "filatova-olesya-andreevna",
+     "name": "Филатова Олеся Андреевна",
+     "position": "преподаватель"
+    },
+    {
+     "id": "mikhaylova-rushaniya-bayazitovna",
+     "name": "Михайлова Рушания Баязитовна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "reklamy-svyazey-s-obshchestvennostyu-i-sotsialno-gumanitarny",
+   "name": "Кафедра рекламы, связей с общественностью и социально-гуманитарных проблем",
+   "teachers": [
+    {
+     "id": "kosheleva-anna-vladimirovna",
+     "name": "Кошелева Анна Владимировна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "shishova-natalya-sergeevna",
+     "name": "Шишова Наталья Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "protasova-nadezhda-vadimovna",
+     "name": "Протасова Надежда Вадимовна",
+     "position": "доцент"
+    },
+    {
+     "id": "melnikov-vitaliy-vladimirovich",
+     "name": "Мельников Виталий Владимирович",
+     "position": "доцент"
+    },
+    {
+     "id": "mysenko-galina-vladimirovna",
+     "name": "Мысенко Галина Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "mayorov-oleg-vyacheslavovich",
+     "name": "Майоров Олег Вячеславович",
+     "position": "доцент"
+    },
+    {
+     "id": "barienikova-ekaterina-evgenevna",
+     "name": "Бариеникова Екатерина Евгеньевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "lonshakova-lyudmila-viktorovna",
+     "name": "Лоншакова Людмила Викторовна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "rezhissury-massovykh-sportivno-khudozhestvennykh-predstavlen",
+   "name": "Кафедра режиссуры массовых спортивно-художественных представлений им. В.А. Губанова",
+   "teachers": [
+    {
+     "id": "kuzmicheva-elena-vyacheslavovna",
+     "name": "Кузьмичева Елена Вячеславовна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "druzhkov-aleksandr-lvovich",
+     "name": "Дружков Александр Львович",
+     "position": "доцент"
+    },
+    {
+     "id": "zharikova-elena-leonidovna",
+     "name": "Жарикова Елена Леонидовна",
+     "position": "доцент"
+    },
+    {
+     "id": "kornyushina-ekaterina-olegovna",
+     "name": "Корнюшина Екатерина Олеговна",
+     "position": "доцент"
+    },
+    {
+     "id": "tomashevich-anastasiya-mikhaylovna",
+     "name": "Томашевич Анастасия Михайловна",
+     "position": "доцент"
+    },
+    {
+     "id": "konstantinova-svetlana-evgenevna",
+     "name": "Константинова Светлана Евгеньевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "makhno-sergey-mikhaylovich",
+     "name": "Махно Сергей Михайлович",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "salakhudinova-elena-sergeevna",
+     "name": "Салахудинова Елена Сергеевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "drobyshevskaya-natalya-vladimirovna",
+     "name": "Дробышевская Наталья Владимировна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "bykov-leonid-aleksandrovich",
+     "name": "Быков Леонид Александрович",
+     "position": "заведующий лабораторией"
+    },
+    {
+     "id": "filippov-egor-dmitrievich",
+     "name": "Филиппов Егор Дмитриевич",
+     "position": "ассистент"
+    },
+    {
+     "id": "manzyuk-ekaterina-vadimovna",
+     "name": "Манзюк Екатерина Вадимовна",
+     "position": "ассистент"
+    },
+    {
+     "id": "shein-vyacheslav-mikhaylovich",
+     "name": "Шеин Вячеслав Михайлович",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "psikhologii-filosofii-i-sotsiologii",
+   "name": "Кафедра психологии, философии и социологии",
+   "teachers": [
+    {
+     "id": "baykovskiy-yuriy-viktorovich",
+     "name": "Байковский Юрий Викторович",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "ismailov-asomiddin-ismailovich",
+     "name": "Исмаилов Асомиддин Исмаилович",
+     "position": "профессор"
+    },
+    {
+     "id": "lubysheva-lyudmila-ivanovna",
+     "name": "Лубышева Людмила Ивановна",
+     "position": "профессор"
+    },
+    {
+     "id": "moskvina-nina-viktorovna",
+     "name": "Москвина Нина Викторовна",
+     "position": "доцент"
+    },
+    {
+     "id": "shumova-nataliya-sergeevna",
+     "name": "Шумова Наталия Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "sopov-vladimir-fedorovich",
+     "name": "Сопов Владимир Федорович",
+     "position": "доцент"
+    },
+    {
+     "id": "grzhebina-lyudmila-mikhaylovna",
+     "name": "Гржебина Людмила Михайловна",
+     "position": "доцент"
+    },
+    {
+     "id": "voat-aleksey-aleksandrovich",
+     "name": "Воат Алексей Александрович",
+     "position": "доцент"
+    },
+    {
+     "id": "titova-galina-sergeevna",
+     "name": "Титова Галина Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "romanenko-anna-yurevna",
+     "name": "Романенко Анна Юрьевна",
+     "position": "доцент"
+    },
+    {
+     "id": "khoreva-yuliya-aleksandrovna",
+     "name": "Хорева Юлия Александровна",
+     "position": "доцент"
+    },
+    {
+     "id": "khalimulina-rimma-sabitovna",
+     "name": "Халимулина Римма Сабитовна",
+     "position": "доцент"
+    },
+    {
+     "id": "afanaseva-natalya-nikolaevna",
+     "name": "Афанасьева Наталья Николаевна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "gromova-zoya-vladimirovna",
+     "name": "Громова Зоя Владимировна",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "pedagogiki",
+   "name": "Кафедра педагогики",
+   "teachers": [
+    {
+     "id": "levchenkova-tatyana-viktorovna",
+     "name": "Левченкова Татьяна Викторовна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "neverkovich-sergey-dmitrievich",
+     "name": "Неверкович Сергей Дмитриевич",
+     "position": "профессор"
+    },
+    {
+     "id": "germanov-gennadiy-nikolaevich",
+     "name": "Германов Геннадий Николаевич",
+     "position": "профессор"
+    },
+    {
+     "id": "kiseleva-elena-vladimirovna",
+     "name": "Киселёва Елена Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "aronova-tatyana-vladimirovna",
+     "name": "Аронова Татьяна Владимировна",
+     "position": "доцент"
+    },
+    {
+     "id": "tsakaev-saydamin-shamaevich",
+     "name": "Цакаев Сайдамин Шамаевич",
+     "position": "доцент"
+    },
+    {
+     "id": "olkhovik-tatyana-nikolaevna",
+     "name": "Ольховик Татьяна Николаевна",
+     "position": "доцент"
+    },
+    {
+     "id": "merkureva-alisa-yurevna",
+     "name": "Меркурьева Алиса Юрьевна",
+     "position": "доцент"
+    },
+    {
+     "id": "spitsyna-irina-alekseevna",
+     "name": "Спицына Ирина Алексеевна",
+     "position": "специалист по учебно-методической работе, старший преподаватель"
+    }
+   ]
+  },
+  {
+   "id": "menedzhmenta-i-ekonomiki-sportivnoy-industrii-im-v-v-kuzina",
+   "name": "Кафедра менеджмента и экономики спортивной индустрии им. В.В. Кузина",
+   "teachers": [
+    {
+     "id": "zhukova-olga-vladislavovna",
+     "name": "Жукова Ольга Владиславовна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "bukaeva-irina-nikolaevna",
+     "name": "Букаева Ирина Николаевна",
+     "position": "доцент"
+    },
+    {
+     "id": "kuptsov-egor-igorevich",
+     "name": "Купцов Егор Игоревич",
+     "position": "доцент"
+    },
+    {
+     "id": "oleynik-nataliya-savvatevna",
+     "name": "Олейник Наталия Савватьевна",
+     "position": "доцент"
+    },
+    {
+     "id": "probin-pavel-sergeevich",
+     "name": "Пробин Павел Сергеевич",
+     "position": "доцент"
+    },
+    {
+     "id": "ratnikova-irina-pavlovna",
+     "name": "Ратникова Ирина Павловна",
+     "position": "доцент"
+    },
+    {
+     "id": "ukhanova-tatyana-vasilevna",
+     "name": "Уханова Татьяна Васильевна",
+     "position": "доцент"
+    },
+    {
+     "id": "ushakova-natalya-aleksandrovna",
+     "name": "Ушакова Наталья Александровна",
+     "position": "доцент"
+    },
+    {
+     "id": "frolko-marina-vasilevna",
+     "name": "Фролко Марина Васильевна",
+     "position": "доцент"
+    },
+    {
+     "id": "petukhov-viktor-dmitrievich",
+     "name": "Петухов Виктор Дмитриевич",
+     "position": "доцент"
+    },
+    {
+     "id": "obedkova-larisa-pavlovna",
+     "name": "Объедкова Лариса Павловна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "ratnikov-kirill-sergeevich",
+     "name": "Ратников Кирилл Сергеевич",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "salmaev-bamba-sergeevich",
+     "name": "Салмаев Бамба Сергеевич",
+     "position": "преподаватель"
+    },
+    {
+     "id": "kokhno-vladimir-olegovich",
+     "name": "Кохно Владимир Олегович",
+     "position": "ассистент"
+    },
+    {
+     "id": "egorkina-mariya-viktorovna",
+     "name": "Егоркина Мария Викторовна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "zemlinskiy-eduard-valerevich",
+     "name": "Землинский Эдуард Валерьевич",
+     "position": "специалист по учебно-методической работе"
+    }
+   ]
+  },
+  {
+   "id": "istorii-tsivilizatsii-fizicheskoy-kultury-sporta-i-olimpiysk",
+   "name": "Кафедра истории цивилизации, физической культуры, спорта и олимпийского образования",
+   "teachers": [
+    {
+     "id": "melnikova-nataliya-yurevna",
+     "name": "Мельникова Наталия Юрьевна",
+     "position": "заведующий кафедрой"
+    },
+    {
+     "id": "koreneva-mariya-vadimovna",
+     "name": "Коренева Мария Вадимовна",
+     "position": "доцент, заведующий лабораторией"
+    },
+    {
+     "id": "leonteva-nadezhda-sergeevna",
+     "name": "Леонтьева Надежда Сергеевна",
+     "position": "доцент"
+    },
+    {
+     "id": "nikiforova-aleksandra-yurevna",
+     "name": "Никифорова Александра Юрьевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "leonteva-lyubov-sergeevna",
+     "name": "Леонтьева Любовь Сергеевна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "samoylova-ekaterina-aleksandrovna",
+     "name": "Самойлова Екатерина Александровна",
+     "position": "старший преподаватель"
+    },
+    {
+     "id": "shishkova-svetlana-leonidovna",
+     "name": "Шишкова Светлана Леонидовна",
+     "position": "специалист по учебно-методической работе"
+    },
+    {
+     "id": "dementseva-natalya-valerevna",
+     "name": "Деменцева Наталья Валерьевна",
+     "position": "заведующий лабораторией"
+    }
+   ]
+  }
+ ]
+}

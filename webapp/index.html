@@ -253,6 +253,7 @@
   }
   .menu-icon.orange { background: rgba(255, 159, 10, 0.18); }
   .menu-icon.purple { background: rgba(175, 82, 222, 0.2); }
+  .menu-icon.green { background: rgba(52, 199, 89, 0.18); }
   .menu-title { flex: 1; }
   .menu-arrow { color: var(--hint); font-size: 22px; }
   .screen-head {
@@ -503,6 +504,37 @@
   .note-del { flex: 0 0 auto; background: none; border: none; color: var(--hint); font-size: 18px; padding: 0 2px; }
   .notes-empty { text-align: center; color: var(--hint); font-size: 14px; padding: 24px 0; }
 
+  /* --- Преподаватели --- */
+  .teacher-search {
+    width: 100%;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 15px;
+    font-family: inherit;
+    margin-bottom: 14px;
+  }
+  .dept-title { font-size: 13px; color: var(--hint); margin: 6px 4px 10px; }
+  .dept-title a { color: var(--accent); text-decoration: none; }
+  .teacher-card { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .teacher-name { font-size: 16px; font-weight: 700; word-break: break-word; }
+  .teacher-position { font-size: 14px; color: var(--accent); margin-top: 2px; }
+  .teacher-position::first-letter { text-transform: uppercase; }
+  .teacher-about { font-size: 13px; color: var(--hint); margin-top: 4px; line-height: 1.4; }
+  .teacher-link {
+    display: block;
+    margin-top: 8px;
+    padding: 9px 12px;
+    background: var(--card-pressed);
+    border-radius: 10px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 14px;
+    word-break: break-all;
+  }
+
   /* --- Нижняя панель вкладок --- */
   .tab-bar {
     position: fixed;
@@ -587,6 +619,9 @@
     <button class="menu-card" data-screen="paneNotes">
       <span class="menu-icon orange">📝</span><span class="menu-title">Заметки и дедлайны</span><span class="menu-arrow">›</span>
     </button>
+    <button class="menu-card" data-screen="paneTeachers">
+      <span class="menu-icon green">🎓</span><span class="menu-title">Преподаватели</span><span class="menu-arrow">›</span>
+    </button>
     <button class="menu-card" data-screen="paneRandom">
       <span class="menu-icon purple">🎲</span><span class="menu-title">Рандомайзер</span><span class="menu-arrow">›</span>
     </button>
@@ -606,6 +641,12 @@
       <div class="note-form-row"><button class="note-add" id="noteAdd" style="flex:1;padding:12px;">Добавить</button></div>
     </div>
     <div id="notesList"></div>
+  </div>
+
+  <div id="paneTeachers" class="other-screen" style="display:none;">
+    <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Преподаватели</h1></div>
+    <input type="search" class="teacher-search" id="teacherSearch" placeholder="Поиск по ФИО или кафедре" autocomplete="off">
+    <div id="teachersList"></div>
   </div>
 
   <div id="paneRandom" class="other-screen" style="display:none;">
@@ -902,11 +943,105 @@ for (const card of document.querySelectorAll(".menu-card")) {
   card.addEventListener("click", () => {
     showOther(card.dataset.screen);
     if (card.dataset.screen === "paneNotes" && !notesLoaded) loadNotes();
+    if (card.dataset.screen === "paneTeachers" && !teachersLoaded) loadTeachers();
   });
 }
 for (const back of document.querySelectorAll(".back-btn")) {
   back.addEventListener("click", () => showOther(null));
 }
+
+// --- Преподаватели: кафедры и сотрудники из data/teachers.json ---
+const teachersList = document.getElementById("teachersList");
+const teacherSearch = document.getElementById("teacherSearch");
+let teachersLoaded = false;
+let teacherDepartments = [];
+
+function telHref(phone) {
+  // "+7 (495) 961-31-11, доб. 50-26" -> tel:+74959613111,5026 (запятая: пауза перед добавочным)
+  const [main, ext] = phone.split(/доб\.?/i);
+  const digits = main.replace(/[^\d+]/g, "");
+  const extDigits = ext ? ext.replace(/\D/g, "") : "";
+  return "tel:" + digits + (extDigits ? "," + extDigits : "");
+}
+
+function renderTeachers() {
+  const q = teacherSearch.value.trim().toLowerCase();
+  teachersList.textContent = "";
+  let shown = 0;
+  for (const dept of teacherDepartments) {
+    // кафедра подходит под запрос - показываем всех её сотрудников, иначе ищем по ФИО
+    const deptMatch = q && (dept.name || "").toLowerCase().includes(q);
+    const people = (dept.teachers || []).filter((t) => !q || deptMatch || (t.name || "").toLowerCase().includes(q));
+    if (!people.length) continue;
+    const title = document.createElement("div");
+    title.className = "dept-title";
+    if (dept.source) {
+      const a = document.createElement("a");
+      a.href = dept.source;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = dept.name;
+      title.appendChild(a);
+    } else {
+      title.textContent = dept.name;
+    }
+    teachersList.appendChild(title);
+    if (dept.note) {
+      const note = document.createElement("div");
+      note.className = "teacher-about";
+      note.style.margin = "-6px 4px 10px";
+      note.textContent = dept.note;
+      teachersList.appendChild(note);
+    }
+    for (const t of people) {
+      shown++;
+      const card = document.createElement("div");
+      card.className = "teacher-card";
+      card.dataset.teacherId = t.id || "";  // устойчивый id: к нему потом можно привязать отзывы
+      const add = (cls, text) => {
+        const el = document.createElement("div");
+        el.className = cls;
+        el.textContent = text;
+        card.appendChild(el);
+      };
+      add("teacher-name", t.name);
+      if (t.position) add("teacher-position", t.position);
+      if (t.about) add("teacher-about", t.about);
+      const link = (href, text) => {
+        const a = document.createElement("a");
+        a.className = "teacher-link";
+        a.href = href;
+        a.textContent = text;
+        card.appendChild(a);
+      };
+      if (t.phone) link(telHref(t.phone), "📞 " + t.phone);
+      if (t.email) link("mailto:" + t.email, "✉️ " + t.email);
+      teachersList.appendChild(card);
+    }
+  }
+  if (!shown) {
+    const empty = document.createElement("div");
+    empty.className = "notes-empty";
+    empty.textContent = q ? "Никого не нашлось." : "Список пока пуст.";
+    teachersList.appendChild(empty);
+  }
+}
+
+async function loadTeachers() {
+  try {
+    const res = await fetch("/api/teachers");
+    if (!res.ok) throw new Error(String(res.status));
+    teacherDepartments = (await res.json()).departments || [];
+    const total = new Set(teacherDepartments.flatMap((d) => (d.teachers || []).map((t) => t.id || t.name))).size;
+    teacherSearch.placeholder = `Поиск по ФИО или кафедре (${total} чел.)`;
+    teachersLoaded = true;
+  } catch (err) {
+    teachersList.textContent = "Не удалось загрузить список. Попробуй позже.";
+    return;
+  }
+  renderTeachers();
+}
+teacherSearch.addEventListener("input", renderTeachers);
 
 // --- Заметки и дедлайны по предметам (хранятся на сервере по id пользователя) ---
 const notesList = document.getElementById("notesList");
