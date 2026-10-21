@@ -253,6 +253,7 @@
   .menu-icon.orange { background: rgba(255, 159, 10, 0.18); }
   .menu-icon.purple { background: rgba(175, 82, 222, 0.2); }
   .menu-icon.green { background: rgba(52, 199, 89, 0.18); }
+  .menu-icon.blue { background: rgba(10, 132, 255, 0.2); }
   .menu-title { flex: 1; }
   .menu-arrow { color: var(--hint); font-size: 22px; }
   .screen-head {
@@ -624,6 +625,9 @@
     <button class="menu-card" data-screen="paneRandom">
       <span class="menu-icon purple">🎲</span><span class="menu-title">Рандомайзер</span><span class="menu-arrow">›</span>
     </button>
+    <button class="menu-card" data-screen="paneGame">
+      <span class="menu-icon blue">🏃</span><span class="menu-title">Игра «Сессия»</span><span class="menu-arrow">›</span>
+    </button>
   </div>
 
   <div id="paneNotes" class="other-screen" style="display:none;">
@@ -672,6 +676,11 @@
     <div class="rand-result" id="randResult"></div>
     <button class="rand-btn" id="randBtn">Бросить</button>
   </div>
+  </div>
+
+  <div id="paneGame" class="other-screen" style="display:none;">
+    <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Игра «Сессия»</h1></div>
+    <div id="gameRoot"></div>
   </div>
 </div>
 
@@ -969,10 +978,25 @@ for (const card of document.querySelectorAll(".menu-card")) {
     showOther(card.dataset.screen);
     if (card.dataset.screen === "paneNotes" && !notesLoaded) loadNotes();
     if (card.dataset.screen === "paneTeachers" && !teachersLoaded) loadTeachers();
+    if (card.dataset.screen === "paneGame") openGame();
   });
 }
 for (const back of document.querySelectorAll(".back-btn")) {
   back.addEventListener("click", () => showOther(null));
+}
+
+// --- Игра «Сессия»: код в game.js грузится только при первом открытии карточки ---
+let gameScript = null;
+function openGame() {
+  const root = document.getElementById("gameRoot");
+  if (window.SessionGame) return window.SessionGame.open(root);
+  if (gameScript) return;
+  root.textContent = "Загружаю игру...";
+  gameScript = document.createElement("script");
+  gameScript.src = "game.js?v=1";
+  gameScript.onload = () => { root.textContent = ""; window.SessionGame.open(root); };
+  gameScript.onerror = () => { gameScript.remove(); gameScript = null; root.textContent = "Не удалось загрузить игру, попробуй ещё раз."; };
+  document.head.appendChild(gameScript);
 }
 
 // --- Преподаватели: кафедры и сотрудники из data/teachers.json ---

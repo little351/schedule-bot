@@ -11,6 +11,7 @@ from database import (
     DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS, WEEKDAY_MAP, GroupRef, get_catalog, get_day_lessons,
     get_groups, get_relative_week_sheet, get_user_group, get_week_schedule_grid, set_user_group,
     touch_user, NOTES_LIMIT, add_note, count_notes, delete_note, get_group_subjects, list_notes, update_note,
+    game_leaderboard, save_game_score,
 )
 from formatting import trim_trailing_empty
 from telegram_auth import MAX_AGE_SECONDS, READ_MAX_AGE_SECONDS, validate_init_data
@@ -44,6 +45,14 @@ class NoteBody(BaseModel):
     subject: str = ""
     text: str = ""
     due_date: Optional[str] = None  # ГГГГ-ММ-ДД
+
+
+class GameScore(BaseModel):
+    score: int
+
+
+# Потолок счёта партии: выше честно не набрать (игра идёт минут 10), всё сверху - подделка запроса.
+GAME_SCORE_MAX = 100_000
 
 
 class NotePatch(BaseModel):
@@ -232,5 +241,24 @@ def build_router(conn, bot_token) -> APIRouter:
         if not delete_note(conn, user_id, note_id):
             raise HTTPException(status_code=404, detail="note_not_found")
         return {"notes": list_notes(conn, user_id)}
+
+    @router.get("/game/top")
+    def game_top(x_init_data: str = Header(default="")):
+        user = validate_init_data(x_init_data or "", bot_token, READ_MAX_AGE_SECONDS)
+        return game_leaderboard(conn, user["id"] if user else 0)
+
+    @router.post("/game/score")
+    def game_score(body: GameScore, x_init_data: str = Header(default="")):
+        """Конец партии мини-игры: запоминаем рекорд и сразу отдаём таблицу лидеров (один запрос на партию)."""
+        user = validate_init_data(x_init_data or "", bot_token)
+        if not user:
+            raise HTTPException(status_code=403, detail="bad_init_data")
+        if not 0 <= body.score <= GAME_SCORE_MAX:
+            raise HTTPException(status_code=400, detail="bad_score")
+        last = (user.get("last_name") or "").strip()
+        name = ((user.get("first_name") or "").strip() + (f" {last[0]}." if last else "")).strip()
+        if body.score > 0:
+            save_game_score(conn, user["id"], name[:20] or "Игрок", body.score)
+        return game_leaderboard(conn, user["id"])
 
     return router
