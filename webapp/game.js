@@ -159,7 +159,7 @@
     defense: { theme: "hall", label: "Защита диплома" },
   };
 
-  let root, canvas, ctx, over, boardEl, hud = {};
+  let root, canvas, ctx, over, hud = {};
   let S = null; // состояние партии
   let running = false, rafId = 0, last = 0;
   const input = { duckHeld: false, jumpHeld: false, buffer: 0 };
@@ -286,6 +286,9 @@
     return a.x < x + o.hit[2] && a.x + a.w > x && a.y < y + o.hit[3] && a.y + a.h > y;
   }
 
+  // третья ведомость и пересдача - второй шанс, очков на них не дают
+  const scoring = () => S.type !== "ved3" && S.type !== "diploma2";
+
   function update(dt) {
     const p = S.player;
     S.t += dt;
@@ -294,7 +297,7 @@
     const moving = S.type !== "defense";
     const speed = moving ? S.speed : 30;
     S.scroll += speed * dt;
-    S.score += (moving ? S.speed * 0.1 : 12) * dt;
+    if (scoring()) S.score += (moving ? S.speed * 0.1 : 12) * dt;
     p.anim += dt * speed / 9;
 
     // прыжок и приземление; свайп вниз в воздухе ускоряет падение
@@ -333,7 +336,7 @@
       if (o.item) {
         o.gone = true;
         S.collected++;
-        S.score += 50;
+        if (scoring()) S.score += 50;
         haptic("light");
       } else if (S.invuln <= 0) {
         o.gone = true;
@@ -341,44 +344,64 @@
         S.lives--;
         S.invuln = 1.4;
         haptic("heavy");
-        if (S.lives <= 0) return finish(false, "Жизни кончились", "Слишком много падений по дороге к диплому.");
+        if (S.lives <= 0) return finish(false, pick(MSG.deadTitle), pick(MSG.deadText));
       }
     }
     S.objects = S.objects.filter((o) => o.x > -30 && !(o.gone && o.item));
     checkStageEnd();
   }
 
+  // Несколько вариантов каждого сообщения, чтобы между этапами не было одного и того же текста
+  const MSG = {
+    chaseTitle: ["Не догнал!", "Упустил!", "Почти догнал!", "Слишком быстро!"],
+    chaseText: ["Догнать преподавателя невозможно.", "Был совсем близко, но преподаватель скрылся в аудитории.",
+      "Преподаватель свернул за угол и пропал.", "Расписались без тебя."],
+    passTitle: (n) => [`Переводишься на ${n} курс!`, `Зачёт! Добро пожаловать на ${n} курс`, `Ведомость закрыта, впереди ${n} курс`],
+    passText: ["Новый курс, новая погоня.", "Отдыхать некогда: снова кого-то догонять.", "Каникулы были короткими."],
+    lastCourse: ["Последний курс: теперь ты догонишь всех, кто убегал.", "4 курс. Пора догнать всех, кто убегал все эти годы."],
+    lateTitle: ["Не успел", "Время вышло", "Ведомость не закрыта"],
+    catchTitle: ["Догнал всех!", "Попались!", "Все пойманы!"],
+    sheetsTitle: ["Листы собраны!", "Диплом сшит!", "Всё подписано!"],
+    deadTitle: ["Жизни кончились", "Без сил", "Сессия победила"],
+    deadText: ["Слишком много падений по дороге к диплому.", "Споткнулся в третий раз и сошёл с дистанции.",
+      "Синяков больше, чем зачётов."],
+    outTitle: ["Отчислен", "Сессия не сдана", "До встречи в следующем году"],
+    winTitle: ["Диплом получен!", "Выпускник!", "Защитился!"],
+    winText: ["Ты прошёл все четыре курса и защитился.", "Четыре курса позади, комиссия довольна.",
+      "Комиссия аплодирует стоя."],
+  };
+
   function checkStageEnd() {
     const c = S.course;
     if (S.type === "chase" && S.t >= CHASE_TIME) {
-      return between("Не догнал!", "Догнать преподавателя невозможно. Тебя отправляют на вторую ведомость: " +
+      return between(pick(MSG.chaseTitle), `${pick(MSG.chaseText)} Тебя отправляют на вторую ведомость: ` +
         `собери ${NEED} зачётов за ${VED_TIME} секунд.`, "ved2");
     }
     if (S.type === "catch" && S.t >= CATCH_TIME) {
       S.score += 300;
-      return between("Догнал всех!", `Остались листы диплома: собери ${NEED} за ${VED_TIME} секунд.`, "diploma");
+      return between(pick(MSG.catchTitle), `Остались листы диплома: собери ${NEED} за ${VED_TIME} секунд.`, "diploma");
     }
     if (S.type === "defense" && S.t >= DEFENSE_TIME) {
       S.score += 1000;
-      return finish(true, "Диплом получен!", "Ты прошёл все четыре курса и защитился.");
+      return finish(true, pick(MSG.winTitle), pick(MSG.winText));
     }
     if (!S.st.items) return;
     const done = S.collected >= NEED;
     const out = S.t >= VED_TIME || (S.itemsLeft === 0 && !S.objects.some((o) => o.item) && !done);
     if (done) {
-      S.score += 300;
+      if (scoring()) S.score += 300;
       if (S.type === "diploma" || S.type === "diploma2") {
-        return between("Листы собраны!", `Защита: ${DEFENSE_TIME} секунд уворачивайся от вопросов комиссии. ` +
-          "Низкий вопрос перепрыгни, высокий пропусти, пригнувшись.", "defense");
+        return between(pick(MSG.sheetsTitle), `Защита: ${DEFENSE_TIME} секунд уворачивайся от вопросов комиссии. ` +
+          "Низкий вопрос перепрыгни, под высоким пригнись.", "defense");
       }
       S.course = c + 1;
-      return between(`Переводишься на ${c + 1} курс!`, c + 1 === 4
-        ? "Последний курс: теперь ты догонишь всех, кто убегал." : "Новый курс, новая погоня.", c + 1 === 4 ? "catch" : "chase");
+      return between(pick(MSG.passTitle(c + 1)), pick(c + 1 === 4 ? MSG.lastCourse : MSG.passText), c + 1 === 4 ? "catch" : "chase");
     }
     if (!out) return;
-    if (S.type === "ved2") return between("Не успел", "Третья ведомость: всё то же самое, но быстрее и препятствий больше.", "ved3");
-    if (S.type === "diploma") return between("Не успел", "Пересдача: всё то же самое, но быстрее и препятствий больше.", "diploma2");
-    return finish(false, "Отчислен", S.type === "ved3" ? "Третья ведомость не закрыта." : "Пересдача не сдана.");
+    const again = "всё то же самое, но быстрее, препятствий больше, а очки не начисляются.";
+    if (S.type === "ved2") return between(pick(MSG.lateTitle), `Третья ведомость: ${again}`, "ved3");
+    if (S.type === "diploma") return between(pick(MSG.lateTitle), `Пересдача: ${again}`, "diploma2");
+    return finish(false, pick(MSG.outTitle), S.type === "ved3" ? "Третья ведомость не закрыта." : "Пересдача не сдана.");
   }
 
   function haptic(kind) {
@@ -522,7 +545,9 @@
 
     // за кем бежим
     if (S.type === "chase") {
-      const x = W - 34 + Math.sin(S.t * 2) * 5;
+      // отрыв постепенно сокращается, но до игрока остаётся пара шагов
+      const k = Math.min(1, S.t / CHASE_TIME);
+      const x = W - 34 - (W - 34 - (PLAYER_X + 24)) * (k * k * (3 - 2 * k)) + Math.sin(S.t * 2) * 3 * (1 - k);
       shadow(x, 12);
       drawPerson(LOOKS[CHASERS[S.course][0]], x, GROUND, frame);
     } else if (S.type === "catch") {
@@ -549,7 +574,7 @@
   function updateHud() {
     hud.stage.textContent = stageLabel();
     hud.lives.textContent = "❤".repeat(Math.max(0, S.lives)) + "♡".repeat(LIVES - Math.max(0, S.lives));
-    hud.score.textContent = `Счёт: ${Math.floor(S.score)}`;
+    hud.score.textContent = `Счёт: ${Math.floor(S.score)}` + (scoring() ? "" : " · очки не идут");
     if (S.st.items) {
       const left = Math.max(0, Math.ceil(VED_TIME - S.t));
       const what = S.st.items === "zachet" ? "Зачёты" : "Листы";
@@ -592,7 +617,7 @@
     show("Пауза", "Игра остановлена.", [["Продолжить", resume]]);
   }
 
-  function show(title, text, buttons) {
+  function show(title, text, buttons, note) {
     over.textContent = "";
     const box = document.createElement("div");
     box.className = "sg-box";
@@ -603,6 +628,7 @@
     p.className = "sg-text";
     p.textContent = text;
     box.append(h, p);
+    if (note) box.append(note);
     const row = document.createElement("div");
     row.className = "sg-buttons";
     for (const [label, fn, secondary] of buttons) {
@@ -625,13 +651,18 @@
     show(title, text, [["Вперёд", () => { startStage(next); resume(); }]]);
   }
 
+  let lastBoard = null; // таблица из ответа на сохранение счёта: открывается без второго запроса
+
   function finish(won, title, text) {
     stop();
     draw();
     const score = Math.floor(S.score);
-    boardEl.textContent = "Сохраняю результат...";
-    show(title, `${text} Счёт: ${score}.`, [["Ещё раз", () => { boardEl.textContent = ""; newGame(); resume(); }]]);
-    sendScore(score, boardEl);
+    const note = document.createElement("div");
+    note.className = "sg-note";
+    note.textContent = "Сохраняю результат...";
+    lastBoard = null;
+    show(title, `${text} Счёт: ${score}.`, [["Ещё раз", () => { newGame(); resume(); }], ["Таблица лидеров", openBoard, true]], note);
+    sendScore(score, note);
   }
 
   async function api(method, path, body) {
@@ -644,11 +675,44 @@
     return res.json();
   }
 
-  async function sendScore(score, board) {
+  async function sendScore(score, note) {
     try {
-      renderBoard(board, await api("POST", "/score", { score }));
+      lastBoard = await api("POST", "/score", { score });
+      note.textContent = myPlace(lastBoard);
     } catch (e) {
-      board.textContent = "Не удалось сохранить результат.";
+      note.textContent = "Не удалось сохранить результат.";
+    }
+  }
+
+  function myPlace(data) {
+    return data.best != null ? `Твой рекорд: ${data.best}, ${data.rank} место` : "Ты ещё не в таблице";
+  }
+
+  // Таблица лидеров - окно поверх страницы, листать ничего не надо
+  async function openBoard() {
+    const modal = document.createElement("div");
+    modal.className = "sg-modal";
+    const sheet = document.createElement("div");
+    sheet.className = "sg-sheet";
+    const title = document.createElement("div");
+    title.className = "sg-title";
+    title.textContent = "Таблица лидеров";
+    const body = document.createElement("div");
+    body.className = "sg-board";
+    body.textContent = "Загружаю...";
+    const close = document.createElement("button");
+    close.className = "sg-btn";
+    close.textContent = "Закрыть";
+    sheet.append(title, body, close);
+    modal.append(sheet);
+    const remove = () => modal.remove();
+    close.addEventListener("click", remove);
+    modal.addEventListener("click", (e) => { if (e.target === modal) remove(); });
+    document.body.append(modal);
+    try {
+      renderBoard(body, lastBoard || await api("GET", "/top"));
+    } catch (e) {
+      body.textContent = "Не удалось загрузить таблицу.";
     }
   }
 
@@ -656,7 +720,7 @@
     board.textContent = "";
     const head = document.createElement("div");
     head.className = "sg-board-head";
-    head.textContent = data.best != null ? `Твой рекорд: ${data.best} (${data.rank} место)` : "Ты ещё не в таблице";
+    head.textContent = myPlace(data);
     board.append(head);
     const list = document.createElement("ol");
     for (const row of data.top || []) {
@@ -682,11 +746,7 @@
     draw();
     show("Сессия", "Беги за преподавателями, собирай зачёты на ведомостях и дойди до защиты диплома. " +
       "Жизней 3 на всю игру.",
-    [["Играть", () => { boardEl.textContent = ""; newGame(); resume(); }], ["Таблица лидеров", async (e) => {
-      e.target.disabled = true;
-      boardEl.textContent = "Загружаю...";
-      try { renderBoard(boardEl, await api("GET", "/top")); } catch (err) { boardEl.textContent = "Не удалось загрузить таблицу."; }
-    }, true]]);
+    [["Играть", () => { newGame(); resume(); }], ["Таблица лидеров", openBoard, true]]);
   }
 
   const CSS = `
@@ -708,8 +768,11 @@
   .sg-arrow { flex: 1; height: 64px; border: none; border-radius: 18px; background: var(--card); color: var(--text); font-size: 28px; touch-action: none; -webkit-tap-highlight-color: transparent; }
   .sg-arrow.on { background: var(--accent); }
   .sg-help { color: var(--hint); font-size: 13px; text-align: center; margin-top: 10px; }
-  .sg-board { margin-top: 14px; font-size: 14px; }
-  .sg-board:empty { display: none; }
+  .sg-note { font-size: 13px; color: #ffd60a; margin: -4px 0 10px; }
+  .sg-modal { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .sg-sheet { width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 18px 16px; text-align: center; }
+  .sg-sheet .sg-btn { margin-top: 12px; width: 100%; }
+  .sg-board { margin-top: 8px; font-size: 14px; }
   .sg-board ol { list-style: none; padding: 0; margin: 6px 0 0; counter-reset: place; }
   .sg-board li { display: flex; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--card); margin-bottom: 4px; counter-increment: place; }
   .sg-board li::before { content: counter(place) "."; color: var(--hint); min-width: 20px; text-align: left; }
@@ -732,13 +795,11 @@
         <button class="sg-arrow" data-act="duck" aria-label="Пригнуться">▼</button>
       </div>
       <div class="sg-help">Можно и по экрану: тап - прыжок, свайп вниз - пригнуться</div>
-      <div class="sg-board"></div>
     </div>`;
     canvas = root.querySelector("canvas");
     ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     over = root.querySelector(".sg-over");
-    boardEl = root.querySelector(".sg-board");
     hud = { stage: root.querySelector(".sg-stage"), lives: root.querySelector(".sg-lives"),
       score: root.querySelector(".sg-score"), goal: root.querySelector(".sg-goal") };
     const view = root.querySelector(".sg-view");
