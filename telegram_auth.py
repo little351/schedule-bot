@@ -5,6 +5,8 @@ import time
 from urllib.parse import parse_qsl
 
 MAX_AGE_SECONDS = 24 * 60 * 60
+# Чтение расписания: мини-апп могут держать открытым несколько дней, а initData при этом не обновляется.
+READ_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
 
 def validate_init_data(init_data: str, bot_token: str, max_age: int = MAX_AGE_SECONDS):

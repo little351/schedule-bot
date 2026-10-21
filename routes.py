@@ -13,7 +13,7 @@ from database import (
     touch_user, NOTES_LIMIT, add_note, count_notes, delete_note, get_group_subjects, list_notes, update_note,
 )
 from formatting import trim_trailing_empty
-from telegram_auth import validate_init_data
+from telegram_auth import MAX_AGE_SECONDS, READ_MAX_AGE_SECONDS, validate_init_data
 
 
 TEACHERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "teachers.json")
@@ -90,12 +90,12 @@ def _group_json(group):
 def build_router(conn, bot_token) -> APIRouter:
     router = APIRouter(prefix="/api")
 
-    def request_user(init_data, telegram_id, required=True):
+    def request_user(init_data, telegram_id, required=True, max_age=MAX_AGE_SECONDS):
         """Кто спрашивает: id из подписанных данных Telegram (заголовок X-Init-Data), чтобы нельзя было
         подставить чужой id. Без токена бота (локальный api.py) берётся telegram_id из запроса."""
         if not bot_token:
             return telegram_id
-        user = validate_init_data(init_data or "", bot_token)
+        user = validate_init_data(init_data or "", bot_token, max_age)
         if user:
             return user["id"]
         if required:
@@ -110,7 +110,7 @@ def build_router(conn, bot_token) -> APIRouter:
 
     @router.get("/day")
     def get_day(date: str, telegram_id: int = 0, x_init_data: str = Header(default="")):
-        group = require_group(request_user(x_init_data, telegram_id))
+        group = require_group(request_user(x_init_data, telegram_id, max_age=READ_MAX_AGE_SECONDS))
         try:
             target_date = datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
@@ -131,7 +131,7 @@ def build_router(conn, bot_token) -> APIRouter:
 
     @router.get("/schedule")
     def get_schedule(telegram_id: int = 0, offset: int = 0, x_init_data: str = Header(default="")):
-        group = require_group(request_user(x_init_data, telegram_id))
+        group = require_group(request_user(x_init_data, telegram_id, max_age=READ_MAX_AGE_SECONDS))
         week_sheet = get_relative_week_sheet(conn, group, offset)
         if not week_sheet:
             raise HTTPException(status_code=404, detail="week_not_found")
@@ -151,13 +151,13 @@ def build_router(conn, bot_token) -> APIRouter:
     @router.get("/catalog")
     def catalog(telegram_id: int = 0, x_init_data: str = Header(default="")):
         """Направления -> курсы -> группы и текущий выбор пользователя (без подписи - только список)."""
-        user_id = request_user(x_init_data, telegram_id, required=False)
+        user_id = request_user(x_init_data, telegram_id, required=False, max_age=READ_MAX_AGE_SECONDS)
         return {"programs": get_catalog(conn), "current": _group_json(get_user_group(conn, user_id) if user_id else None)}
 
     @router.get("/groups")
     def list_groups(telegram_id: int = 0, x_init_data: str = Header(default="")):
         # старый вариант списка (его вызывают закешированные версии мини-приложения)
-        user_id = request_user(x_init_data, telegram_id, required=False)
+        user_id = request_user(x_init_data, telegram_id, required=False, max_age=READ_MAX_AGE_SECONDS)
         current = get_user_group(conn, user_id) if user_id else None
         groups = get_groups(conn, current.program, current.course) if current else get_groups(conn)
         return {"groups": [g.name for g in groups], "current": current.name if current else None}

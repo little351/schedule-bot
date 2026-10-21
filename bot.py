@@ -364,10 +364,18 @@ async def lms_check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     import lms_check
     do_login = bool(context.args) and context.args[0].lower() == "login"
     await update.message.reply_text("Проверяю доступ к сайту вуза, это займёт до минуты...")
-    lines = await asyncio.to_thread(
-        lms_check.run_checks, login=os.environ.get("LMS_LOGIN", "").strip(),
-        password=os.environ.get("LMS_PASSWORD", ""), do_login=do_login)
-    await update.message.reply_text("\n".join(lines))
+
+    async def run():
+        # в фоне, как /sync: вебхук должен ответить Telegram сразу, иначе он повторит команду
+        try:
+            lines = await asyncio.to_thread(
+                lms_check.run_checks, login=os.environ.get("LMS_LOGIN", "").strip(),
+                password=os.environ.get("LMS_PASSWORD", ""), do_login=do_login)
+            await update.message.reply_text("\n".join(lines))
+        except Exception:
+            logger.exception("/lms_check: ошибка")
+
+    context.application.create_task(run())
 
 
 LMS_FAIL_REPEAT_DAYS = 3  # об одной и той же неполадке подгрузки напоминаем не чаще
@@ -686,24 +694,29 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text("Получил файл, обновляю расписание...")
+    # чтение файла и перезагрузка расписания идут в фоне: вебхук должен ответить Telegram сразу,
+    # иначе на большом файле он посчитает обновление потерянным и пришлёт его ещё раз
+    context.application.create_task(_save_upload(update, context, document))
 
+
+async def _save_upload(update, context, document):
     # файл кладётся в папку своего курса (data/1k, ...): с тем же именем заменяет старый, с новым добавляется
-    file = await context.bot.get_file(document.file_id)
     os.makedirs(SCHEDULE_DIR, exist_ok=True)
     file_name = os.path.basename(document.file_name)
     tmp_path = os.path.join(SCHEDULE_DIR, f".upload-{file_name}")  # скрытые файлы не подхватываются
-    await file.download_to_drive(tmp_path)
 
     try:
+        file = await context.bot.get_file(document.file_id)
+        await file.download_to_drive(tmp_path)
         # сначала проверяем, что файл читается, и только потом кладём его к остальным,
         # чтобы битый файл не ломал загрузку при следующем старте
-        records = parse_file(tmp_path, load_config(SCHEDULE_DIR))
+        records = await asyncio.to_thread(parse_file, tmp_path, load_config(SCHEDULE_DIR))
         if not records:
             raise ValueError("не нашёл ни одного занятия")
         target_dir = upload_dir(SCHEDULE_DIR, file_name, records)
         os.makedirs(target_dir, exist_ok=True)
         os.replace(tmp_path, os.path.join(target_dir, file_name))
-        records = load_schedules()
+        records = await asyncio.to_thread(load_schedules)
         await update.message.reply_text(
             f"Готово, файл сохранён в {os.path.relpath(target_dir, os.path.dirname(SCHEDULE_DIR) or '.')}, "
             f"расписание обновлено ({len(records)} записей).\n{catalog_summary()}"
