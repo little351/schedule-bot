@@ -681,14 +681,27 @@ def delete_note(conn, telegram_id, note_id):
     return cur.rowcount > 0
 
 
+_LESSON_KIND = re.compile(r"^(?:(?:Л|Пр|Лаб)\.?\s+)+")
+# Где кончается название предмета: преподаватель («Иванов И.»), «Прил.», аудитория, «(для …», «вт - …», цифры.
+_SUBJECT_TAIL = re.compile(r"(?:\s+|(?<=[а-яё]))(?:[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s+[А-ЯЁ]\.|Прил\.|ауд\.|"
+                           r"\(для\s|(?:пн|вт|ср|чт|пт|сб)\s+-\s|\(?\d).*$")
+
+
+def subject_names(lesson: str):
+    """Названия предметов из текста пары: без «Л./Пр.», преподавателя и аудитории.
+    «Пр. Философия Баранов В.А. 161мбк» -> ["Философия"]; несколько пар через «;» дают несколько названий."""
+    names = []
+    for part in (lesson or "").strip().split("\n")[0].split(";"):
+        name = _SUBJECT_TAIL.sub("", _LESSON_KIND.sub("", part.strip())).strip(" ,.:-")
+        if 3 <= len(name) <= 80 and name[0].isupper():
+            names.append(name)
+    return names
+
+
 def get_group_subjects(conn, group: GroupRef, limit=60):
-    """Названия предметов из расписания группы (для подсказок в заметках): первая строка, без повторов."""
+    """Названия предметов из расписания группы (для подсказок в заметках), без повторов."""
     rows = conn.execute(
         "SELECT DISTINCT subject FROM lessons WHERE group_name = ? AND program = ? AND course = ?",
         (group.name, group.program, group.course)).fetchall()
-    names = set()
-    for (subject,) in rows:
-        first = (subject or "").strip().split("\n")[0].strip()
-        if first and len(first) <= 80:
-            names.add(first)
+    names = {name for (subject,) in rows for name in subject_names(subject)}
     return sorted(names)[:limit]

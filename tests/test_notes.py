@@ -17,9 +17,9 @@ from routes import build_router  # noqa: E402
 TOKEN = "123:test-token"
 
 
-def init_data(user_id):
-    """Подписанные данные мини-аппа, как их выдаёт Telegram."""
-    params = {"auth_date": str(int(time.time())), "user": json.dumps({"id": user_id, "first_name": "Т"})}
+def init_data(user_id, age=0):
+    """Подписанные данные мини-аппа, как их выдаёт Telegram (age - сколько секунд назад открыт мини-апп)."""
+    params = {"auth_date": str(int(time.time()) - age), "user": json.dumps({"id": user_id, "first_name": "Т"})}
     check = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
     secret = hmac.new(b"WebAppData", TOKEN.encode(), hashlib.sha256).digest()
     params["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
@@ -132,6 +132,47 @@ def test_webhook_rejects_requests_without_telegram_secret(monkeypatch):
     assert client.post(main.WEBHOOK_PATH, json={"update_id": 1}).status_code == 403
     assert client.post(main.WEBHOOK_PATH, json={"update_id": 1},
                        headers={"X-Telegram-Bot-Api-Secret-Token": "wrong"}).status_code == 403
+
+
+def test_app_open_for_days_still_shows_schedule_but_not_changes(tmp_path):
+    """Мини-апп, открытый 3 дня назад, расписание показывает, а группу и заметки менять уже нельзя."""
+    from datetime import datetime
+    from database import GroupRef, save_schedule, set_user_group
+    conn = init_db(str(tmp_path / "s.db"))
+    rec = {"program": "49.03.04", "program_name": "Спорт", "course": 1, "week_sheet": "05.10", "group": "1 группа",
+           "day": "Понедельник", "date": datetime(2026, 10, 5), "time": "8.50-10.20", "subject": "Пара"}
+    save_schedule(conn, [rec])
+    set_user_group(conn, 8, GroupRef("49.03.04", 1, "1 группа"))
+    app = FastAPI()
+    app.include_router(build_router(conn, TOKEN))
+    client = TestClient(app)
+    old = {"X-Init-Data": init_data(8, age=3 * 24 * 3600)}
+    assert client.get("/api/day?date=2026-10-05", headers=old).json()["lessons"][0]["subject"] == "Пара"
+    assert client.get("/api/schedule", headers=old).status_code != 403
+    assert client.get("/api/catalog", headers=old).json()["current"]["group"] == "1 группа"
+    assert client.get("/api/notes", headers=old).status_code == 403
+    body = {"group": "1 группа", "program": "49.03.04", "course": 1}
+    assert client.post("/api/group", json=body, headers=old).status_code == 403
+    week_old = {"X-Init-Data": init_data(8, age=8 * 24 * 3600)}
+    assert client.get("/api/day?date=2026-10-05", headers=week_old).status_code == 403
+
+
+def test_note_subject_suggestions_are_clean_names():
+    """Подсказки предметов: без «Л./Пр.», преподавателя и аудитории."""
+    from database import subject_names
+    assert subject_names("Пр. Философия Баранов В.А.") == ["Философия"]
+    assert subject_names("Л. Гимнастика Михалина Г.М. 161мбк") == ["Гимнастика"]
+    assert subject_names("Л. Информатика Конюхов В.Г. 70 мбк\nвторая строка") == ["Информатика"]
+    assert subject_names("Пр. Иностранный язык (профессиональный) Удалова М.Ю. (анг.)") == [
+        "Иностранный язык (профессиональный)"]
+    assert subject_names("Пр. Социология спорта (для 49.03.04 Спорт) Титова Г.С. 512мбк") == ["Социология спорта"]
+    assert subject_names("Л. Теория и методика волейбола Прил.1") == ["Теория и методика волейбола"]
+    assert subject_names("Пр. ФутболКолышкина Е.О. Модуль В") == ["Футбол"]
+    assert subject_names("Учебная практика: ознакомительная практика (17.11–04.12)") == [
+        "Учебная практика: ознакомительная практика"]
+    assert subject_names("Пр. Теория и методика бокса Прил.1; Пр. Методика реализации программ Павлов Е.А.") == [
+        "Теория и методика бокса", "Методика реализации программ"]
+    assert subject_names("") == []
 
 
 def test_parallel_requests_and_reload_do_not_break_each_other(tmp_path):

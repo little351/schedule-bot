@@ -55,6 +55,45 @@ def test_edited_messages_are_ignored(monkeypatch):
     assert handled(update("10", False)) == ["handle_message"] and handled(update("10", True)) == []
 
 
+def test_long_owner_commands_do_not_hold_the_webhook(monkeypatch, tmp_path):
+    """Загрузка файла и /lms_check уходят в фон: обработчик возвращается сразу, отчёт приходит потом."""
+    import asyncio
+    import types
+    monkeypatch.setenv("BOT_TOKEN", "123:abc")
+    import bot
+    import lms_check
+    monkeypatch.setattr(bot, "_is_owner", lambda update: True)
+    monkeypatch.setattr(bot, "SCHEDULE_DIR", str(tmp_path))
+    monkeypatch.setattr(lms_check, "run_checks", lambda **kw: ["ok"])
+    replies, tasks = [], []
+
+    async def reply_text(text):
+        replies.append(text)
+
+    async def get_file(file_id):
+        async def download_to_drive(path):
+            open(path, "wb").write(b"not a table")
+        return types.SimpleNamespace(download_to_drive=download_to_drive)
+
+    def update(document=None):
+        message = types.SimpleNamespace(document=document, reply_text=reply_text)
+        return types.SimpleNamespace(message=message)
+
+    context = types.SimpleNamespace(args=[], bot=types.SimpleNamespace(get_file=get_file),
+                                    application=types.SimpleNamespace(create_task=tasks.append))
+
+    async def scenario():
+        await bot.handle_document(update(types.SimpleNamespace(file_name="x.xlsx", file_id="f")), context)
+        await bot.lms_check_command(update(), context)
+        assert replies == ["Получил файл, обновляю расписание...", "Проверяю доступ к сайту вуза, это займёт до минуты..."]
+        for task in tasks:
+            await task
+        assert replies[2].startswith("Ошибка при обработке файла") and replies[3] == "ok"
+        assert os.listdir(tmp_path) == []  # временный файл убран
+
+    asyncio.run(scenario())
+
+
 def datetime_now():
     from datetime import datetime, timezone
     return datetime.now(timezone.utc)
