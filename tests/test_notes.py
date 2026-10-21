@@ -173,3 +173,36 @@ def test_note_subject_suggestions_are_clean_names():
     assert subject_names("Пр. Теория и методика бокса Прил.1; Пр. Методика реализации программ Павлов Е.А.") == [
         "Теория и методика бокса", "Методика реализации программ"]
     assert subject_names("") == []
+
+
+def test_parallel_requests_and_reload_do_not_break_each_other(tmp_path):
+    """API отвечает из нескольких потоков сразу, а расписание может перечитываться в это же время."""
+    import threading
+    from datetime import datetime
+    from database import GroupRef, get_day_lessons, save_schedule
+    conn = init_db(str(tmp_path / "p.db"))
+    base = {"program": "49.03.04", "program_name": "Спорт", "course": 1, "group": "1 группа", "week_sheet": "05.10",
+            "day": "Понедельник", "date": datetime(2026, 10, 5)}
+    records = [{**base, "time": t, "subject": f"Пара {i}"}
+               for i, t in enumerate(["8.50-10.20", "10.40-12.10", "13.00-14.30"])]
+    records += [{**base, "group": f"{n} группа", "time": "8.50-10.20", "subject": "x"} for n in range(2, 400)]
+    save_schedule(conn, records)
+    group, problems, stop = GroupRef("49.03.04", 1, "1 группа"), [], threading.Event()
+
+    def reader():
+        while not stop.is_set():
+            try:
+                if len(get_day_lessons(conn, group, datetime(2026, 10, 5))[1]) != 3:
+                    problems.append("неполный ответ")
+            except Exception as e:  # noqa: BLE001
+                problems.append(type(e).__name__)
+
+    threads = [threading.Thread(target=reader) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for _ in range(20):
+        save_schedule(conn, records)
+    stop.set()
+    for t in threads:
+        t.join()
+    assert problems == []

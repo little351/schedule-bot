@@ -1,6 +1,7 @@
 import os
 import re
 import sqlite3
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import NamedTuple
@@ -122,8 +123,52 @@ class GroupRef(NamedTuple):
         return re.sub(r"\s*группа\s*$", "", self.name, flags=re.IGNORECASE).strip()
 
 
+class _Result:
+    """Результат запроса, уже прочитанный целиком: его можно перебирать после того, как соединение освободилось."""
+
+    def __init__(self, rows, rowcount, lastrowid):
+        self._rows, self.rowcount, self.lastrowid = rows, rowcount, lastrowid
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
+    def fetchall(self):
+        return list(self._rows)
+
+    def __iter__(self):
+        return iter(self._rows)
+
+
+class LockedConnection:
+    """Соединение SQLite для нескольких потоков: API мини-аппа обрабатывает запросы параллельно, а одно
+    соединение sqlite3 одновременных запросов не выдерживает (пустые ответы и ошибки). Каждый запрос
+    выполняется под замком и читается целиком; `with conn.lock:` держит замок на несколько запросов подряд."""
+
+    def __init__(self, raw):
+        self.raw = raw
+        self.lock = threading.RLock()
+
+    def execute(self, sql, params=()):
+        with self.lock:
+            cur = self.raw.execute(sql, params)
+            return _Result(cur.fetchall() if cur.description else [], cur.rowcount, cur.lastrowid)
+
+    def executemany(self, sql, seq):
+        with self.lock:
+            cur = self.raw.executemany(sql, seq)
+            return _Result([], cur.rowcount, cur.lastrowid)
+
+    def commit(self):
+        with self.lock:
+            self.raw.commit()
+
+    def close(self):
+        with self.lock:
+            self.raw.close()
+
+
 def init_db(path="schedule.db"):
-    conn = sqlite3.connect(path, check_same_thread=False)
+    conn = LockedConnection(sqlite3.connect(path, check_same_thread=False))
     conn.execute("""
         CREATE TABLE IF NOT EXISTS lessons (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,6 +213,12 @@ def _add_missing_columns(conn, table, columns):
 
 
 def save_schedule(conn, records):
+    # под одним замком до commit: параллельный запрос не должен увидеть таблицу пустой или наполовину заполненной
+    with conn.lock:
+        _replace_schedule(conn, records)
+
+
+def _replace_schedule(conn, records):
     conn.execute("DELETE FROM lessons")
     conn.execute("DELETE FROM programs")
     conn.executemany(
