@@ -88,6 +88,8 @@ if PG_DSN:
             )
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS notes_user ON notes (telegram_id)")
+        cur.execute("CREATE TABLE IF NOT EXISTS game_scores "
+                    "(telegram_id BIGINT PRIMARY KEY, name TEXT, best INTEGER NOT NULL, updated_at TEXT)")
 
 
 def storage_name():
@@ -201,6 +203,8 @@ def init_db(path="schedule.db"):
         )
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS notes_user ON notes (telegram_id)")
+    conn.execute("CREATE TABLE IF NOT EXISTS game_scores "
+                 "(telegram_id INTEGER PRIMARY KEY, name TEXT, best INTEGER NOT NULL, updated_at TEXT)")
     conn.commit()
     return conn
 
@@ -705,3 +709,44 @@ def get_group_subjects(conn, group: GroupRef, limit=60):
         (group.name, group.program, group.course)).fetchall()
     names = {name for (subject,) in rows for name in subject_names(subject)}
     return sorted(names)[:limit]
+
+
+def save_game_score(conn, telegram_id, name, score):
+    """Счёт партии мини-игры: хранится лучший результат игрока (имя обновляется каждый раз)."""
+    now = now_local().strftime("%Y-%m-%dT%H:%M:%S")
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute("INSERT INTO game_scores (telegram_id, name, best, updated_at) VALUES (%s, %s, %s, %s) "
+                        "ON CONFLICT (telegram_id) DO UPDATE SET name = EXCLUDED.name, "
+                        "best = GREATEST(game_scores.best, EXCLUDED.best), updated_at = EXCLUDED.updated_at",
+                        (telegram_id, name, score, now))
+        return
+    with conn.lock:
+        conn.execute("INSERT INTO game_scores (telegram_id, name, best, updated_at) VALUES (?, ?, ?, ?) "
+                     "ON CONFLICT (telegram_id) DO UPDATE SET name = excluded.name, "
+                     "best = MAX(game_scores.best, excluded.best), updated_at = excluded.updated_at",
+                     (telegram_id, name, score, now))
+        conn.commit()
+
+
+def game_leaderboard(conn, telegram_id, limit=10):
+    """Топ игроков мини-игры и личный рекорд с местом спрашивающего (best/rank = None, если он не играл)."""
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute("SELECT telegram_id, name, best FROM game_scores ORDER BY best DESC, updated_at LIMIT %s",
+                        (limit,))
+            top = cur.fetchall()
+            cur.execute("SELECT best FROM game_scores WHERE telegram_id = %s", (telegram_id,))
+            mine = cur.fetchone()
+            rank = None
+            if mine:
+                cur.execute("SELECT COUNT(*) FROM game_scores WHERE best > %s", (mine[0],))
+                rank = cur.fetchone()[0] + 1
+    else:
+        top = conn.execute("SELECT telegram_id, name, best FROM game_scores ORDER BY best DESC, updated_at LIMIT ?",
+                           (limit,)).fetchall()
+        mine = conn.execute("SELECT best FROM game_scores WHERE telegram_id = ?", (telegram_id,)).fetchone()
+        rank = conn.execute("SELECT COUNT(*) FROM game_scores WHERE best > ?", (mine[0],)).fetchone()[0] + 1 \
+            if mine else None
+    return {"top": [{"name": name or "Игрок", "score": best, "me": tid == telegram_id} for tid, name, best in top],
+            "best": mine[0] if mine else None, "rank": rank}
