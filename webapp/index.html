@@ -993,7 +993,7 @@ function openGame() {
   if (gameScript) return;
   root.textContent = "Загружаю игру...";
   gameScript = document.createElement("script");
-  gameScript.src = "game.js?v=1";
+  gameScript.src = "game.js?v=2";
   gameScript.onload = () => { root.textContent = ""; window.SessionGame.open(root); };
   gameScript.onerror = () => { gameScript.remove(); gameScript = null; root.textContent = "Не удалось загрузить игру, попробуй ещё раз."; };
   document.head.appendChild(gameScript);
