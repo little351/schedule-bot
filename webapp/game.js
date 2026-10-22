@@ -4,7 +4,8 @@
   "use strict";
   const W = 120, H = 120, GROUND = 98, PLAYER_X = 18;
   const GRAVITY = 1100, JUMP_SPEED = 330, JUMP_CUT = 150;
-  const LIVES = 3, NEED = 5, VED_TIME = 60, CHASE_TIME = 18, CATCH_TIME = 14, DEFENSE_TIME = 20;
+  const SPEED_UP = 1.12; // общая прибавка скорости на всех этапах
+  const LIVES = 3, NEED = 5, DIPLOMA_NEED = 6, VED_TIME = 60, CHASE_TIME = 18, CATCH_TIME = 14, DEFENSE_TIME = 20;
   const tg = window.Telegram?.WebApp;
 
   // --- Пиксельные спрайты: строки символов, "." прозрачно ---
@@ -119,6 +120,9 @@
     x.fillStyle = "#e53935"; x.fillRect(8, 12, 3, 18); x.fillRect(8, 34, 3, 3);
   });
 
+  const QUESTION = sprite(["..RRR..", ".RR.RR.", "....RR.", "...RR..", "..RR...", "..RR...", ".......", "..RR...", "..RR..."],
+    { R: "#ffffff" });
+  const QUESTION_STACK = 5, QUESTION_STACK_H = QUESTION_STACK * (QUESTION.height + 2) - 2;
   const IMG = {
     chair: hazard(sprite(["........BB", "........BB", "........BB", "........BB", "BBBBBBBBBB", "DDDDDDDDDD",
       ".B......B.", ".B......B.", ".B......B.", ".B......B."], { B: "#a0522d", D: "#6b3410" })),
@@ -143,8 +147,11 @@
       "BYYYYYYB", "BBBBBBBB", "BBBBBBBB"], { B: "#1e4fa8", Y: "#f5c518" })),
     paper: shiny(sprite(["WWWWWWW.", "WBBBBBWW", "WWWWWWWW", "WBBBBBBW", "WWWWWWWW", "WBBBBBBW", "WWWWWWWW",
       "WBBBBWWW", "WWWWWWWW", "WWWWWWWW"], { W: "#ffffff", B: "#5b8def" })),
-    question: hazard(sprite(["..RRR..", ".RR.RR.", "....RR.", "...RR..", "..RR...", "..RR...", ".......", "..RR...", "..RR..."],
-      { R: "#ffffff" })),
+    question: hazard(QUESTION),
+    // высокий вопрос - «град вопросов» от головы до потолка: перепрыгнуть нельзя, только пригнуться
+    questions: hazard(canvasOf(QUESTION.width, QUESTION_STACK_H, (x) => {
+      for (let i = 0; i < QUESTION_STACK; i++) x.drawImage(QUESTION, 0, i * (QUESTION.height + 2));
+    })),
   };
 
   // --- Препятствия: lift - высота над землёй, hit - рамка столкновения внутри картинки (без обводки).
@@ -168,8 +175,8 @@
     ved2: { theme: "corridor", label: "Вторая ведомость", items: "zachet", speedK: 1.08, gap: [0.9, 1.5] },
     ved3: { theme: "corridor", label: "Третья ведомость", items: "zachet", speedK: 1.25, gap: [0.8, 1.2] },
     catch: { theme: "street", label: "Погоня" },
-    diploma: { theme: "corridor", label: "Листы диплома", items: "diploma", speedK: 1.1, gap: [0.85, 1.4] },
-    diploma2: { theme: "corridor", label: "Пересдача", items: "diploma", speedK: 1.25, gap: [0.8, 1.2] },
+    diploma: { theme: "corridor", label: "Листы диплома", items: "diploma", need: DIPLOMA_NEED, speedK: 1.2, gap: [0.75, 1.25] },
+    diploma2: { theme: "corridor", label: "Пересдача", items: "diploma", need: DIPLOMA_NEED, speedK: 1.3, gap: [0.7, 1.1] },
     defense: { theme: "hall", label: "Защита диплома" },
     // бесконечные ветки после диплома: играем, пока не кончатся жизни
     school: { theme: "school", label: "Физрук в школе", endless: true, gap: [0.9, 1.6] },
@@ -198,8 +205,8 @@
       type, st, t: 0, scroll: S.scroll || 0, objects: [], collected: 0, invuln: 0,
       nextObstacle: 1.2, nextItem: 1.5, itemsLeft: st.endless ? Infinity : 8, nextQuestion: 1,
       nextKid: 1.5, nextProf: 20, caught: 0, profs: 0,
-      speed: (82 + 10 * (S.course - 1)) * (st.speedK || 1),
-      baseSpeed: (82 + 10 * (S.course - 1)) * (st.speedK || 1),
+      speed: (82 + 10 * (S.course - 1)) * (st.speedK || 1) * SPEED_UP,
+      baseSpeed: (82 + 10 * (S.course - 1)) * (st.speedK || 1) * SPEED_UP,
       player: { y: 0, vy: 0, anim: 0 },
     });
     input.buffer = 0;
@@ -292,8 +299,9 @@
 
   function spawnQuestion() {
     const high = Math.random() < 0.5;
-    S.objects.push({ kind: "question", img: IMG.question, x: W - 50, w: 7, h: 9, bottom: high ? GROUND - 11 : GROUND - 1,
-      hit: [1, 0, 5, 9], speed: rand(60, 75) });
+    const h = high ? QUESTION_STACK_H : 9;
+    S.objects.push({ kind: "question", img: high ? IMG.questions : IMG.question, x: W - 50, w: 7, h,
+      bottom: high ? GROUND - 11 : GROUND - 1, hit: [1, 0, 5, h], speed: rand(60, 75) * SPEED_UP });
   }
 
   function playerBox() {
@@ -420,7 +428,7 @@
     }
     if (S.type === "catch" && S.t >= CATCH_TIME) {
       S.score += 300;
-      return between(pick(MSG.catchTitle), `Остались листы диплома: собери ${NEED} за ${VED_TIME} секунд.`, "diploma");
+      return between(pick(MSG.catchTitle), `Остались листы диплома: собери ${DIPLOMA_NEED} из 8 за ${VED_TIME} секунд.`, "diploma");
     }
     if (S.type === "defense" && S.t >= DEFENSE_TIME) {
       S.score += 1000;
@@ -433,7 +441,7 @@
     }
     if (S.st.endless) return;
     if (!S.st.items) return;
-    const done = S.collected >= NEED;
+    const done = S.collected >= (S.st.need || NEED);
     const out = S.t >= VED_TIME || (S.itemsLeft === 0 && !S.objects.some((o) => o.item) && !done);
     if (done) {
       if (scoring()) S.score += 300;
@@ -700,7 +708,7 @@
     } else if (S.st.items) {
       const left = Math.max(0, Math.ceil(VED_TIME - S.t));
       const what = S.st.items === "zachet" ? "Зачёты" : "Листы";
-      hud.goal.textContent = `${what} ${S.collected}/${NEED} · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+      hud.goal.textContent = `${what} ${S.collected}/${S.st.need || NEED} · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
     } else if (S.type === "school") {
       hud.goal.textContent = `Поймано: ${S.caught}`;
     } else if (S.type === "defense") {
