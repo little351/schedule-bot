@@ -80,6 +80,18 @@
     person({ H: "#8a5a2b", T: "#e67e22", A: "#e67e22", P: "#2b2d42", B: "#dddddd" }, [INK, "rgba(255, 45, 45, 0.75)"]),
     person({ H: "#3a2a1a", T: "#8e44ad", A: "#8e44ad", P: "#2b2d42", B: "#dddddd" }, [INK, "rgba(255, 45, 45, 0.75)"]),
   ];
+  // школьники меньше ростом; у каждого свой цвет формы
+  const KID = ["...HHHH...", "..HHHHHH..", "..HSSSES..", "...SSSS...", "...TTTT...", "..STTTTS..", "...TTTT...",
+    "...PPPP...", "..PP..PP..", "..BB..BB.."];
+  const KID2 = ["...HHHH...", "..HHHHHH..", "..HSSSES..", "...SSSS...", "...TTTT...", "...STTS...", "...TTTT...",
+    "...PPPP...", "....PP....", "....BB...."];
+  const KIDS = ["#e53935", "#43a047", "#fb8c00", "#8e24aa", "#00acc1"].map((t, i) => {
+    const pal = { ...SKIN, H: ["#4a2f1b", "#d9a441", "#222222"][i % 3], T: t, P: "#1e2a44", B: "#f4f4f4" };
+    const run = [outlined(sprite(KID, pal), [INK]), outlined(sprite(KID2, pal), [INK])];
+    return { run, jump: run[0], duck: run[0] };
+  });
+  LOOKS.prof = person({ H: "#cfcfcf", T: "#7a5a36", A: "#f2f2f2", P: "#3b3b3b", B: "#222222" });
+
   const CHASERS = { 1: ["coat"], 2: ["sport"], 3: ["office"], 4: ["coat", "sport", "office"] };
 
   // Буквы 4x5 для растяжки «СЕССИЯ»
@@ -129,6 +141,8 @@
       "WWWWRWWR", "WWWWWRRW", "WWWWWWWW"], { W: "#ffffff", G: "#9aa0a6", R: "#e53935" })),
     diploma: shiny(sprite(["BBBBBBB.", "BYYYYYBB", "BBBBBBBB", "BBYYYYBB", "BBYBBYBB", "BBYYYYBB", "BBBBBBBB",
       "BYYYYYYB", "BBBBBBBB", "BBBBBBBB"], { B: "#1e4fa8", Y: "#f5c518" })),
+    paper: shiny(sprite(["WWWWWWW.", "WBBBBBWW", "WWWWWWWW", "WBBBBBBW", "WWWWWWWW", "WBBBBBBW", "WWWWWWWW",
+      "WBBBBWWW", "WWWWWWWW", "WWWWWWWW"], { W: "#ffffff", B: "#5b8def" })),
     question: hazard(sprite(["..RRR..", ".RR.RR.", "....RR.", "...RR..", "..RR...", "..RR...", ".......", "..RR...", "..RR..."],
       { R: "#ffffff" })),
   };
@@ -136,16 +150,16 @@
   // --- Препятствия: lift - высота над землёй, hit - рамка столкновения внутри картинки (без обводки).
   // duck: только пригнуться (висит высоко, перепрыгнуть нельзя); themes - где встречается
   const OBSTACLES = {
-    puddle: { w: 16, h: 3, lift: 0, hit: [2, 1, 12, 2], themes: ["street", "corridor"] },
-    crowd: { w: 19, h: 15, lift: 0, hit: [3, 2, 14, 13], themes: ["street", "corridor"] },
-    bin: { w: 8, h: 9, lift: 0, hit: [1, 0, 6, 9], themes: ["street", "corridor"] },
-    cones: { w: 15, h: 8, lift: 0, hit: [1, 1, 13, 7], themes: ["street"] },
-    hurdle: { w: 14, h: 10, lift: 0, hit: [0, 0, 14, 10], themes: ["street"], from: 2 },
-    chair: { w: 10, h: 10, lift: 0, hit: [1, 1, 8, 9], themes: ["corridor"] },
-    books: { w: 10, h: 10, lift: 0, hit: [0, 0, 10, 10], themes: ["corridor"] },
-    ball: { w: 8, h: 8, lift: 11, hit: [0, 1, 8, 7], themes: ["street", "corridor"], from: 2 },
-    banner: { w: BANNER_W, h: BANNER_H, lift: 11, hit: [0, 0, BANNER_W, BANNER_H], themes: ["street"], duck: true },
-    stand: { w: BANNER_W + 4, h: BANNER_H, lift: 11, hit: [0, 0, BANNER_W + 4, BANNER_H], themes: ["corridor"], duck: true },
+    puddle: { w: 16, h: 3, lift: 0, hit: [2, 1, 12, 2], themes: ["street", "corridor", "school", "lab"] },
+    crowd: { w: 19, h: 15, lift: 0, hit: [3, 2, 14, 13], themes: ["street", "corridor", "lab"] },
+    bin: { w: 8, h: 9, lift: 0, hit: [1, 0, 6, 9], themes: ["street", "corridor", "school", "lab"] },
+    cones: { w: 15, h: 8, lift: 0, hit: [1, 1, 13, 7], themes: ["street", "school"] },
+    hurdle: { w: 14, h: 10, lift: 0, hit: [0, 0, 14, 10], themes: ["street", "school"], from: 2 },
+    chair: { w: 10, h: 10, lift: 0, hit: [1, 1, 8, 9], themes: ["corridor", "lab"] },
+    books: { w: 10, h: 10, lift: 0, hit: [0, 0, 10, 10], themes: ["corridor", "lab"] },
+    ball: { w: 8, h: 8, lift: 11, hit: [0, 1, 8, 7], themes: ["street", "corridor", "school", "lab"], from: 2 },
+    banner: { w: BANNER_W, h: BANNER_H, lift: 11, hit: [0, 0, BANNER_W, BANNER_H], themes: ["street", "school"], duck: true },
+    stand: { w: BANNER_W + 4, h: BANNER_H, lift: 11, hit: [0, 0, BANNER_W + 4, BANNER_H], themes: ["corridor", "lab"], duck: true },
   };
 
   // --- Этапы игры ---
@@ -157,7 +171,13 @@
     diploma: { theme: "corridor", label: "Листы диплома", items: "diploma", speedK: 1.1, gap: [0.85, 1.4] },
     diploma2: { theme: "corridor", label: "Пересдача", items: "diploma", speedK: 1.25, gap: [0.8, 1.2] },
     defense: { theme: "hall", label: "Защита диплома" },
+    // бесконечные ветки после диплома: играем, пока не кончатся жизни
+    school: { theme: "school", label: "Физрук в школе", endless: true, gap: [0.9, 1.6] },
+    science: { theme: "lab", label: "Научная работа", endless: true, items: "paper", gap: [0.9, 1.6] },
   };
+  // Очки в ветках: за пойманного школьника и за научрука/лист. Подобраны автоигроком так,
+  // чтобы обе ветки давали примерно одинаково очков в минуту
+  const KID_POINTS = 100, PAPER_POINTS = 90, PROF_POINTS = 250;
 
   let root, canvas, ctx, over, hud = {};
   let S = null; // состояние партии
@@ -176,8 +196,10 @@
     const st = STAGES[type];
     Object.assign(S, {
       type, st, t: 0, scroll: S.scroll || 0, objects: [], collected: 0, invuln: 0,
-      nextObstacle: 1.2, nextItem: 1.5, itemsLeft: 8, nextQuestion: 1,
+      nextObstacle: 1.2, nextItem: 1.5, itemsLeft: st.endless ? Infinity : 8, nextQuestion: 1,
+      nextKid: 1.5, nextProf: 20, caught: 0, profs: 0,
       speed: (82 + 10 * (S.course - 1)) * (st.speedK || 1),
+      baseSpeed: (82 + 10 * (S.course - 1)) * (st.speedK || 1),
       player: { y: 0, vy: 0, anim: 0 },
     });
     input.buffer = 0;
@@ -185,7 +207,7 @@
   }
 
   function stageLabel() {
-    return `${S.course} курс · ${S.st.label}`;
+    return S.st.endless ? `После вуза · ${S.st.label}` : `${S.course} курс · ${S.st.label}`;
   }
 
   // --- Управление: тап - прыжок, свайп вниз - пригнуться ---
@@ -322,7 +344,19 @@
     }
     if (S.st.items && S.itemsLeft > 0 && (S.nextItem -= dt) <= 0) {
       spawnItem();
-      if (S.nextItem <= 0) S.nextItem = rand(5, 7);
+      if (S.nextItem <= 0) S.nextItem = S.st.endless ? rand(3, 4.5) : rand(5, 7);
+    }
+    if (S.st.endless) S.speed = S.baseSpeed * (1 + Math.min(0.3, S.t / 300));
+    if (S.type === "school" && (S.nextKid -= dt) <= 0) {
+      // школьники бегут медленнее игрока с разной скоростью; часть у самого игрока делает рывок и убегает
+      S.objects.push({ kid: true, look: pick(KIDS), x: W + 4, w: 10, h: 10, bottom: GROUND, hit: [1, 0, 8, 10],
+        k: rand(0.3, 0.75), sprint: Math.random() < 0.3 });
+      S.nextKid = rand(2.2, 3.8);
+    }
+    if (S.type === "science" && (S.nextProf -= dt) <= 0 && !S.objects.some((o) => o.prof)) {
+      // научрук появляется редко и бежит чуть медленнее игрока: догнать можно, если не споткнуться
+      S.objects.push({ prof: true, look: LOOKS.prof, x: W + 4, w: 12, h: 15, bottom: GROUND, hit: [2, 0, 8, 15], k: 0.55 });
+      S.nextProf = rand(35, 50);
     }
     if (S.type === "defense" && S.t < DEFENSE_TIME - 1.5 && (S.nextQuestion -= dt) <= 0) {
       spawnQuestion();
@@ -331,23 +365,30 @@
 
     const box = playerBox();
     for (const o of S.objects) {
-      o.x -= (o.speed || speed) * dt;
+      if (o.kid || o.prof) {
+        if (o.sprint && o.x < PLAYER_X + 40) o.k = 1.3;
+        o.x -= speed * (1 - o.k) * dt;
+      } else o.x -= (o.speed || speed) * dt;
       if (o.gone || !hits(box, o)) continue;
       if (o.item) {
         o.gone = true;
         S.collected++;
-        if (scoring()) S.score += 50;
+        if (scoring()) S.score += S.st.endless ? PAPER_POINTS : 50;
         haptic("light");
+      } else if (o.kid || o.prof) {
+        o.gone = true;
+        if (o.kid) { S.caught++; S.score += KID_POINTS; } else { S.profs++; S.score += PROF_POINTS; }
+        haptic("medium");
       } else if (S.invuln <= 0) {
         o.gone = true;
         S.lastHit = o.kind;
         S.lives--;
         S.invuln = 1.4;
         haptic("heavy");
-        if (S.lives <= 0) return finish(false, pick(MSG.deadTitle), pick(MSG.deadText));
+        if (S.lives <= 0) return S.st.endless ? finishEndless() : finish(false, pick(MSG.deadTitle), pick(MSG.deadText));
       }
     }
-    S.objects = S.objects.filter((o) => o.x > -30 && !(o.gone && o.item));
+    S.objects = S.objects.filter((o) => o.x > -30 && o.x < W + 40 && !(o.gone && (o.item || o.kid || o.prof)));
     checkStageEnd();
   }
 
@@ -383,8 +424,14 @@
     }
     if (S.type === "defense" && S.t >= DEFENSE_TIME) {
       S.score += 1000;
-      return finish(true, pick(MSG.winTitle), pick(MSG.winText));
+      stop();
+      draw();
+      return show(pick(MSG.winTitle), `${pick(MSG.winText)} Куда дальше? Игра идёт, пока не кончатся жизни.`, [
+        ["Физрук в школе", () => { startStage("school"); resume(); }],
+        ["Научная работа", () => { startStage("science"); resume(); }],
+      ]);
     }
+    if (S.st.endless) return;
     if (!S.st.items) return;
     const done = S.collected >= NEED;
     const out = S.t >= VED_TIME || (S.itemsLeft === 0 && !S.objects.some((o) => o.item) && !done);
@@ -402,6 +449,14 @@
     if (S.type === "ved2") return between(pick(MSG.lateTitle), `Третья ведомость: ${again}`, "ved3");
     if (S.type === "diploma") return between(pick(MSG.lateTitle), `Пересдача: ${again}`, "diploma2");
     return finish(false, pick(MSG.outTitle), S.type === "ved3" ? "Третья ведомость не закрыта." : "Пересдача не сдана.");
+  }
+
+  function finishEndless() {
+    const text = S.type === "school"
+      ? `${pick(["Школьники оказались выносливее.", "Звонок с урока, все разбежались.", "Свисток охрип."])} Поймано школьников: ${S.caught}.`
+      : `${pick(["Диссертация подождёт до понедельника.", "Лаборатория закрылась на ночь.", "Научрук ушёл на конференцию."])} ` +
+        `Листов собрано: ${S.collected}, научрук пойман ${S.profs} раз.`;
+    finish(false, pick(["Рабочий день окончен", "Смена закончилась", "Пора в отпуск"]), text);
   }
 
   function haptic(kind) {
@@ -501,6 +556,66 @@
     for (let y = GROUND + 6; y < H; y += 7) rect("#b88b5e", 0, y, W, 1);
   }
 
+  function drawSchool(s) {
+    ["#86c5f2", "#97cff5", "#a9d9f7", "#bce3f9"].forEach((c, i) => rect(c, 0, i * 12, W, 12));
+    rect("#c9e9fa", 0, 48, W, GROUND - 48);
+    for (let i = 0; i < 3; i++) {
+      const x = wrap(i * 70 - s * 0.06, 210) - 40;
+      rect("#ffffff", x, 14 + i * 8, 24, 5); rect("#ffffff", x + 5, 10 + i * 8, 12, 4);
+    }
+    // кирпичное здание школы с большими окнами
+    for (let i = 0; i < 3; i++) {
+      const x = wrap(i * 110 - s * 0.25, 330) - 110;
+      rect("#7a3b2e", x - 1, GROUND - 66, 102, 3);
+      rect("#b5533c", x, GROUND - 63, 100, 47);
+      for (let by = GROUND - 60; by < GROUND - 16; by += 4) rect("#a14632", x, by, 100, 1);
+      for (let wx = x + 6; wx < x + 96; wx += 16) {
+        for (const wy of [GROUND - 57, GROUND - 37]) { rect("#f2ead8", wx - 1, wy - 1, 12, 14); rect("#8fc3e8", wx, wy, 10, 12); rect("#f2ead8", wx + 4, wy, 1, 12); }
+      }
+      rect("#f2ead8", x + 42, GROUND - 26, 16, 10); rect("#5b4636", x + 45, GROUND - 24, 10, 8);
+    }
+    // забор стадиона и ворота
+    rect("#3f8f3a", 0, GROUND - 16, W, 8);
+    for (let x = -wrap(s * 0.6, 8); x < W; x += 8) rect("#9aa3ad", x, GROUND - 22, 1, 14);
+    rect("#9aa3ad", 0, GROUND - 22, W, 1); rect("#9aa3ad", 0, GROUND - 15, W, 1);
+    for (let x = -wrap(s * 0.6, 150); x < W + 150; x += 150) {
+      rect("#ffffff", x + 20, GROUND - 28, 2, 20); rect("#ffffff", x + 44, GROUND - 28, 2, 20); rect("#ffffff", x + 20, GROUND - 28, 26, 2);
+    }
+    // беговая дорожка
+    rect("#4e9a46", 0, GROUND - 8, W, 8);
+    rect("#c0563f", 0, GROUND, W, H - GROUND);
+    rect("#ffffff", 0, GROUND + 9, W, 1); rect("#ffffff", 0, GROUND + 18, W, 1);
+    for (let x = -wrap(s, 40); x < W; x += 40) rect("#d9765f", x, GROUND + 3, 10, 2);
+  }
+
+  function drawLab(s) {
+    rect("#e6e9ee", 0, 0, W, GROUND);
+    rect("#cfd5de", 0, 0, W, 8);
+    for (let x = -wrap(s, 48); x < W; x += 48) rect("#ffffff", x + 14, 8, 20, 2);
+    rect("#b8c4d4", 0, GROUND - 30, W, 30); rect("#9eaabb", 0, GROUND - 31, W, 1);
+    const books = ["#e53935", "#1e63d6", "#2e9e4f", "#f5c518", "#8e44ad", "#6d4c41"];
+    for (let x = -wrap(s, 100); x < W + 100; x += 100) {
+      // книжный шкаф
+      rect("#6b4423", x + 6, GROUND - 78, 40, 60);
+      for (let shelf = 0; shelf < 4; shelf++) {
+        const y = GROUND - 75 + shelf * 14;
+        rect("#4a2f18", x + 8, y, 36, 12);
+        for (let b = 0; b < 8; b++) rect(books[(b + shelf * 3) % books.length], x + 9 + b * 4, y + 2 + (b % 3), 3, 10 - (b % 3));
+      }
+      // доска с формулами и колбы на столе
+      rect("#ffffff", x + 56, GROUND - 74, 36, 24); rect("#c7ced8", x + 56, GROUND - 50, 36, 2);
+      rect("#5b8def", x + 60, GROUND - 68, 18, 2); rect("#e53935", x + 60, GROUND - 62, 26, 2); rect("#5b8def", x + 60, GROUND - 56, 12, 2);
+      rect("#8d99ab", x + 58, GROUND - 34, 34, 3);
+      rect("#9fe0c9", x + 62, GROUND - 42, 5, 8); rect("#f7b2c4", x + 72, GROUND - 40, 4, 6); rect("#c5b3f7", x + 82, GROUND - 43, 5, 9);
+    }
+    for (let x = -wrap(s, 16); x < W; x += 16) {
+      const dark = Math.floor((x + s) / 16) % 2;
+      rect(dark ? "#aab3bf" : "#c3cad4", x, GROUND, 16, 13);
+      rect(dark ? "#c3cad4" : "#aab3bf", x, GROUND + 13, 16, H - GROUND - 13);
+    }
+    rect("#7d8794", 0, GROUND, W, 1);
+  }
+
   function drawPerson(look, x, bottom, frame, mirror) {
     const img = frame === "jump" ? look.jump : frame === "duck" ? look.duck : look.run[frame];
     const y = Math.round(bottom - img.height + img.pad);
@@ -522,6 +637,11 @@
   }
 
   function drawObject(o) {
+    if (o.kid || o.prof) {
+      shadow(o.x, o.w);
+      drawPerson(o.look, o.x, GROUND, Math.floor(S.player.anim + (o.prof ? 0 : o.k * 3)) % 2);
+      return;
+    }
     if (o.kind === "crowd") {
       shadow(o.x, o.w);
       drawPerson(o.people[0], o.x, o.bottom, 1);
@@ -540,7 +660,7 @@
 
   function draw() {
     const s = Math.floor(S.scroll);
-    ({ street: drawStreet, corridor: drawCorridor, hall: drawHall })[S.st.theme](s);
+    ({ street: drawStreet, corridor: drawCorridor, hall: drawHall, school: drawSchool, lab: drawLab })[S.st.theme](s);
     const frame = Math.floor(S.player.anim) % 2;
 
     // за кем бежим
@@ -575,10 +695,14 @@
     hud.stage.textContent = stageLabel();
     hud.lives.textContent = "❤".repeat(Math.max(0, S.lives)) + "♡".repeat(LIVES - Math.max(0, S.lives));
     hud.score.textContent = `Счёт: ${Math.floor(S.score)}` + (scoring() ? "" : " · очки не идут");
-    if (S.st.items) {
+    if (S.type === "science") {
+      hud.goal.textContent = S.objects.some((o) => o.prof && !o.gone) ? "Научрук впереди, догоняй!" : `Листы: ${S.collected}`;
+    } else if (S.st.items) {
       const left = Math.max(0, Math.ceil(VED_TIME - S.t));
       const what = S.st.items === "zachet" ? "Зачёты" : "Листы";
       hud.goal.textContent = `${what} ${S.collected}/${NEED} · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+    } else if (S.type === "school") {
+      hud.goal.textContent = `Поймано: ${S.caught}`;
     } else if (S.type === "defense") {
       hud.goal.textContent = `Осталось ${Math.max(0, Math.ceil(DEFENSE_TIME - S.t))} с`;
     } else hud.goal.textContent = "";
