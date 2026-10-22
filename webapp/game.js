@@ -4,7 +4,7 @@
   "use strict";
   const W = 120, H = 120, GROUND = 98, PLAYER_X = 18;
   const GRAVITY = 1100, JUMP_SPEED = 330, JUMP_CUT = 150;
-  const LIVES = 3, NEED = 5, VED_TIME = 60, CHASE_TIME = 18, CATCH_TIME = 14, DEFENSE_TIME = 30;
+  const LIVES = 3, NEED = 5, VED_TIME = 60, CHASE_TIME = 18, CATCH_TIME = 14, DEFENSE_TIME = 20;
   const tg = window.Telegram?.WebApp;
 
   // --- Пиксельные спрайты: строки символов, "." прозрачно ---
@@ -293,7 +293,7 @@
   function spawnQuestion() {
     const high = Math.random() < 0.5;
     S.objects.push({ kind: "question", img: IMG.question, x: W - 50, w: 7, h: 9, bottom: high ? GROUND - 11 : GROUND - 1,
-      hit: [1, 0, 5, 9], speed: rand(115, 150) });
+      hit: [1, 0, 5, 9], speed: rand(60, 75) });
   }
 
   function playerBox() {
@@ -360,7 +360,7 @@
     }
     if (S.type === "defense" && S.t < DEFENSE_TIME - 1.5 && (S.nextQuestion -= dt) <= 0) {
       spawnQuestion();
-      S.nextQuestion = rand(0.8, 1.35) * (S.t > 15 ? 0.85 : 1);
+      S.nextQuestion = rand(1.5, 2.2);
     }
 
     const box = playerBox();
