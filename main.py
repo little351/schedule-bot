@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
 
-from bot import build_application, post_init, conn, load_schedules, lms_scheduler, TOKEN
+from bot import build_application, post_init, conn, load_schedules, lms_scheduler, send_campus_map, TOKEN
 from routes import build_router
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
@@ -61,7 +61,7 @@ async def telegram_webhook(request: Request):
     return {"ok": True}
 
 
-app.include_router(build_router(conn, TOKEN))
+app.include_router(build_router(conn, TOKEN, send_campus_map=lambda chat_id: send_campus_map(application.bot, chat_id)))
 
 
 app.mount("/", StaticFiles(directory="webapp", html=True), name="webapp")

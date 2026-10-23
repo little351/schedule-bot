@@ -1,6 +1,7 @@
 """HTTP API мини-приложения. Используется и боевым сервером (main.py), и локальным (api.py)."""
 import json
 import os
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -18,6 +19,8 @@ from telegram_auth import MAX_AGE_SECONDS, READ_MAX_AGE_SECONDS, validate_init_d
 
 
 TEACHERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "teachers.json")
+CAMPUS_MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "campus_map.png")
+CAMPUS_MAP_PAUSE = 10  # секунд между повторными схемами одному пользователю: случайные двойные нажатия не шлют дубли
 
 
 def load_teachers(path=TEACHERS_FILE):
@@ -96,8 +99,10 @@ def _group_json(group):
     return {"program": group.program, "course": group.course, "group": group.name} if group else None
 
 
-def build_router(conn, bot_token) -> APIRouter:
+def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
+    """send_campus_map(chat_id) - корутина, которая присылает схему вуза в чат с ботом (без бота - None)."""
     router = APIRouter(prefix="/api")
+    campus_map_sent = {}  # telegram_id -> когда последний раз отправляли схему
 
     def request_user(init_data, telegram_id, required=True, max_age=MAX_AGE_SECONDS):
         """Кто спрашивает: id из подписанных данных Telegram (заголовок X-Init-Data), чтобы нельзя было
@@ -241,6 +246,25 @@ def build_router(conn, bot_token) -> APIRouter:
         if not delete_note(conn, user_id, note_id):
             raise HTTPException(status_code=404, detail="note_not_found")
         return {"notes": list_notes(conn, user_id)}
+
+    @router.post("/campus-map")
+    async def campus_map(x_init_data: str = Header(default="")):
+        """Кнопка «Получить схему вуза»: бот присылает картинку в чат, мини-апп после ответа закрывается."""
+        user = validate_init_data(x_init_data or "", bot_token, READ_MAX_AGE_SECONDS)
+        if not user:
+            raise HTTPException(status_code=403, detail="bad_init_data")
+        if not send_campus_map:
+            raise HTTPException(status_code=503, detail="no_bot")
+        now = time.monotonic()
+        if now - campus_map_sent.get(user["id"], -CAMPUS_MAP_PAUSE) < CAMPUS_MAP_PAUSE:
+            return {"ok": True}  # только что отправили
+        campus_map_sent[user["id"]] = now
+        try:
+            await send_campus_map(user["id"])
+        except Exception:
+            campus_map_sent.pop(user["id"], None)
+            raise HTTPException(status_code=502, detail="send_failed")  # например, бот заблокирован
+        return {"ok": True}
 
     @router.get("/game/top")
     def game_top(x_init_data: str = Header(default="")):

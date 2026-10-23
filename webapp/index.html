@@ -504,6 +504,12 @@
   .note-del { flex: 0 0 auto; background: none; border: none; color: var(--hint); font-size: 18px; padding: 0 2px; }
   .notes-empty { text-align: center; color: var(--hint); font-size: 14px; padding: 24px 0; }
 
+  /* --- Карта вуза --- */
+  .map-card { background: var(--card); border-radius: 16px; padding: 22px 18px; text-align: center; }
+  .map-icon { font-size: 44px; }
+  .map-text { color: var(--hint); font-size: 14px; line-height: 1.4; margin-top: 8px; }
+  .map-error { color: #ff453a; font-size: 14px; margin-top: 10px; min-height: 18px; }
+
   /* --- Преподаватели --- */
   .teacher-search {
     width: 100%;
@@ -628,6 +634,9 @@
     <button class="menu-card" data-screen="paneGame">
       <span class="menu-icon blue">🏃</span><span class="menu-title">Игра «Сессия»</span><span class="menu-arrow">›</span>
     </button>
+    <button class="menu-card" data-screen="paneMap">
+      <span class="menu-icon green">🗺️</span><span class="menu-title">Карта вуза</span><span class="menu-arrow">›</span>
+    </button>
   </div>
 
   <div id="paneNotes" class="other-screen" style="display:none;">
@@ -676,6 +685,16 @@
     <div class="rand-result" id="randResult"></div>
     <button class="rand-btn" id="randBtn">Бросить</button>
   </div>
+  </div>
+
+  <div id="paneMap" class="other-screen" style="display:none;">
+    <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Карта вуза</h1></div>
+    <div class="map-card">
+      <div class="map-icon">🗺️</div>
+      <div class="map-text">Схема территории: корпуса, общежития, бассейн, манеж и входы с Сиреневого бульвара. Бот пришлёт её в чат, там её удобно приближать и сохранить.</div>
+      <button class="rand-btn" id="mapBtn">Получить схему вуза</button>
+      <div class="map-error" id="mapError"></div>
+    </div>
   </div>
 
   <div id="paneGame" class="other-screen" style="display:none;">
@@ -998,6 +1017,28 @@ function openGame() {
   gameScript.onerror = () => { gameScript.remove(); gameScript = null; root.textContent = "Не удалось загрузить игру, попробуй ещё раз."; };
   document.head.appendChild(gameScript);
 }
+
+// --- Карта вуза: бот присылает схему в чат, мини-апп закрывается ---
+const mapBtn = document.getElementById("mapBtn");
+const mapError = document.getElementById("mapError");
+mapBtn.addEventListener("click", async () => {
+  mapError.textContent = "";
+  if (!tg.initData) {
+    mapError.textContent = "Схема приходит в чат с ботом: открой приложение из Telegram.";
+    return;
+  }
+  mapBtn.disabled = true;
+  mapBtn.textContent = "Отправляю...";
+  try {
+    const res = await fetch("/api/campus-map", { method: "POST", headers: authHeaders });
+    if (!res.ok) throw new Error(String(res.status));
+    tg.close();
+  } catch (err) {
+    mapError.textContent = "Не удалось отправить схему. Проверь, что бот не заблокирован, и попробуй ещё раз.";
+  }
+  mapBtn.disabled = false;
+  mapBtn.textContent = "Получить схему вуза";
+});
 
 // --- Преподаватели: кафедры и сотрудники из data/teachers.json ---
 const teachersList = document.getElementById("teachersList");
