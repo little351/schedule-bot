@@ -728,6 +728,22 @@ async def _save_upload(update, context, document):
             os.remove(tmp_path)
 
 
+CAMPUS_MAP_CAPTION = "Схема территории Российского университета спорта «ГЦОЛИФК»"
+_campus_map_file_id = None  # после первой отправки Telegram отдаёт id файла: дальше картинку не загружаем заново
+
+
+async def send_campus_map(bot, chat_id):
+    """Схема вуза в чат пользователя (кнопка в мини-аппе): фото, текст на схеме крупный и после сжатия читается."""
+    global _campus_map_file_id
+    if _campus_map_file_id:
+        await bot.send_photo(chat_id=chat_id, photo=_campus_map_file_id, caption=CAMPUS_MAP_CAPTION)
+        return
+    from routes import CAMPUS_MAP_FILE
+    with open(CAMPUS_MAP_FILE, "rb") as f:
+        message = await bot.send_photo(chat_id=chat_id, photo=f, caption=CAMPUS_MAP_CAPTION)
+    _campus_map_file_id = message.photo[-1].file_id
+
+
 async def post_init(application):
     await application.bot.set_my_commands([
         BotCommand("start", "Начать / указать группу"),
