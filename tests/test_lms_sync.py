@@ -240,6 +240,7 @@ def test_sync_command_reports_and_reloads_schedule(env, monkeypatch):
     monkeypatch.setattr(bot, "conn", conn)
     monkeypatch.setattr(bot, "SCHEDULE_DIR", schedule_dir)
     monkeypatch.setattr(lms_sync, "MoodleClient", lambda b, l, p: MoodleClient(b, l, p, transport=httpx.MockTransport(FakeMoodle()), pause=0))
+    monkeypatch.setattr(lms_sync, "status", {"checked_at": None, "changed": {}})
     sent = []
 
     class Msg:
@@ -267,6 +268,7 @@ def test_sync_command_reports_and_reloads_schedule(env, monkeypatch):
     assert "t2-09-26.xls: новый" in sent[-1] and "Из подгрузки" in sent[-1]
     assert PASSWORD not in "".join(sent)
     assert lms_sync.get_sync_state(conn, "last_ok") == "1"
+    assert lms_sync.status["checked_at"] and "checked_at" in lms_sync.get_sync_state(conn, "schedule_status")
 
 
 def test_hung_page_is_skipped_and_the_rest_is_still_loaded(env):
@@ -407,3 +409,68 @@ def test_old_rows_and_changed_parsers_are_reparsed_once(env, monkeypatch):
     monkeypatch.setattr(lms_sync, "parsed_version", lambda d: "другая")
     assert as_saved(merged_records(conn, schedule_dir)) == expected
     assert calls == ["t2-09-26.xls", "t2-09-26.xls"]
+
+
+def test_changed_days_ignore_new_weeks_and_past_days(env, monkeypatch):
+    """Изменением считаются только уже известные дни с сегодняшнего: новые недели и прошлое не в счёт."""
+    from datetime import datetime, timezone
+    conn = env[1]
+    monkeypatch.setattr(lms_sync, "status", {"checked_at": None, "changed": {}})
+
+    def lesson(date, time, subject, group="1 группа"):
+        return {"program": "49.03.04", "course": 1, "group": group, "date": date, "time": time, "subject": subject}
+
+    old = [lesson("2026-10-20", "8:50", "Философия"), lesson("2026-10-27", "8:50", "История"),
+           lesson("2026-10-28", "10:40", "Анатомия"), lesson("2026-10-28", "8:50", "Анатомия", "2 группа")]
+    new = [lesson("2026-10-20", "8:50", "Перенесено"), lesson("2026-10-27", "8:50", "История"),
+           lesson("2026-10-28", "12:40", "Анатомия"), lesson("2026-11-03", "8:50", "Новая неделя"),
+           lesson("2026-10-28", "8:50", "Анатомия", "2 группа")]
+    today = "2026-10-26"
+    changes = lms_sync.changed_days(lms_sync.day_fingerprints(old, today), lms_sync.day_fingerprints(new, today), today)
+    assert changes == {"49.03.04|1|1 группа": ["2026-10-28"]}
+    # порядок пар в файле не важен
+    assert lms_sync.changed_days(lms_sync.day_fingerprints(old, today),
+                                 lms_sync.day_fingerprints(list(reversed(old)), today), today) == {}
+
+    now = datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc)
+    lms_sync.note_changes(conn, changes, now)
+    lms_sync.note_changes(conn, {"49.03.04|1|2 группа": ["2026-10-29"]}, now + timedelta(days=15))
+    assert list(lms_sync.status["changed"]) == ["49.03.04|1|2 группа"]  # старое забыто через 14 дней
+    lms_sync.status["changed"] = {}
+    lms_sync.load_status(conn)  # после перезапуска берётся из базы
+    assert lms_sync.status["changed"]["49.03.04|1|2 группа"]["dates"] == ["2026-10-29"]
+
+
+def test_day_answer_carries_update_date_and_group_changes(monkeypatch):
+    import routes
+    from database import GroupRef
+    monkeypatch.setattr(lms_sync, "status", {"checked_at": "2026-10-26T22:30:00+00:00",
+                                             "changed": {"49.03.04|1|1 группа": {"at": "x", "dates": ["2026-10-28"]}}})
+    assert routes.schedule_freshness(GroupRef("49.03.04", 1, "1 группа")) == \
+        {"updated": "27.10", "changed": {"at": "x", "dates": ["2026-10-28"]}}  # 22:30 UTC - уже 27-е по Москве
+    assert routes.schedule_freshness(GroupRef("49.03.04", 1, "2 группа")) == {"updated": "27.10"}
+    monkeypatch.setattr(lms_sync, "status", {"checked_at": None, "changed": {}})
+    assert routes.schedule_freshness(GroupRef("49.03.04", 1, "1 группа")) == {}
+
+
+def test_reload_marks_changed_groups(env, monkeypatch):
+    """Перечитывание расписания (после подгрузки) отмечает группы, у которых поменялись известные дни."""
+    import bot
+    schedule_dir, conn = env
+    monkeypatch.setattr(bot, "conn", conn)
+    monkeypatch.setattr(bot, "SCHEDULE_DIR", schedule_dir)
+    monkeypatch.setattr(bot, "day_marks", None)
+    monkeypatch.setattr(lms_sync, "status", {"checked_at": None, "changed": {}})
+    os.makedirs(os.path.join(schedule_dir, "1k"))
+    shutil.copy(FILE_A, os.path.join(schedule_dir, "1k"))
+    records = bot.load_schedules()
+    first = min(str(r["date"])[:10] for r in records)
+    monkeypatch.setattr(bot, "now_local", lambda: __import__("datetime").datetime.strptime(first, "%Y-%m-%d"))
+    monkeypatch.setattr(bot, "day_marks", lms_sync.day_fingerprints(records, first))
+    assert lms_sync.status["changed"] == {}
+    target = next(r for r in records if str(r["date"])[:10] == first)
+    changed = [dict(r, subject="Перенос") if r is target else r for r in records]
+    monkeypatch.setattr(lms_sync, "merged_records", lambda c, d: changed)
+    bot.load_schedules()
+    assert list(lms_sync.status["changed"]) == [lms_sync.group_key(target)]
+    assert lms_sync.status["changed"][lms_sync.group_key(target)]["dates"] == [first]

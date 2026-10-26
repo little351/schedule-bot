@@ -15,6 +15,7 @@ from database import (
     game_leaderboard, save_game_score,
 )
 from formatting import trim_trailing_empty
+import lms_sync
 from telegram_auth import MAX_AGE_SECONDS, READ_MAX_AGE_SECONDS, validate_init_data
 
 
@@ -99,6 +100,22 @@ def _group_json(group):
     return {"program": group.program, "course": group.course, "group": group.name} if group else None
 
 
+def schedule_freshness(group):
+    """Когда расписание последний раз сверялось с сайтом вуза (МСК) и есть ли у группы недавние изменения.
+    Берётся из памяти (lms_sync.status), база при этом не читается."""
+    out = {}
+    checked = lms_sync.status.get("checked_at")
+    if checked:
+        try:
+            out["updated"] = datetime.fromisoformat(checked).astimezone(lms_sync.LOCAL_TZ).strftime("%d.%m")
+        except ValueError:
+            pass
+    change = lms_sync.status.get("changed", {}).get(f"{group.program}|{group.course}|{group.name}")
+    if change:
+        out["changed"] = {"at": change.get("at"), "dates": change.get("dates", [])}
+    return out
+
+
 def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
     """send_campus_map(chat_id) - корутина, которая присылает схему вуза в чат с ботом (без бота - None)."""
     router = APIRouter(prefix="/api")
@@ -141,6 +158,7 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
             "day_name": WEEKDAY_MAP.get(target_date.weekday(), "Воскресенье"),
             "date": date,
             "lessons": lessons,
+            **schedule_freshness(group),
         }
 
     @router.get("/schedule")

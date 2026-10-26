@@ -220,6 +220,33 @@
 
   /* --- Вкладка "Другое" --- */
   .status.cache-note { padding: 4px 0 10px; font-size: 13px; }
+  .changes-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 8px 10px 8px 12px;
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .changes-banner[hidden] { display: none; }
+  .changes-banner span { flex: 1; }
+  .changes-close {
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    color: var(--hint);
+    font-size: 16px;
+    line-height: 1;
+  }
+  .updated-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--hint);
+    margin-top: 10px;
+  }
   .menu-card {
     display: flex;
     align-items: center;
@@ -589,9 +616,14 @@
     <button class="chevron" id="nextBtn">›</button>
   </div>
 
+  <div class="changes-banner" id="changesBanner" hidden>
+    <span id="changesText"></span>
+    <button class="changes-close" id="changesClose" aria-label="Закрыть">✕</button>
+  </div>
   <div id="container">
     <div class="status">Загрузка...</div>
   </div>
+  <div class="updated-note" id="updatedNote"></div>
   <div class="donation">Угости создателя чем-нибудь вкусным → <button class="donate-link" data-donate>поддержать</button></div>
 </div>
 
@@ -917,7 +949,8 @@ function writeDayCache(date, data) {
   try {
     if (!data) { localStorage.removeItem(DAY_CACHE_PREFIX + date); return; }
     localStorage.setItem(DAY_CACHE_PREFIX + date, JSON.stringify(
-      { group: data.group, program: data.program, lessons: data.lessons, saved: Date.now() }));
+      { group: data.group, program: data.program, lessons: data.lessons,
+        updated: data.updated, changed: data.changed, saved: Date.now() }));
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -950,6 +983,39 @@ function renderLessons(container, lessons, note) {
     `).join("");
 }
 
+// «обновлено дд.мм» и плашка об изменениях у группы; что плашку закрыли, помнит только этот телефон
+const SEEN_CHANGE_PREFIX = "seenChange:";
+let shownChange = null;
+
+function showFreshness(data) {
+  document.getElementById("updatedNote").textContent = data && data.updated ? `обновлено ${data.updated}` : "";
+  const banner = document.getElementById("changesBanner");
+  const change = data && data.changed;
+  shownChange = null;
+  if (change && change.at) {
+    const key = SEEN_CHANGE_PREFIX + data.program + "|" + data.group;
+    let seen = "";
+    try { seen = localStorage.getItem(key) || ""; } catch (e) {}
+    if (change.at > seen) shownChange = { key, at: change.at };
+  }
+  if (!shownChange) {
+    banner.hidden = true;
+    return;
+  }
+  const dates = (change.dates || []).map(d => d.slice(8, 10) + "." + d.slice(5, 7));
+  document.getElementById("changesText").textContent =
+    "В расписании есть изменения" + (dates.length ? ": " + dates.join(", ") : "");
+  banner.hidden = false;
+}
+
+document.getElementById("changesClose").addEventListener("click", () => {
+  if (shownChange) {
+    try { localStorage.setItem(shownChange.key, shownChange.at); } catch (e) {}
+  }
+  shownChange = null;
+  document.getElementById("changesBanner").hidden = true;
+});
+
 async function loadDay() {
   const container = document.getElementById("container");
   if (pickingGroup) return askForGroup();
@@ -964,6 +1030,7 @@ async function loadDay() {
   const cached = readDayCache(date);
   if (cached) {
     renderLessons(container, cached.lessons, "Сохранённое расписание, обновляю...");
+    showFreshness(cached);
   } else {
     container.innerHTML = '<div class="status">Загрузка...</div>';
   }
@@ -989,6 +1056,7 @@ async function loadDay() {
     if (request !== dayRequest) return;
     writeDayCache(date, data);
     renderLessons(container, data.lessons);
+    showFreshness(data);
 
   } catch (err) {
     if (request !== dayRequest) return;

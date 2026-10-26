@@ -65,9 +65,9 @@ def scrub(text):
 
 def interval_hours():
     try:
-        return max(1.0, float(os.environ.get("LMS_SYNC_INTERVAL_HOURS", "168")))
+        return max(1.0, float(os.environ.get("LMS_SYNC_INTERVAL_HOURS", "20")))
     except ValueError:
-        return 168.0
+        return 20.0
 
 
 def request_timeout():
@@ -442,6 +442,7 @@ class Report:
         self.lines = []
         self.problems = []   # то, о чём нужно сообщить владельцу
         self.changed = False
+        self.downloaded = 0  # сколько файлов скачано с сайта: если хоть что-то, расписание проверено
 
     def ok(self, text):
         self.lines.append(f"✅ {text}")
@@ -465,7 +466,8 @@ def _now():
 
 
 def is_due(conn, now=None):
-    """Пора ли запускать плановую подгрузку: раз в LMS_SYNC_INTERVAL_HOURS часов (по умолчанию 168, неделя),
+    """Пора ли запускать плановую подгрузку: раз в LMS_SYNC_INTERVAL_HOURS часов (по умолчанию 20, то есть раз в день:
+    запас в 4 часа, чтобы запуск не уезжал на час позже каждый день и не пропадал, пока сервис спит),
     после неудачного запуска повтор раньше."""
     now = now or _now()
     last = get_sync_state(conn, "last_run")
@@ -560,6 +562,7 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
 
     for error in errors:
         report.problem(error)
+    report.downloaded = len(downloads)
     report.info(f"Скачано файлов: {len(downloads)}, память процесса: {memory_mb() or '?'} МБ")
     if not downloads and not errors:
         report.problem("ни одного подходящего файла не нашлось: проверьте include/exclude и ссылки в настройках. Бот работает на запасных источниках.")
@@ -668,3 +671,72 @@ def source_summary(conn):
 def record_run(conn, report):
     set_sync_state(conn, "last_run", _now().isoformat(timespec="seconds"))
     set_sync_state(conn, "last_ok", "0" if report.problems else "1")
+    if report.downloaded:
+        status["checked_at"] = _now().isoformat(timespec="seconds")
+        save_status(conn)
+
+
+# ---------- что изменилось (для мини-аппа) ----------
+# Хранится одной короткой строкой в sync_state и держится в памяти: мини-апп спрашивает расписание часто,
+# а база (Neon) должна читаться как можно реже.
+STATUS_KEY = "schedule_status"
+CHANGES_KEEP_DAYS = 14
+CHANGED_DATES_MAX = 5
+status = {"checked_at": None, "changed": {}}  # changed: ключ группы -> {"at": время, "dates": ["2026-10-28", ...]}
+
+
+def load_status(conn):
+    try:
+        raw = get_sync_state(conn, STATUS_KEY)
+        data = json.loads(raw) if raw else {}
+    except Exception:
+        logger.exception("не удалось прочитать отметку об обновлении расписания")
+        return
+    status["checked_at"] = data.get("checked_at")
+    status["changed"] = data.get("changed") or {}
+
+
+def save_status(conn):
+    try:
+        set_sync_state(conn, STATUS_KEY, json.dumps(status, ensure_ascii=False, sort_keys=True))
+    except Exception:
+        logger.exception("не удалось сохранить отметку об обновлении расписания")
+
+
+def day_fingerprints(records, today):
+    """{ключ группы: {дата: отпечаток пар этого дня}} начиная с today (прошедшие дни не интересны)."""
+    days = {}
+    for r in records:
+        date = str(r["date"])[:10]
+        if date >= today:
+            days.setdefault(group_key(r), {}).setdefault(date, []).append((str(r["time"]), str(r["subject"])))
+    return {key: {date: hashlib.sha1(repr(sorted(lessons)).encode()).hexdigest()[:12]
+                  for date, lessons in by_date.items()}
+            for key, by_date in days.items()}
+
+
+def changed_days(before, after, today):
+    """Группа -> дни, которые уже были в расписании и поменялись (пары переставили, добавили или убрали).
+    Новые недели изменением не считаются, как и пропавшие целиком группы."""
+    result = {}
+    for key, old_days in before.items():
+        new_days = after.get(key)
+        if new_days is None:
+            continue
+        dates = sorted(date for date, mark in old_days.items() if date >= today and new_days.get(date) != mark)
+        if dates:
+            result[key] = dates
+    return result
+
+
+def note_changes(conn, changes, now=None):
+    """Запоминает группы с изменениями (старше CHANGES_KEEP_DAYS дней забываются)."""
+    now = now or _now()
+    at = now.isoformat(timespec="seconds")
+    edge = (now - timedelta(days=CHANGES_KEEP_DAYS)).isoformat(timespec="seconds")
+    kept = {key: item for key, item in status["changed"].items() if item.get("at", "") >= edge}
+    for key, dates in changes.items():
+        kept[key] = {"at": at, "dates": dates[:CHANGED_DATES_MAX]}
+    if changes or kept != status["changed"]:
+        status["changed"] = kept
+        save_status(conn)
