@@ -6,7 +6,14 @@ parse_all_schedules = parse_all
 
 
 if __name__ == "__main__":
+    import sys
     from collections import Counter
+
+    if "--build-cache" in sys.argv:
+        # после любой правки файлов в data/, парсеров или data/programs.json (тест проверяет, что кеш свежий)
+        from lms_sync import build_parsed_cache
+        print(f"Кеш собран: файлов {build_parsed_cache('data')}")
+        sys.exit()
 
     data = parse_all("data")
     print(f"Всего записей: {len(data)}")
