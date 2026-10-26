@@ -52,7 +52,23 @@ def load_schedules():
         logger.exception("не удалось учесть подгруженные файлы, беру только data/")
         records = lms_sync.disk_records(SCHEDULE_DIR)
     save_schedule(conn, records)
+    # при старте только запоминаем, что показываем; при перечитывании (подгрузка, файл от владельца)
+    # сравниваем с прошлым и отмечаем группы, у которых поменялись уже известные дни
+    global day_marks
+    try:
+        today = now_local().strftime("%Y-%m-%d")
+        marks = lms_sync.day_fingerprints(records, today)
+        if day_marks is None:
+            lms_sync.load_status(conn)
+        else:
+            lms_sync.note_changes(conn, lms_sync.changed_days(day_marks, marks, today))
+        day_marks = marks
+    except Exception:
+        logger.exception("не удалось сравнить расписание с прошлым")
     return records
+
+
+day_marks = None  # отпечатки дней расписания, которое сейчас показывается
 
 
 def catalog_summary():
@@ -481,8 +497,11 @@ async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def lms_scheduler(application):
     """Фоновая подгрузка: проверяет раз в полчаса, пора ли, и запускает по расписанию.
+    Первая проверка через полторы минуты после старта: бесплатный Render засыпает через 15 минут без запросов,
+    и пропущенный за время сна запуск должен успеть пройти, пока сервис разбужен студентами.
+    Если сервис уснёт посреди подгрузки, время запуска не записывается и она повторится при следующем пробуждении.
     О сбое сообщает владельцу, повторно об одном и том же не чаще раза в LMS_FAIL_REPEAT_DAYS."""
-    await asyncio.sleep(600)
+    await asyncio.sleep(90)
     while True:
         try:
             # плановые запуски начинаются после первого ручного /sync владельца: так видно, что всё работает
