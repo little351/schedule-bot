@@ -11,6 +11,7 @@
 """
 import asyncio
 import gc
+import gzip
 import hashlib
 import html
 import json
@@ -25,7 +26,8 @@ from urllib.parse import unquote, urljoin, urlparse
 import httpx
 
 from database import (
-    LOCAL_TZ, delete_synced_file, get_sync_state, list_synced_files, save_synced_file, set_sync_state,
+    LOCAL_TZ, delete_synced_file, get_sync_state, get_synced_content, list_synced_files, list_synced_parsed,
+    save_synced_file, set_sync_state, set_synced_parsed,
 )
 from schedule_parsers import parse_all, parse_file
 from schedule_parsers.common import load_config
@@ -325,20 +327,55 @@ def active_keys(conn):
         return None
 
 
+def parsed_version(schedule_dir):
+    """Отпечаток парсеров и data/programs.json: если они поменялись, готовое расписание из базы
+    устарело и файл нужно разобрать заново."""
+    h = hashlib.sha256()
+    parsers_dir = os.path.dirname(os.path.abspath(parse_file.__code__.co_filename))
+    for name in sorted(os.listdir(parsers_dir)):
+        if name.endswith(".py"):
+            with open(os.path.join(parsers_dir, name), "rb") as f:
+                h.update(name.encode() + b"\0" + f.read())
+    h.update(json.dumps(load_config(schedule_dir), sort_keys=True, ensure_ascii=False).encode())
+    return h.hexdigest()
+
+
+def encode_records(records):
+    # дата дальше нужна только строкой (str(r["date"]) в save_schedule), поэтому и хранится строкой
+    return gzip.compress(json.dumps(records, default=str, ensure_ascii=False).encode())
+
+
+def decode_records(blob):
+    return json.loads(gzip.decompress(blob))
+
+
+def synced_file_records(conn, item, schedule_dir, version):
+    """Занятия подгруженного файла: из готового расписания в базе, а если его нет или парсеры поменялись,
+    файл скачивается из базы один раз, разбирается и готовое расписание сохраняется обратно."""
+    if item["parsed"] is not None and item["parsed_version"] == version:
+        return decode_records(item["parsed"])
+    content = get_synced_content(conn, item["key"])
+    ext = file_extension(item["file_name"], content or b"")
+    if not ext:
+        raise ValueError("не таблица Excel")
+    records = parse_bytes(content, ext, schedule_dir)
+    set_synced_parsed(conn, item["key"], encode_records(records), version)
+    return records
+
+
 def merged_records(conn, schedule_dir):
     """Расписание для бота: файлы из папки data/ (репозиторий и загрузки владельца), поверх них
-    группы из свежей подгрузки. Подгруженный файл, который не читается, пропускается."""
+    группы из свежей подгрузки. Подгруженный файл, который не читается, пропускается.
+    Сами файлы из базы не качаются (это десятки МБ трафика на каждый старт), берётся готовое расписание."""
     records = disk_records(schedule_dir)
     override = {}
     active = active_keys(conn)
-    for item in list_synced_files(conn, with_content=True):
+    version = parsed_version(schedule_dir)
+    for item in list_synced_parsed(conn):
         if active is None or item["key"] not in active:
             continue  # файл остался от прошлых запусков и сейчас на страницах курсов не лежит
         try:
-            ext = file_extension(item["file_name"], item["content"])
-            if not ext:
-                raise ValueError("не таблица Excel")
-            for r in parse_bytes(item["content"], ext, schedule_dir):
+            for r in synced_file_records(conn, item, schedule_dir, version):
                 override.setdefault(group_key(r), []).append(r)
         except Exception:
             logger.exception("подгруженный файл %s не читается, использую запасные источники", item["key"])
@@ -537,6 +574,7 @@ async def _process(conn, schedule_dir, report, stored, name, file_name, content,
 
     save_synced_file(conn, key, file_name, content, sha, _now().isoformat(timespec="seconds"),
                      json.dumps(new_counts, ensure_ascii=False), len(records))
+    set_synced_parsed(conn, key, encode_records(records), parsed_version(schedule_dir))
     superseded = []
     for other_key, item in stored.items():
         # старый файл целиком покрыт новым: историю не копим. Файл, который сейчас тоже лежит на страницах

@@ -370,3 +370,40 @@ def test_source_summary_lists_only_used_files_in_moscow_time(env):
     text = lms_sync.source_summary(conn)
     assert "t2-09-26.xls" in text and "старый.xls" not in text and "МСК" in text and "UTC" not in text
     assert lms_sync._moscow_time("2026-10-12T21:30:00+00:00") == "13.10.2026 00:30 МСК"
+
+
+def test_start_reads_ready_schedule_not_files(env, monkeypatch):
+    """Старт бота не качает сами файлы из базы (это трафик Neon), а берёт готовое сжатое расписание."""
+    schedule_dir, conn = env
+    assert run(env, FakeMoodle()).changed
+    expected = merged_records(conn, schedule_dir)
+    assert len(expected) == 229
+
+    def no_content(*args):
+        raise AssertionError("содержимое файла не должно скачиваться при старте")
+    monkeypatch.setattr(lms_sync, "get_synced_content", no_content)
+    assert merged_records(conn, schedule_dir) == expected
+
+
+def as_saved(records):
+    """Как записи попадают в таблицу lessons: дата строкой."""
+    return [{**r, "date": str(r["date"])} for r in records]
+
+
+def test_old_rows_and_changed_parsers_are_reparsed_once(env, monkeypatch):
+    schedule_dir, conn = env
+    assert run(env, FakeMoodle()).changed
+    expected = as_saved(merged_records(conn, schedule_dir))
+    calls = []
+    real = lms_sync.get_synced_content
+    monkeypatch.setattr(lms_sync, "get_synced_content", lambda c, key: calls.append(key) or real(c, key))
+    # строка без готового расписания (сохранена до этой версии бота): файл разбирается один раз
+    conn.execute("UPDATE synced_files SET parsed = NULL, parsed_version = NULL")
+    conn.commit()
+    assert as_saved(merged_records(conn, schedule_dir)) == expected
+    assert as_saved(merged_records(conn, schedule_dir)) == expected
+    assert calls == ["t2-09-26.xls"]
+    # поменялись парсеры или programs.json: тоже разбирается заново
+    monkeypatch.setattr(lms_sync, "parsed_version", lambda d: "другая")
+    assert as_saved(merged_records(conn, schedule_dir)) == expected
+    assert calls == ["t2-09-26.xls", "t2-09-26.xls"]
