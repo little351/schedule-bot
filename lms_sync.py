@@ -29,7 +29,8 @@ from database import (
     LOCAL_TZ, delete_synced_file, get_sync_state, get_synced_content, list_synced_files, list_synced_parsed,
     save_synced_file, set_sync_state, set_synced_parsed,
 )
-from schedule_parsers import parse_all, parse_file
+import schedule_parsers
+from schedule_parsers import list_schedule_files, parse_all, parse_file
 from schedule_parsers.common import load_config
 
 logger = logging.getLogger(__name__)
@@ -312,8 +313,58 @@ def check_against_baseline(new_counts, baseline_counts, min_ratio, require_all_g
     return None
 
 
+# Готовые записи файлов из data/, собранные заранее (python parser.py --build-cache): старт не разбирает
+# 13 МБ таблиц заново. Файл скрытый, поэтому как расписание не читается. Ключ - sha256 содержимого файла:
+# новый или изменённый файл (в том числе загруженный владельцем) просто разбирается как раньше.
+PARSED_CACHE_FILE = ".parsed-cache.json.gz"
+
+
+def _file_sha(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def build_parsed_cache(schedule_dir):
+    """Собирает кеш разобранных файлов data/; возвращает число файлов в нём."""
+    config = load_config(schedule_dir)
+    files = {}
+    for path in list_schedule_files(schedule_dir):
+        files[_file_sha(path)] = parse_file(path, config)
+    payload = {"version": parsed_version(schedule_dir), "files": files}
+    data = json.dumps(payload, default=str, ensure_ascii=False, sort_keys=True).encode()
+    with open(os.path.join(schedule_dir, PARSED_CACHE_FILE), "wb") as f:
+        f.write(gzip.compress(data, mtime=0))  # mtime=0: одинаковые данные дают одинаковый файл в git
+    return len(files)
+
+
+def load_parsed_cache(schedule_dir):
+    """{sha256 файла: записи} из кеша; пусто, если кеша нет, он испорчен или парсеры с тех пор поменялись."""
+    try:
+        with open(os.path.join(schedule_dir, PARSED_CACHE_FILE), "rb") as f:
+            payload = json.loads(gzip.decompress(f.read()))
+    except (OSError, ValueError, EOFError):
+        return {}
+    if not isinstance(payload, dict) or payload.get("version") != parsed_version(schedule_dir):
+        return {}
+    return payload.get("files") or {}
+
+
 def disk_records(schedule_dir):
-    return parse_all(schedule_dir)
+    """Как parse_all(schedule_dir), но файлы, которые есть в кеше, не разбираются заново.
+    Парсеры (schedule_parsers) нарочно не трогаем: их отпечаток хранится вместе с готовым расписанием
+    подгруженных файлов в базе, и любая правка в них заставила бы бота перекачать эти файлы из Neon."""
+    cache = load_parsed_cache(schedule_dir)
+    paths = list_schedule_files(schedule_dir)
+    shas = [_file_sha(path) for path in paths] if cache else []
+    if not cache or any(sha not in cache for sha in shas):
+        return parse_all(schedule_dir)  # новый или изменённый файл: разбираем всё, как раньше
+    # дальше то же, что в parse_all: группа из нескольких файлов берётся из последнего по пути
+    by_file = [(path, cache[sha]) for path, sha in zip(paths, shas)]
+    source = {}
+    for path, records in by_file:
+        for r in records:
+            source[(r["program"], r["course"], r["group"])] = path
+    return [r for path, records in by_file for r in records if source[(r["program"], r["course"], r["group"])] == path]
 
 
 def active_keys(conn):
@@ -331,7 +382,7 @@ def parsed_version(schedule_dir):
     """Отпечаток парсеров и data/programs.json: если они поменялись, готовое расписание из базы
     устарело и файл нужно разобрать заново."""
     h = hashlib.sha256()
-    parsers_dir = os.path.dirname(os.path.abspath(parse_file.__code__.co_filename))
+    parsers_dir = os.path.dirname(os.path.abspath(schedule_parsers.__file__))
     for name in sorted(os.listdir(parsers_dir)):
         if name.endswith(".py"):
             with open(os.path.join(parsers_dir, name), "rb") as f:

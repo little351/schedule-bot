@@ -223,6 +223,7 @@
   }
 
   /* --- Вкладка "Другое" --- */
+  .status.cache-note { padding: 4px 0 10px; font-size: 13px; }
   .menu-card {
     display: flex;
     align-items: center;
@@ -906,24 +907,84 @@ groupSelect.addEventListener("change", () => {
 
 let dayRequest = 0;  // номер последнего запроса дня: ответы на прежние (при быстром листании) отбрасываются
 
+// последний ответ на каждый день хранится на телефоне: пока сервер просыпается, сразу видно прежнее расписание
+const DAY_CACHE_PREFIX = "day:";
+const DAY_CACHE_MAX = 20;
+
+function readDayCache(date) {
+  try {
+    const item = JSON.parse(localStorage.getItem(DAY_CACHE_PREFIX + date) || "null");
+    // после смены группы сохранённое расписание прежней группы не показываем
+    if (item && chosen.group && (item.group !== chosen.group || item.program !== chosen.program)) return null;
+    return item;
+  } catch (err) {
+    return null;
+  }
+}
+
+function writeDayCache(date, data) {
+  try {
+    if (!data) { localStorage.removeItem(DAY_CACHE_PREFIX + date); return; }
+    localStorage.setItem(DAY_CACHE_PREFIX + date, JSON.stringify(
+      { group: data.group, program: data.program, lessons: data.lessons, saved: Date.now() }));
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(DAY_CACHE_PREFIX)) keys.push(key);
+    }
+    if (keys.length > DAY_CACHE_MAX) {
+      const saved = k => { try { return JSON.parse(localStorage.getItem(k)).saved || 0; } catch (e) { return 0; } };
+      keys.sort((a, b) => saved(a) - saved(b)).slice(0, keys.length - DAY_CACHE_MAX).forEach(k => localStorage.removeItem(k));
+    }
+  } catch (err) {
+    // хранилище недоступно или переполнено: просто работаем без него
+  }
+}
+
+function renderLessons(container, lessons, note) {
+  const head = note ? `<div class="status cache-note">${esc(note)}</div>` : "";
+  if (lessons.length === 0) {
+    container.innerHTML = head + '<div class="status">В этот день пар нет</div>';
+    return;
+  }
+  container.innerHTML = head + lessons.map(lesson => `
+      <div class="lesson-card">
+        <div class="lesson-body">
+          <div class="lesson-top">
+            <div class="lesson-time">${esc(lesson.time_start)}<br>${esc(lesson.time_end)}</div>
+            <div class="lesson-subject">${esc(lesson.subject)}</div>
+          </div>
+        </div>
+      </div>
+    `).join("");
+}
+
 async function loadDay() {
   const container = document.getElementById("container");
   if (pickingGroup) return askForGroup();
   const request = ++dayRequest;
-  container.innerHTML = '<div class="status">Загрузка...</div>';
 
   if (!telegramId) {
     container.innerHTML = '<div class="status">Открой приложение через кнопку в боте.</div>';
     return;
   }
 
+  const date = fmtISO(selectedDate);
+  const cached = readDayCache(date);
+  if (cached) {
+    renderLessons(container, cached.lessons, "Сохранённое расписание, обновляю...");
+  } else {
+    container.innerHTML = '<div class="status">Загрузка...</div>';
+  }
+
   try {
-    const res = await fetch(`/api/day?telegram_id=${telegramId}&date=${fmtISO(selectedDate)}`, { headers: authHeaders });
+    const res = await fetch(`/api/day?telegram_id=${telegramId}&date=${date}`, { headers: authHeaders });
     if (request !== dayRequest) return;
 
     if (res.status === 404) {
       const data = await res.json();
       if (request !== dayRequest) return;
+      writeDayCache(date, null);
       if (data.detail === "group_not_set") {
         container.innerHTML = '<div class="status">Выбери свою группу в списке выше.</div>';
       } else {
@@ -935,26 +996,16 @@ async function loadDay() {
 
     const data = await res.json();
     if (request !== dayRequest) return;
-
-    if (data.lessons.length === 0) {
-      container.innerHTML = '<div class="status">В этот день пар нет</div>';
-      return;
-    }
-
-    container.innerHTML = data.lessons.map(lesson => `
-      <div class="lesson-card">
-        <div class="lesson-body">
-          <div class="lesson-top">
-            <div class="lesson-time">${esc(lesson.time_start)}<br>${esc(lesson.time_end)}</div>
-            <div class="lesson-subject">${esc(lesson.subject)}</div>
-          </div>
-        </div>
-      </div>
-    `).join("");
+    writeDayCache(date, data);
+    renderLessons(container, data.lessons);
 
   } catch (err) {
     if (request !== dayRequest) return;
-    container.innerHTML = '<div class="status">Ошибка загрузки. Попробуй позже.</div>';
+    if (cached) {
+      renderLessons(container, cached.lessons, "Сервер не отвечает, показано сохранённое расписание.");
+    } else {
+      container.innerHTML = '<div class="status">Ошибка загрузки. Попробуй позже.</div>';
+    }
   }
 }
 
