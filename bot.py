@@ -9,7 +9,7 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError
-from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, LinkPreviewOptions, WebAppInfo
 from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, MessageHandler, TypeHandler, ContextTypes, filters
 )
@@ -639,7 +639,8 @@ async def _send_week(update, group, week_sheet, not_found_msg):
         return
     grid = get_week_schedule_grid(conn, group, week_sheet)
     text = with_donation_note(format_week_text(group.title, week_sheet, grid))
-    await update.message.reply_text(text, parse_mode="MarkdownV2")
+    # без превью ссылки на сбор: иначе под расписанием появляется большая карточка сайта банка
+    await update.message.reply_text(text, parse_mode="MarkdownV2", link_preview_options=LinkPreviewOptions(is_disabled=True))
 
 
 async def week(update: Update, context: ContextTypes.DEFAULT_TYPE):
