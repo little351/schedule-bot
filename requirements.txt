@@ -1,8 +1,11 @@
-fastapi
-uvicorn[standard]
-python-telegram-bot
-openpyxl
-xlrd
-psycopg2-binary
-httpx
-
+# Версии закреплены: Render ставит пакеты при каждом деплое, и новая версия библиотеки не должна
+# менять работу бота без проверки. Обновлять осознанно, одним PR, после зелёных тестов.
+fastapi==0.162.0
+starlette==1.10.0
+pydantic==2.14.1
+uvicorn[standard]==0.54.0
+python-telegram-bot==22.8
+openpyxl==3.1.5
+xlrd==2.0.2
+psycopg2-binary==2.9.13
+httpx==0.28.1

@@ -97,3 +97,31 @@ def test_long_owner_commands_do_not_hold_the_webhook(monkeypatch, tmp_path):
 def datetime_now():
     from datetime import datetime, timezone
     return datetime.now(timezone.utc)
+
+
+def test_errors_get_a_short_answer_and_one_owner_notice(monkeypatch):
+    """Необработанная ошибка: пользователю короткий ответ, владельцу одно сообщение на одинаковые ошибки."""
+    import asyncio
+    from types import SimpleNamespace
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+    monkeypatch.setattr(bot, "OWNER_ID", "42")
+    monkeypatch.setattr(bot, "_error_notified", {})
+    replies, owner = [], []
+
+    async def reply_text(text):
+        replies.append(text)
+
+    async def send_message(chat_id, text):
+        owner.append((chat_id, text))
+
+    update = SimpleNamespace(effective_message=SimpleNamespace(chat=SimpleNamespace(type="private"), reply_text=reply_text),
+                             effective_user=SimpleNamespace(id=7))
+    context = SimpleNamespace(error=ValueError("сломалось"), bot=SimpleNamespace(send_message=send_message))
+    asyncio.run(bot.on_error(update, context))
+    asyncio.run(bot.on_error(update, context))
+    assert replies == [bot.ERROR_TEXT] * 2
+    assert len(owner) == 1 and owner[0][0] == 42 and "ValueError: сломалось" in owner[0][1]
+    context.error = bot.Forbidden("blocked")  # бот заблокирован: молчим
+    asyncio.run(bot.on_error(update, context))
+    assert len(replies) == 2 and len(owner) == 1
