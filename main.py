@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
@@ -18,19 +19,11 @@ WEBHOOK_PATH = f"/telegram/{WEBHOOK_SECRET}"
 # Выводится из токена бота, поэтому одинаков при каждом запуске и не угадывается снаружи
 TELEGRAM_SECRET_TOKEN = hashlib.sha256(f"webhook:{TOKEN}".encode()).hexdigest()
 
-app = FastAPI()
 application = build_application()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app):
     # при каждом старте перезаливаем расписание из data/ (.xlsx и .xls, включая подпапки data/1k ... data/5k): файлы - источник истины,
     # так новый файл подхватывается простым перезапуском (таблица users не трогается)
     load_schedules()
@@ -39,18 +32,23 @@ async def startup():
     await post_init(application)
     await application.bot.set_webhook(url=f"{PUBLIC_URL}{WEBHOOK_PATH}", secret_token=TELEGRAM_SECRET_TOKEN)
     # автоподгрузка расписания с сайта вуза: работает, только если заданы LMS_LOGIN и LMS_PASSWORD
-    app.state.lms_task = asyncio.create_task(lms_scheduler(application))
-    # еженедельная резервная копия владельцу в Telegram (нужен OWNER_ID)
-    app.state.backup_task = asyncio.create_task(backup_scheduler(application))
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    for name in ("lms_task", "backup_task"):
-        task = getattr(app.state, name, None)
-        if task:
-            task.cancel()
+    tasks = [asyncio.create_task(lms_scheduler(application)),
+             # еженедельная резервная копия владельцу в Telegram (нужен OWNER_ID)
+             asyncio.create_task(backup_scheduler(application))]
+    yield
+    for task in tasks:
+        task.cancel()
     await application.shutdown()
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post(WEBHOOK_PATH)

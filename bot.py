@@ -811,6 +811,42 @@ async def post_init(application):
     ])
 
 
+ERROR_TEXT = "Что-то пошло не так. Попробуй ещё раз чуть позже."
+ERROR_NOTIFY_MINUTES = 30  # об одной и той же ошибке владельцу пишем не чаще
+_error_notified = {}  # сигнатура ошибки -> когда владелец последний раз о ней узнал
+
+
+async def on_error(update, context: ContextTypes.DEFAULT_TYPE):
+    """Любая необработанная ошибка: в лог, пользователю короткий ответ вместо тишины, владельцу сообщение
+    (одинаковые ошибки не чаще раза в ERROR_NOTIFY_MINUTES минут)."""
+    error = context.error
+    logger.error("ошибка при обработке обновления", exc_info=error)
+    if isinstance(error, Forbidden):
+        return  # пользователь заблокировал бота: ни ответить, ни сообщать нечего
+    message = getattr(update, "effective_message", None)
+    if message and message.chat.type == "private":
+        try:
+            await message.reply_text(ERROR_TEXT)
+        except Exception:
+            pass
+    if not OWNER_ID.isdigit():
+        return
+    signature = f"{type(error).__name__}: {error}"[:200]
+    now = datetime.now(timezone.utc)
+    last = _error_notified.get(signature)
+    if last and now - last < timedelta(minutes=ERROR_NOTIFY_MINUTES):
+        return
+    _error_notified[signature] = now
+    user = getattr(update, "effective_user", None)
+    where = f"от пользователя {user.id}" if user else "в фоновой задаче"
+    text = lms_sync.scrub(f"Ошибка в боте ({where}):\n{signature}\n\nПовторы этой ошибки "
+                          f"{ERROR_NOTIFY_MINUTES} мин присылать не буду, подробности в логах Render.")
+    try:
+        await context.bot.send_message(chat_id=int(OWNER_ID), text=text)
+    except Exception:
+        logger.exception("не удалось сообщить владельцу об ошибке")
+
+
 def build_application():
     application = Application.builder().token(TOKEN).post_init(post_init).build()
     # только новые сообщения: правка уже отправленной команды или текста не должна запускать её ещё раз
@@ -835,6 +871,7 @@ def build_application():
         application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
     application.add_handler(MessageHandler(filters.Document.ALL & new_message, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & new_message, handle_message))
+    application.add_error_handler(on_error)
     return application
 
 
