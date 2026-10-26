@@ -388,6 +388,74 @@ def list_users(conn):
     return conn.execute(query).fetchall()
 
 
+# --- полная резервная копия: всё, что нельзя получить заново (подгруженные файлы восстановит /sync) ---
+
+BACKUP_TABLES = {
+    "users": ["telegram_id", "group_name"] + [column for column, _ in USER_EXTRA_COLUMNS],
+    "notes": ["telegram_id", "subject", "text", "due_date", "done", "created_at"],
+    "game_scores": ["telegram_id", "name", "best", "updated_at"],
+    "sync_state": ["key", "value"],
+}
+# по каким колонкам запись из копии считается уже существующей (её не трогаем: в базе она свежее)
+BACKUP_KEYS = {
+    "users": ["telegram_id"],
+    "notes": ["telegram_id", "created_at", "text"],
+    "game_scores": ["telegram_id"],
+    "sync_state": ["key"],
+}
+
+
+def export_backup(conn):
+    """{"tables": {таблица: [{колонка: значение}, ...]}} для всех таблиц из BACKUP_TABLES."""
+    tables = {}
+    for table, columns in BACKUP_TABLES.items():
+        query = f"SELECT {', '.join(columns)} FROM {table}"
+        if PG_DSN:
+            with pg_cursor() as cur:
+                cur.execute(query)
+                rows = cur.fetchall()
+        else:
+            rows = conn.execute(query).fetchall()
+        tables[table] = [dict(zip(columns, row)) for row in rows]
+    return {"tables": tables}
+
+
+def import_backup(conn, data):
+    """Добавляет из копии записи, которых в базе нет; существующие не трогает.
+    Колонки берутся только из BACKUP_TABLES (файл мог прийти откуда угодно). Возвращает {таблица: добавлено}."""
+    added = {}
+    for table, columns in BACKUP_TABLES.items():
+        keys = BACKUP_KEYS[table]
+        count = 0
+        for record in (data.get("tables") or {}).get(table) or []:
+            if not isinstance(record, dict) or any(record.get(k) is None for k in keys[:1]):
+                continue
+            values = [record.get(c) for c in columns]
+            key_values = [record.get(k) for k in keys]
+            # сначала проверка, потом обычный INSERT ... VALUES: в Postgres у пустых значений в INSERT ... SELECT
+            # не выводится тип колонки
+            if PG_DSN:
+                where = " AND ".join(f"{k} IS NOT DISTINCT FROM %s" for k in keys)
+                with pg_cursor() as cur:
+                    cur.execute(f"SELECT 1 FROM {table} WHERE {where}", key_values)
+                    if cur.fetchone():
+                        continue
+                    cur.execute(f"INSERT INTO {table} ({', '.join(columns)}) "
+                                f"VALUES ({', '.join(['%s'] * len(columns))})", values)
+            else:
+                where = " AND ".join(f"{k} IS ?" for k in keys)
+                with conn.lock:
+                    if conn.execute(f"SELECT 1 FROM {table} WHERE {where}", key_values).fetchone():
+                        continue
+                    conn.execute(f"INSERT INTO {table} ({', '.join(columns)}) "
+                                 f"VALUES ({', '.join(['?'] * len(columns))})", values)
+            count += 1
+        added[table] = count
+    if not PG_DSN:
+        conn.commit()
+    return added
+
+
 def user_stats(rows, now=None, top=10):
     """Счётчики по пользователям из list_users(): без имён и ID. now - aware datetime (по умолчанию сейчас, UTC).
     Даты first_seen/last_seen хранятся в UTC ISO; у записей до появления учёта и из резервной копии их может не быть."""
