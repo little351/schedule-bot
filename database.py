@@ -26,6 +26,8 @@ USER_EXTRA_COLUMNS = [
 LEGACY_PROGRAM = "49.03.04"
 LEGACY_COURSE = 1
 
+SYNCED_PARSED_COLUMNS = [("parsed", "BYTEA"), ("parsed_version", "TEXT")]
+
 PG_DSN = os.environ.get("DATABASE_URL")
 pg_conn = None
 
@@ -80,6 +82,9 @@ if PG_DSN:
                 fetched_at TEXT, group_counts TEXT, records INTEGER
             )
         """)
+        # готовое расписание файла (сжатый JSON): при старте читается оно, а не сам файл, чтобы не тратить трафик базы
+        for column, column_type in SYNCED_PARSED_COLUMNS:
+            cur.execute(f"ALTER TABLE synced_files ADD COLUMN IF NOT EXISTS {column} {column_type}")
         cur.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS notes (
@@ -195,6 +200,7 @@ def init_db(path="schedule.db"):
             fetched_at TEXT, group_counts TEXT, records INTEGER
         )
     """)
+    _add_missing_columns(conn, "synced_files", [("parsed", "BLOB"), ("parsed_version", "TEXT")])
     conn.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS notes (
@@ -427,14 +433,14 @@ def save_synced_file(conn, key, file_name, content, sha256, fetched_at, group_co
                 "INSERT INTO synced_files (key, file_name, content, sha256, fetched_at, group_counts, records) "
                 "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (key) DO UPDATE SET file_name = EXCLUDED.file_name, "
                 "content = EXCLUDED.content, sha256 = EXCLUDED.sha256, fetched_at = EXCLUDED.fetched_at, "
-                "group_counts = EXCLUDED.group_counts, records = EXCLUDED.records",
+                "group_counts = EXCLUDED.group_counts, records = EXCLUDED.records, parsed = NULL, parsed_version = NULL",
                 (key, file_name, psycopg2.Binary(content), sha256, fetched_at, group_counts, records))
         return
     conn.execute(
         "INSERT INTO synced_files (key, file_name, content, sha256, fetched_at, group_counts, records) "
         "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (key) DO UPDATE SET file_name = excluded.file_name, "
         "content = excluded.content, sha256 = excluded.sha256, fetched_at = excluded.fetched_at, "
-        "group_counts = excluded.group_counts, records = excluded.records",
+        "group_counts = excluded.group_counts, records = excluded.records, parsed = NULL, parsed_version = NULL",
         (key, file_name, content, sha256, fetched_at, group_counts, records))
     conn.commit()
 
@@ -457,6 +463,41 @@ def list_synced_files(conn, with_content=False):
             item["content"] = bytes(item["content"])
         result.append(item)
     return result
+
+
+def list_synced_parsed(conn):
+    """[{key, file_name, parsed, parsed_version}, ...] без содержимого файлов: для старта бота."""
+    query = "SELECT key, file_name, parsed, parsed_version FROM synced_files ORDER BY fetched_at, key"
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+    else:
+        rows = conn.execute(query).fetchall()
+    return [{"key": key, "file_name": file_name, "parsed": bytes(parsed) if parsed is not None else None,
+             "parsed_version": version} for key, file_name, parsed, version in rows]
+
+
+def get_synced_content(conn, key):
+    """Содержимое одного файла (или None)."""
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute("SELECT content FROM synced_files WHERE key = %s", (key,))
+            row = cur.fetchone()
+    else:
+        row = conn.execute("SELECT content FROM synced_files WHERE key = ?", (key,)).fetchone()
+    return bytes(row[0]) if row and row[0] is not None else None
+
+
+def set_synced_parsed(conn, key, parsed, version):
+    if PG_DSN:
+        import psycopg2
+        with pg_cursor() as cur:
+            cur.execute("UPDATE synced_files SET parsed = %s, parsed_version = %s WHERE key = %s",
+                        (psycopg2.Binary(parsed), version, key))
+        return
+    conn.execute("UPDATE synced_files SET parsed = ?, parsed_version = ? WHERE key = ?", (parsed, version, key))
+    conn.commit()
 
 
 def delete_synced_file(conn, key):
