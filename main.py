@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
 
-from bot import build_application, post_init, conn, load_schedules, lms_scheduler, send_campus_map, TOKEN
+from bot import build_application, post_init, conn, load_schedules, lms_scheduler, backup_scheduler, send_campus_map, TOKEN
 from routes import build_router
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
@@ -40,13 +40,16 @@ async def startup():
     await application.bot.set_webhook(url=f"{PUBLIC_URL}{WEBHOOK_PATH}", secret_token=TELEGRAM_SECRET_TOKEN)
     # автоподгрузка расписания с сайта вуза: работает, только если заданы LMS_LOGIN и LMS_PASSWORD
     app.state.lms_task = asyncio.create_task(lms_scheduler(application))
+    # еженедельная резервная копия владельцу в Telegram (нужен OWNER_ID)
+    app.state.backup_task = asyncio.create_task(backup_scheduler(application))
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    task = getattr(app.state, "lms_task", None)
-    if task:
-        task.cancel()
+    for name in ("lms_task", "backup_task"):
+        task = getattr(app.state, name, None)
+        if task:
+            task.cancel()
     await application.shutdown()
 
 

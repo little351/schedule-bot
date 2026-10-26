@@ -1,12 +1,13 @@
 import asyncio
 import csv
 import io
+import json
 import logging
 import os
 from types import SimpleNamespace
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError
 from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from telegram.ext import (
@@ -22,7 +23,7 @@ from database import (
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
     get_week_schedule_grid, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
     touch_user, list_users, user_stats, get_program_name, restore_users, users_without_profile, set_user_profile,
-    get_sync_state, set_sync_state
+    get_sync_state, set_sync_state, export_backup, import_backup
 )
 from formatting import format_week_text, with_donation_note
 
@@ -317,11 +318,54 @@ def _is_owner(update):
     return OWNER_ID.isdigit() and update.effective_user.id == int(OWNER_ID)
 
 
+BACKUP_KIND = "schedule-bot-backup"
+BACKUP_INTERVAL_DAYS = 7  # как часто бот сам присылает владельцу резервную копию
+BACKUP_TITLES = {"users": "пользователей", "notes": "заметок", "game_scores": "рекордов игры",
+                 "sync_state": "настроек подгрузки"}
+
+
+def make_backup(conn):
+    """(имя файла, байты, подпись): все пользователи, заметки, рекорды игры и состояние подгрузки в JSON."""
+    data = {"kind": BACKUP_KIND, "version": 1, "created_at": now_local().strftime("%Y-%m-%dT%H:%M:%S"),
+            **export_backup(conn)}
+    counts = ", ".join(f"{BACKUP_TITLES[t]} {len(rows)}" for t, rows in data["tables"].items())
+    caption = (f"Резервная копия: {counts}.\n"
+               "Чтобы восстановить, пришли этот файл боту. Подгруженное с сайта вуза вернёт /sync.")
+    name = f"backup-{now_local().strftime('%Y-%m-%d')}.json"
+    return name, json.dumps(data, ensure_ascii=False).encode("utf-8"), caption
+
+
+def parse_backup(content):
+    """Данные полной копии или None, если это не она."""
+    try:
+        data = json.loads(content)
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) and data.get("kind") == BACKUP_KIND else None
+
+
 async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    data = format_users_csv(list_users(conn))
-    name = f"users-{now_local().strftime('%Y-%m-%d')}.csv"
-    await update.message.reply_document(document=io.BytesIO(data), filename=name,
-                                        caption="Резервная копия списка пользователей")
+    name, data, caption = make_backup(conn)
+    await update.message.reply_document(document=io.BytesIO(data), filename=name, caption=caption)
+
+
+async def backup_scheduler(application):
+    """Раз в BACKUP_INTERVAL_DAYS дней присылает владельцу резервную копию: она лежит в Telegram,
+    вне базы и вне Render, и переживёт и потерю базы, и её остановку."""
+    if not OWNER_ID.isdigit():
+        return
+    await asyncio.sleep(120)  # Render будит сервис ненадолго: не тянем со стартом
+    while True:
+        try:
+            last = get_sync_state(conn, "backup_sent_at")
+            if not last or datetime.now(timezone.utc) - datetime.fromisoformat(last) >= timedelta(days=BACKUP_INTERVAL_DAYS):
+                name, data, caption = make_backup(conn)
+                await application.bot.send_document(chat_id=int(OWNER_ID), document=io.BytesIO(data),
+                                                    filename=name, caption="Еженедельная " + caption[0].lower() + caption[1:])
+                set_sync_state(conn, "backup_sent_at", datetime.now(timezone.utc).isoformat(timespec="seconds"))
+        except Exception:
+            logger.exception("автоматическая резервная копия: ошибка")
+        await asyncio.sleep(3600)
 
 
 async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -677,6 +721,18 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     document = update.message.document
+    if document.file_name.lower().endswith(".json"):
+        # полная резервная копия (/backup или еженедельная): добавить то, чего нет в базе
+        file = await context.bot.get_file(document.file_id)
+        data = parse_backup(bytes(await file.download_as_bytearray()))
+        if data is None:
+            await update.message.reply_text("Это не резервная копия бота.")
+            return
+        added = import_backup(conn, data)
+        await update.message.reply_text(
+            "Восстановление из копии, добавлено новых: "
+            + ", ".join(f"{BACKUP_TITLES[t]} {n}" for t, n in added.items()) + " (уже существующих не трогал).")
+        return
     if document.file_name.lower().endswith((".csv", ".txt")):
         # файл /backup или текст списка /users: восстановить пользователей
         file = await context.bot.get_file(document.file_id)
