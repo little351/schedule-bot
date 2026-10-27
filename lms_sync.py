@@ -282,6 +282,12 @@ def parse_bytes(content, ext, schedule_dir):
         os.unlink(path)
 
 
+def program_level(code):
+    """Уровень по коду направления: 38.04.02 - магистратура ("m"), остальные (38.03.02, 51.03.05) - бакалавриат ("b")."""
+    parts = str(code or "").split(".")
+    return "m" if len(parts) == 3 and parts[1] == "04" else "b"
+
+
 def group_key(r):
     return f"{r['program']}|{r['course']}|{r['group']}"
 
@@ -479,7 +485,7 @@ def is_due(conn, now=None):
 
 def _fetch_all(sources, client_factory, list_only):
     """Сетевая часть (идёт в отдельном потоке): вход, поиск файлов, скачивание.
-    Возвращает (downloads, listing, errors): downloads [(название, имя файла, байты)]."""
+    Возвращает (downloads, listing, errors): downloads [(название, имя файла, байты, уровень страницы или None)]."""
     login, password = credentials()
     client = client_factory(sources["base_url"], login, password)
     downloads, listing, errors = [], [], []
@@ -504,12 +510,12 @@ def _fetch_all(sources, client_factory, list_only):
             listing.append((page.get("label") or page["url"], [name for name, _ in names]))
             for name, link in names:
                 if include.search(name) and not (exclude and exclude.search(name)):
-                    targets.append((name, link))
+                    targets.append((name, link, page.get("level")))
         for resource in sources.get("resources", []):
-            targets.append((resource.get("label") or resource["url"], resource["url"]))
+            targets.append((resource.get("label") or resource["url"], resource["url"], resource.get("level")))
         if not list_only:
             seen = set()
-            for name, link in targets:
+            for name, link, level in targets:
                 if link in seen:
                     continue
                 seen.add(link)
@@ -518,7 +524,7 @@ def _fetch_all(sources, client_factory, list_only):
                     break
                 try:
                     file_name, content = client.download(link)
-                    downloads.append((name, file_name, content))
+                    downloads.append((name, file_name, content, level))
                 except SyncError as e:
                     errors.append(f"«{name}»: {e}")
     finally:
@@ -569,17 +575,17 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
 
     min_ratio = float(sources.get("min_ratio", DEFAULT_MIN_RATIO))
     stored = {item["key"]: item for item in list_synced_files(conn)}
-    on_pages = {file_name.lower() for _, file_name, _ in downloads}
+    on_pages = {file_name.lower() for _, file_name, _, _ in downloads}
     disk_counts = None
-    for name, file_name, content in downloads:
+    for name, file_name, content, level in downloads:
         try:
             disk_counts = await _process(conn, schedule_dir, report, stored, name, file_name, content,
-                                         min_ratio, disk_counts, on_pages)
+                                         min_ratio, disk_counts, on_pages, level)
         except Exception as e:
             logger.error("подгрузка: файл %s: %s", file_name, scrub(f"{type(e).__name__}: {e}"))
             report.problem(f"{file_name}: не удалось обработать ({type(e).__name__}), осталась прошлая версия или запасной источник")
     stored_now = {item["key"] for item in list_synced_files(conn)}
-    seen = {file_name.lower() for _, file_name, content in downloads} & stored_now
+    seen = {file_name.lower() for _, file_name, _, _ in downloads} & stored_now
     if seen:
         previous = active_keys(conn)
         if errors and previous:
@@ -592,7 +598,8 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
     return report
 
 
-async def _process(conn, schedule_dir, report, stored, name, file_name, content, min_ratio, disk_counts, on_pages=()):
+async def _process(conn, schedule_dir, report, stored, name, file_name, content, min_ratio, disk_counts, on_pages=(),
+                   level=None):
     ext = file_extension(file_name, content)
     if not ext:
         report.info(f"{file_name}: не таблица Excel (.xls/.xlsx), пропущен")
@@ -612,6 +619,17 @@ async def _process(conn, schedule_dir, report, stored, name, file_name, content,
     if not records:
         report.problem(f"{file_name}: в файле нет ни одного занятия, оставлена прошлая версия или запасной источник")
         return disk_counts
+    if level == "m":
+        # со страниц магистратуры берём только направления магистратуры (код вида 38.04.02): если направление
+        # в шапке не нашлось, группы «1 группа» не должны подменить одноимённые группы бакалавриата
+        foreign = sorted({r["program"] or "?" for r in records if program_level(r["program"]) != "m"})
+        records = [r for r in records if program_level(r["program"]) == "m"]
+        if not records:
+            report.problem(f"{file_name}: со страницы магистратуры, но направлений магистратуры в файле не нашлось "
+                           f"(найдено: {', '.join(foreign)}), файл не принят")
+            return disk_counts
+        if foreign:
+            report.info(f"{file_name}: пропущены группы не магистратуры ({', '.join(foreign)})")
 
     new_counts = count_groups(records)
     if previous:

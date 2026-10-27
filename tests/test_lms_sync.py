@@ -474,3 +474,28 @@ def test_reload_marks_changed_groups(env, monkeypatch):
     bot.load_schedules()
     assert list(lms_sync.status["changed"]) == [lms_sync.group_key(target)]
     assert lms_sync.status["changed"][lms_sync.group_key(target)]["dates"] == [first]
+
+
+def _magistracy_page(schedule_dir):
+    with open(os.path.join(schedule_dir, "lms_sources.json"), "w", encoding="utf-8") as f:
+        json.dump({"base_url": "https://lms.test", "pages": [
+            {"url": "/course/view.php?id=5", "include": "расписание", "level": "m"}]}, f)
+
+
+def test_magistracy_page_takes_only_magistracy_programs(env, monkeypatch):
+    """Со страницы магистратуры файл бакалавриата не принимается, а из смешанного берутся только направления XX.04.XX."""
+    schedule_dir, conn = env
+    _magistracy_page(schedule_dir)
+    report = run(env, FakeMoodle())  # в файле 49.03.02: бакалавриат
+    assert "направлений магистратуры в файле не нашлось" in report.text() and list_synced_files(conn) == []
+
+    def lesson(program, group):
+        return {"program": program, "program_name": "x", "course": 1, "group": group, "week_sheet": "01.09",
+                "day": "Понедельник", "date": "2026-09-01", "time": "8:50-10:20", "subject": "Лекция"}
+
+    monkeypatch.setattr(lms_sync, "parse_bytes", lambda content, ext, d: [
+        lesson("38.04.02", "1 группа"), lesson("49.03.04", "1 группа"), lesson("", "2 группа")])
+    report = run(env, FakeMoodle())
+    assert report.changed and "пропущены группы не магистратуры" in report.text()
+    assert [json.loads(i["group_counts"]) for i in list_synced_files(conn)] == [{"38.04.02|1|1 группа": 1}]
+    assert [lms_sync.group_key(r) for r in merged_records(conn, schedule_dir)] == ["38.04.02|1|1 группа"]

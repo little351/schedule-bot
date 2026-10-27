@@ -602,6 +602,7 @@
   <div class="page-header">
     <div class="title-row">
       <h1>Расписание</h1>
+      <select class="group-select" id="levelSelect" hidden></select>
     </div>
     <div class="pickers">
       <select class="group-select" id="courseSelect"></select>
@@ -788,8 +789,9 @@ function renderDateStrip() {
 }
 
 let catalog = [];
-let chosen = { program: null, course: null, group: null };
+let chosen = { level: "b", program: null, course: null, group: null };
 
+const levelSelect = document.getElementById("levelSelect");
 const programSelect = document.getElementById("programSelect");
 const courseSelect = document.getElementById("courseSelect");
 const groupSelect = document.getElementById("groupSelect");
@@ -823,25 +825,40 @@ function fitSelect(select) {
 }
 
 function fitPickers() {
-  [programSelect, courseSelect, groupSelect].forEach(fitSelect);
+  [levelSelect, programSelect, courseSelect, groupSelect].forEach(fitSelect);
 }
 
-// порядок выбора: курс -> направление (только те, где есть этот курс) -> группа
+// порядок выбора: уровень (если есть и бакалавриат, и магистратура) -> курс -> направление -> группа
+// уровень по коду направления: 38.04.02 - магистратура, остальные - бакалавриат
+const levelOf = code => String(code).split(".")[1] === "04" ? "m" : "b";
+
+function allLevels() {
+  return [...new Set(catalog.map(p => levelOf(p.code)))].sort();  // "b" раньше "m"
+}
+
+function levelCatalog() {
+  return catalog.filter(p => levelOf(p.code) === chosen.level);
+}
+
 function allCourses() {
-  return [...new Set(catalog.flatMap(p => p.courses.map(c => c.course)))].sort((a, b) => a - b);
+  return [...new Set(levelCatalog().flatMap(p => p.courses.map(c => c.course)))].sort((a, b) => a - b);
 }
 
 function programsOfCourse(course) {
-  return catalog.filter(p => p.courses.some(c => String(c.course) === String(course)));
+  return levelCatalog().filter(p => p.courses.some(c => String(c.course) === String(course)));
 }
 
 // тесное отображение нижней строки на узких экранах: «8 группа» -> «8 гр.»
 let compact = false;
 const courseLabel = c => `${c} курс`;
+const levelLabel = l => ({ b: "Бакалавриат", m: "Магистратура" })[l];
 const groupLabel = g => compact ? g.replace(/ группа$/, " гр.") : g;
 
 function renderPickers(tight = false) {
   compact = tight;
+  const levels = allLevels();
+  levelSelect.hidden = levels.length < 2;  // пока магистратуры нет, всё как раньше
+  levelSelect.innerHTML = optionsHtml(levels.map(l => ({ value: l, label: levelLabel(l) })), chosen.level);
   courseSelect.innerHTML = optionsHtml(
     allCourses().map(c => ({ value: c, label: courseLabel(c) })), chosen.course);
 
@@ -877,10 +894,11 @@ async function loadGroups() {
     catalog = data.programs;
     const cur = data.current;
     if (cur) {
-      chosen = { program: cur.program, course: cur.course, group: cur.group };
+      chosen = { level: levelOf(cur.program), program: cur.program, course: cur.course, group: cur.group };
     } else if (catalog.length) {
+      chosen.level = allLevels()[0];
       const course = allCourses()[0];
-      chosen = { program: programsOfCourse(course)[0].code, course, group: null };
+      chosen = { level: chosen.level, program: programsOfCourse(course)[0].code, course, group: null };
     }
     renderPickers();
   } catch (err) {
@@ -904,7 +922,15 @@ async function saveGroup() {
 courseSelect.addEventListener("change", () => {
   const programs = programsOfCourse(courseSelect.value);
   const keep = programs.find(p => p.code === chosen.program);  // то же направление, если оно есть на этом курсе
-  chosen = { program: (keep || programs[0]).code, course: courseSelect.value, group: null };
+  chosen = { level: chosen.level, program: (keep || programs[0]).code, course: courseSelect.value, group: null };
+  renderPickers();
+  askForGroup();
+});
+levelSelect.addEventListener("change", () => {
+  chosen.level = levelSelect.value;
+  const courses = allCourses();
+  const course = courses.find(c => String(c) === String(chosen.course)) ?? courses[0];
+  chosen = { level: chosen.level, program: programsOfCourse(course)[0].code, course, group: null };
   renderPickers();
   askForGroup();
 });

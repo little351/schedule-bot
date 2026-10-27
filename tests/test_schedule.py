@@ -618,3 +618,36 @@ def test_seventh_pair_is_shown(tmp_path):
     _, lessons = get_day_lessons(conn, group, datetime(2026, 10, 5))
     assert [(x["time_start"], x["subject"]) for x in lessons] == [("18:30", "Шестая"), ("20:20", "Седьмая")]
     assert "Седьмая" in format_week_text(group.title, "05.10", get_week_schedule_grid(conn, group, "05.10"))
+
+
+def test_bot_picker_asks_level_when_magistracy_exists(tmp_path, records):
+    """Пока магистратуры нет, всё как раньше; когда есть, первым шагом выбирается уровень."""
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+
+    master = [dict(r, program="49.04.03", program_name="Спорт", group="М-1") for r in records
+              if r["program"] == "49.03.04" and r["course"] == 1 and r["group"] == "1 группа"]
+    old_conn = bot.conn
+    bot.conn = init_db(str(tmp_path / "picker.db"))
+    try:
+        def buttons(markup):
+            return [b.callback_data for row in markup.inline_keyboard for b in row]
+
+        save_schedule(bot.conn, records)
+        text, markup = bot.picker_screen("level")
+        assert text == "Выбери курс:" and buttons(markup) == ["c:1", "c:2", "c:3", "c:4"]
+
+        save_schedule(bot.conn, records + master)
+        text, markup = bot.picker_screen("level")
+        assert buttons(markup) == ["l:b", "l:m"]
+        text, markup = bot.picker_screen("course", level="m")
+        assert buttons(markup) == ["c:1:m", "b:l"]
+        text, markup = bot.picker_screen("program", course=1, level="m")  # одно направление: сразу группы
+        assert buttons(markup) == ["g:49.04.03:1:М-1", "b:c:m"]
+        text, markup = bot.picker_screen("course", level="b")
+        assert buttons(markup) == ["c:1", "c:2", "c:3", "c:4", "b:l"]
+        # кнопки старых сообщений (без уровня) ведут в бакалавриат
+        text, markup = bot.picker_screen("program", course=1)
+        assert "p:1:49.04.03" not in buttons(markup) and "49.04" not in text
+    finally:
+        bot.conn = old_conn
