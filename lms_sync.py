@@ -26,8 +26,8 @@ from urllib.parse import unquote, urljoin, urlparse
 import httpx
 
 from database import (
-    LOCAL_TZ, delete_synced_file, get_sync_state, get_synced_content, list_synced_files, list_synced_parsed,
-    save_synced_file, set_sync_state, set_synced_parsed,
+    LOCAL_TZ, delete_synced_file, get_sync_state, get_synced_content, get_synced_parsed, list_synced_files,
+    list_synced_parsed, save_synced_file, set_sync_state, set_synced_parsed,
 )
 import schedule_parsers
 from schedule_parsers import list_schedule_files, parse_all, parse_file
@@ -598,6 +598,21 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
     return report
 
 
+def _previous_counts(conn, schedule_dir, previous):
+    """Группы прошлой версии файла так, как их читает нынешний парсер. Если парсер поменял названия групп
+    (у магистратуры «Направленность: ...» стала «МП-01-26»), сравнение со старыми названиями
+    отклонило бы новую версию за «пропавшие» группы. Готовое расписание берётся из базы, файл
+    скачивается, только если оно устарело (так же было бы при следующем старте)."""
+    try:
+        item = get_synced_parsed(conn, previous["key"])
+        if item:
+            return count_groups(synced_file_records(conn, item, schedule_dir, parsed_version(schedule_dir)))
+    except Exception:
+        logger.exception("прошлая версия %s не читается нынешним парсером, сравниваю с сохранёнными группами",
+                         previous["key"])
+    return json.loads(previous["group_counts"])
+
+
 async def _process(conn, schedule_dir, report, stored, name, file_name, content, min_ratio, disk_counts, on_pages=(),
                    level=None):
     ext = file_extension(file_name, content)
@@ -633,7 +648,7 @@ async def _process(conn, schedule_dir, report, stored, name, file_name, content,
 
     new_counts = count_groups(records)
     if previous:
-        baseline, require_all = json.loads(previous["group_counts"]), True
+        baseline, require_all = _previous_counts(conn, schedule_dir, previous), True
     else:
         # первого скачивания этого файла в базе ещё нет: сравниваем с тем, что бот показывает сейчас
         if disk_counts is None:

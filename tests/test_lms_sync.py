@@ -499,3 +499,20 @@ def test_magistracy_page_takes_only_magistracy_programs(env, monkeypatch):
     assert report.changed and "пропущены группы не магистратуры" in report.text()
     assert [json.loads(i["group_counts"]) for i in list_synced_files(conn)] == [{"38.04.02|1|1 группа": 1}]
     assert [lms_sync.group_key(r) for r in merged_records(conn, schedule_dir)] == ["38.04.02|1|1 группа"]
+
+
+def test_renamed_groups_in_previous_version_are_not_counted_as_lost(env, monkeypatch):
+    """Прошлая версия файла сохранена, когда парсер называл группы иначе (магистратура: «Направленность: ...»
+    стала «МП-01-26»). Новая версия сравнивается с прошлой в нынешнем прочтении и принимается."""
+    schedule_dir, conn = env
+    original = open(FILE_A, "rb").read()
+    assert run(env, FakeMoodle()).changed
+    key = list_synced_files(conn)[0]["key"]
+    conn.execute("UPDATE synced_files SET group_counts = ? WHERE key = ?",
+                 (json.dumps({"49.03.02|1|Направленность: старое имя": 300}), key))
+    conn.commit()
+    real_parse = lms_sync.parse_bytes
+    monkeypatch.setattr(lms_sync, "parse_bytes", lambda content, ext, d: real_parse(original, ext, d))
+    report = run(env, FakeMoodle({"100": ("t2-09-26.xls", original + b"\0")}))  # новая версия: другой sha
+    assert "обновлён" in report.text() and "пропали группы" not in report.text()
+    assert "Направленность" not in list_synced_files(conn)[0]["group_counts"]
