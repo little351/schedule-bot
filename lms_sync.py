@@ -471,13 +471,27 @@ def _now():
     return datetime.now(timezone.utc)
 
 
-def is_due(conn, now=None):
+def sources_version(schedule_dir):
+    """Отпечаток списка страниц (lms_sources.json) и парсеров: поменялся после обновления бота -
+    подгрузка запускается сама, не дожидаясь суток и ручного /sync."""
+    h = hashlib.sha256(parsed_version(schedule_dir).encode())
+    try:
+        with open(os.path.join(schedule_dir, SOURCES_FILE), "rb") as f:
+            h.update(f.read())
+    except OSError:
+        pass
+    return h.hexdigest()
+
+
+def is_due(conn, now=None, schedule_dir=None):
     """Пора ли запускать плановую подгрузку: раз в LMS_SYNC_INTERVAL_HOURS часов (по умолчанию 20, то есть раз в день:
     запас в 4 часа, чтобы запуск не уезжал на час позже каждый день и не пропадал, пока сервис спит),
     после неудачного запуска повтор раньше."""
     now = now or _now()
     last = get_sync_state(conn, "last_run")
     if not last:
+        return True
+    if schedule_dir and get_sync_state(conn, "sources_version") != sources_version(schedule_dir):
         return True
     wait = interval_hours() if get_sync_state(conn, "last_ok") == "1" else min(interval_hours(), FAILED_RETRY_HOURS)
     return now - datetime.fromisoformat(last) >= timedelta(hours=wait)
@@ -701,8 +715,10 @@ def source_summary(conn):
     return "\n".join(lines)
 
 
-def record_run(conn, report):
+def record_run(conn, report, schedule_dir=None):
     set_sync_state(conn, "last_run", _now().isoformat(timespec="seconds"))
+    if schedule_dir:
+        set_sync_state(conn, "sources_version", sources_version(schedule_dir))
     set_sync_state(conn, "last_ok", "0" if report.problems else "1")
     if report.downloaded:
         status["checked_at"] = _now().isoformat(timespec="seconds")

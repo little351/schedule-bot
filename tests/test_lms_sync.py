@@ -516,3 +516,17 @@ def test_renamed_groups_in_previous_version_are_not_counted_as_lost(env, monkeyp
     report = run(env, FakeMoodle({"100": ("t2-09-26.xls", original + b"\0")}))  # новая версия: другой sha
     assert "обновлён" in report.text() and "пропали группы" not in report.text()
     assert "Направленность" not in list_synced_files(conn)[0]["group_counts"]
+
+
+def test_sync_runs_by_itself_after_sources_or_parsers_change(env):
+    """После обновления бота с новыми страницами или парсерами подгрузка нужна сразу, без /sync."""
+    from datetime import datetime, timezone
+    schedule_dir, conn = env
+    now = datetime(2026, 10, 27, 12, 0, tzinfo=timezone.utc)
+    lms_sync.set_sync_state(conn, "last_run", (now - timedelta(hours=1)).isoformat())
+    lms_sync.set_sync_state(conn, "last_ok", "1")
+    assert lms_sync.is_due(conn, now, schedule_dir)  # отпечатка ещё нет: первый запуск после обновления
+    lms_sync.record_run(conn, lms_sync.Report(), schedule_dir)
+    assert not lms_sync.is_due(conn, now, schedule_dir) and not lms_sync.is_due(conn, now)
+    _magistracy_page(schedule_dir)  # список страниц поменялся
+    assert lms_sync.is_due(conn, now, schedule_dir)

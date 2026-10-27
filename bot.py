@@ -488,7 +488,7 @@ async def run_lms_sync(list_only=False):
             logger.exception("после подгрузки не удалось перечитать расписание")
             report.problem("файлы сохранены, но расписание не перечиталось, перезапустите сервис")
     if lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR)) == []:
-        lms_sync.record_run(conn, report)
+        lms_sync.record_run(conn, report, SCHEDULE_DIR)
     return report
 
 
@@ -536,7 +536,7 @@ async def lms_scheduler(application):
     while True:
         try:
             # плановые запуски начинаются после первого ручного /sync владельца: так видно, что всё работает
-            if lms_sync.sync_enabled() and get_sync_state(conn, "last_run") and lms_sync.is_due(conn) \
+            if lms_sync.sync_enabled() and get_sync_state(conn, "last_run") and lms_sync.is_due(conn, schedule_dir=SCHEDULE_DIR) \
                     and not lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR)):
                 report = await run_lms_sync()
                 if report.problems and OWNER_ID.isdigit():
