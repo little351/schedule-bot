@@ -5,6 +5,9 @@
                 |      | 10.40-12.10 | ...
 
 Число пар в дне не фиксировано (у некоторых дней есть 6-я пара 18.30-20.00).
+
+У магистратуры вместо групп в заголовках направленности («Направленность: "Спортивная дипломатия"»),
+а коды групп перечислены в шапке по порядку столбцов («группы МП 25-26, МП 21-26»): группа называется кодом.
 """
 import re
 
@@ -16,6 +19,12 @@ NAME = "grid_by_group"
 HEADER_MARKER = "День недели"
 FIRST_GROUP_COL = 4  # столбец D
 TIME_RE = re.compile(r"^\d{1,2}\.\d{2}-\d{1,2}\.\d{2}$")
+PROFILE_MARKER = "направленность"
+
+
+def _profile_name(header):
+    """'Направленность: "Спортивная дипломатия" ' -> 'Спортивная дипломатия' (если кодов групп в шапке не хватило)."""
+    return normalize_group(re.sub(r'^направленность\s*:?\s*', "", header, flags=re.IGNORECASE).replace('"', ""))
 
 
 def _header_row(sheet):
@@ -43,11 +52,19 @@ def parse(wb, config) -> list[dict]:
         # группы: все непустые столбцы заголовка начиная с D; заголовок «6 группа, Т1-04-25» - это
         # две группы, которые учатся вместе, поэтому одно расписание записывается каждой из них
         groups = {}
+        profiles = []  # столбцы направленностей магистратуры
         for col in range(FIRST_GROUP_COL, sheet.max_col + 1):
             header = sheet.text(header_row, col)
-            if header:
+            if header and header.lower().startswith(PROFILE_MARKER):
+                profiles.append((col, header))
+            elif header:
                 names = [normalize_group(part) for part in header.split(",") if part.strip()]
                 groups[col] = [(resolver.program_for_header(name), name) for name in names]
+        if profiles:
+            codes = [c for c in resolver.meta.group_codes if c.startswith("МП-")]
+            for i, (col, header) in enumerate(profiles):
+                name = codes[i] if len(codes) == len(profiles) else _profile_name(header)
+                groups[col] = [(resolver.program_for_header(name), name)]
 
         day_name = date_val = None
         for r in range(header_row + 1, sheet.max_row + 1):

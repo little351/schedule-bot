@@ -112,6 +112,7 @@ def test_programs_and_same_numbers_do_not_collide(records):
     assert {p for p, _, _ in groups} == {
         "49.03.04", "49.03.01", "49.03.02", "44.03.01", "42.03.01", "51.03.05", "38.03.02", "49.03.03",
         "43.03.02", "43.03.03",
+        "38.04.02", "39.04.01", "49.04.01", "49.04.02", "49.04.03",  # магистратура
     }
     assert {c for _, c, _ in groups} == {1, 2, 3, 4}
     names = [g for _, _, g in groups]
@@ -127,7 +128,7 @@ def conn(tmp_path, records):
 
 def test_catalog_and_find_groups(conn):
     catalog = get_catalog(conn)
-    assert len(catalog) == 10
+    assert len(catalog) == 15
     some = get_groups(conn)[0]
     assert some in find_groups(conn, some.name)
 
@@ -154,7 +155,7 @@ def test_api_flow(conn):
     app.include_router(build_router(conn, ""))
     client = TestClient(app)
     data = client.get("/api/catalog?telegram_id=5").json()
-    assert data["current"] is None and len(data["programs"]) == 10
+    assert data["current"] is None and len(data["programs"]) == 15
     p = next(p for p in data["programs"] if p["code"] == "49.03.01")
     group = p["courses"][0]["groups"][0]
     r = client.post("/api/group", json={"telegram_id": 5, "group": group, "program": "49.03.01", "course": 1})
@@ -250,7 +251,7 @@ def test_files_are_found_in_course_folders_and_uploads_go_to_the_right_one(tmp_p
     from schedule_parsers import list_schedule_files, upload_dir
 
     found = list_schedule_files(DATA)
-    assert len(found) == 46
+    assert len(found) == 51
 
     root = str(tmp_path)
     assert upload_dir(root, "49.03.04_2k_gr1.xlsx", []) == os.path.join(root, "2k")
@@ -266,7 +267,7 @@ def test_bot_picker_course_program_group_flow(tmp_path, records):
 
     old_conn = bot.conn
     bot.conn = init_db(str(tmp_path / "picker.db"))
-    save_schedule(bot.conn, records)
+    save_schedule(bot.conn, [r for r in records if bot.program_level(r["program"]) == "b"])
     try:
         def buttons(markup):
             return [b.callback_data for row in markup.inline_keyboard for b in row]
@@ -625,6 +626,7 @@ def test_bot_picker_asks_level_when_magistracy_exists(tmp_path, records):
     os.environ.setdefault("BOT_TOKEN", "123:abc")
     import bot
 
+    bachelor = [r for r in records if bot.program_level(r["program"]) == "b"]
     master = [dict(r, program="49.04.03", program_name="Спорт", group="М-1") for r in records
               if r["program"] == "49.03.04" and r["course"] == 1 and r["group"] == "1 группа"]
     old_conn = bot.conn
@@ -633,11 +635,11 @@ def test_bot_picker_asks_level_when_magistracy_exists(tmp_path, records):
         def buttons(markup):
             return [b.callback_data for row in markup.inline_keyboard for b in row]
 
-        save_schedule(bot.conn, records)
+        save_schedule(bot.conn, bachelor)
         text, markup = bot.picker_screen("level")
         assert text == "Выбери курс:" and buttons(markup) == ["c:1", "c:2", "c:3", "c:4"]
 
-        save_schedule(bot.conn, records + master)
+        save_schedule(bot.conn, bachelor + master)
         text, markup = bot.picker_screen("level")
         assert buttons(markup) == ["l:b", "l:m"]
         text, markup = bot.picker_screen("course", level="m")
@@ -651,3 +653,19 @@ def test_bot_picker_asks_level_when_magistracy_exists(tmp_path, records):
         assert "p:1:49.04.03" not in buttons(markup) and "49.04" not in text
     finally:
         bot.conn = old_conn
+
+
+def test_magistracy_files_give_group_codes_not_profiles():
+    """Магистратура: в столбцах направленности, группы называются кодами из шапки по порядку столбцов."""
+    config = load_config(DATA)
+    expected = {
+        "49.04.03_1k_mp-14.1-26+mp-14.2-26+mp-20-26.xls": {"МП-14.1-26", "МП-14.2-26", "МП-20-26"},
+        "49.04.01_1k_mp-01-26+mp-13-26+mp-12-26.xls": {"МП-01-26", "МП-13-26", "МП-12-26"},
+        "49.04.02_1k_mp-16-26.xls": {"МП-16-26"},
+        "38.04.02_1k_mp-25-26+mp-21-26.xls": {"МП-25-26", "МП-21-26"},
+        "39.04.01_1k_mp-19-26.xls": {"МП-19-26"},  # формат «матрица по дисциплинам»
+    }
+    for name, groups in expected.items():
+        records = parse_schedule(os.path.join(DATA, "1k", name), config)
+        assert {r["group"] for r in records} == groups, name
+        assert {(r["program"], r["course"]) for r in records} == {(name[:8], 1)}, name
