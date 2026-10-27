@@ -251,7 +251,7 @@ def test_files_are_found_in_course_folders_and_uploads_go_to_the_right_one(tmp_p
     from schedule_parsers import list_schedule_files, upload_dir
 
     found = list_schedule_files(DATA)
-    assert len(found) == 51
+    assert len(found) == 56
 
     root = str(tmp_path)
     assert upload_dir(root, "49.03.04_2k_gr1.xlsx", []) == os.path.join(root, "2k")
@@ -664,8 +664,14 @@ def test_magistracy_files_give_group_codes_not_profiles():
         "49.04.02_1k_mp-16-26.xls": {"МП-16-26"},
         "38.04.02_1k_mp-25-26+mp-21-26.xls": {"МП-25-26", "МП-21-26"},
         "39.04.01_1k_mp-19-26.xls": {"МП-19-26"},  # формат «матрица по дисциплинам»
+        "49.04.03_2k_mp-14-25+mp-18-25+mp-20-25.xls": {"МП-14-25", "МП-18-25", "МП-20-25"},
+        "49.04.01_2k_mp-01-25+mp-13-25+mp-12-25+mp-09-25.xls": {"МП-01-25", "МП-13-25", "МП-12-25", "МП-09-25"},
+        "49.04.02_2k_mp-17-25.xls": {"МП-17-25"},
+        "38.04.02_2k_mp-25-25+mp-21-25.xls": {"МП-25-25", "МП-21-25"},
+        "39.04.01_2k_mp-19-25.xls": {"МП-19-25"},
     }
     for name, groups in expected.items():
-        records = parse_schedule(os.path.join(DATA, "1k", name), config)
+        course = int(name[9])
+        records = parse_schedule(os.path.join(DATA, f"{course}k", name), config)
         assert {r["group"] for r in records} == groups, name
-        assert {(r["program"], r["course"]) for r in records} == {(name[:8], 1)}, name
+        assert {(r["program"], r["course"]) for r in records} == {(name[:8], course)}, name

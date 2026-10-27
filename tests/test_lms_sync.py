@@ -499,3 +499,34 @@ def test_magistracy_page_takes_only_magistracy_programs(env, monkeypatch):
     assert report.changed and "пропущены группы не магистратуры" in report.text()
     assert [json.loads(i["group_counts"]) for i in list_synced_files(conn)] == [{"38.04.02|1|1 группа": 1}]
     assert [lms_sync.group_key(r) for r in merged_records(conn, schedule_dir)] == ["38.04.02|1|1 группа"]
+
+
+def test_renamed_groups_in_previous_version_are_not_counted_as_lost(env, monkeypatch):
+    """Прошлая версия файла сохранена, когда парсер называл группы иначе (магистратура: «Направленность: ...»
+    стала «МП-01-26»). Новая версия сравнивается с прошлой в нынешнем прочтении и принимается."""
+    schedule_dir, conn = env
+    original = open(FILE_A, "rb").read()
+    assert run(env, FakeMoodle()).changed
+    key = list_synced_files(conn)[0]["key"]
+    conn.execute("UPDATE synced_files SET group_counts = ? WHERE key = ?",
+                 (json.dumps({"49.03.02|1|Направленность: старое имя": 300}), key))
+    conn.commit()
+    real_parse = lms_sync.parse_bytes
+    monkeypatch.setattr(lms_sync, "parse_bytes", lambda content, ext, d: real_parse(original, ext, d))
+    report = run(env, FakeMoodle({"100": ("t2-09-26.xls", original + b"\0")}))  # новая версия: другой sha
+    assert "обновлён" in report.text() and "пропали группы" not in report.text()
+    assert "Направленность" not in list_synced_files(conn)[0]["group_counts"]
+
+
+def test_sync_runs_by_itself_after_sources_or_parsers_change(env):
+    """После обновления бота с новыми страницами или парсерами подгрузка нужна сразу, без /sync."""
+    from datetime import datetime, timezone
+    schedule_dir, conn = env
+    now = datetime(2026, 10, 27, 12, 0, tzinfo=timezone.utc)
+    lms_sync.set_sync_state(conn, "last_run", (now - timedelta(hours=1)).isoformat())
+    lms_sync.set_sync_state(conn, "last_ok", "1")
+    assert lms_sync.is_due(conn, now, schedule_dir)  # отпечатка ещё нет: первый запуск после обновления
+    lms_sync.record_run(conn, lms_sync.Report(), schedule_dir)
+    assert not lms_sync.is_due(conn, now, schedule_dir) and not lms_sync.is_due(conn, now)
+    _magistracy_page(schedule_dir)  # список страниц поменялся
+    assert lms_sync.is_due(conn, now, schedule_dir)

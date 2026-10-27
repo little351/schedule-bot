@@ -26,8 +26,8 @@ from urllib.parse import unquote, urljoin, urlparse
 import httpx
 
 from database import (
-    LOCAL_TZ, delete_synced_file, get_sync_state, get_synced_content, list_synced_files, list_synced_parsed,
-    save_synced_file, set_sync_state, set_synced_parsed,
+    LOCAL_TZ, delete_synced_file, get_sync_state, get_synced_content, get_synced_parsed, list_synced_files,
+    list_synced_parsed, save_synced_file, set_sync_state, set_synced_parsed,
 )
 import schedule_parsers
 from schedule_parsers import list_schedule_files, parse_all, parse_file
@@ -471,13 +471,27 @@ def _now():
     return datetime.now(timezone.utc)
 
 
-def is_due(conn, now=None):
+def sources_version(schedule_dir):
+    """Отпечаток списка страниц (lms_sources.json) и парсеров: поменялся после обновления бота -
+    подгрузка запускается сама, не дожидаясь суток и ручного /sync."""
+    h = hashlib.sha256(parsed_version(schedule_dir).encode())
+    try:
+        with open(os.path.join(schedule_dir, SOURCES_FILE), "rb") as f:
+            h.update(f.read())
+    except OSError:
+        pass
+    return h.hexdigest()
+
+
+def is_due(conn, now=None, schedule_dir=None):
     """Пора ли запускать плановую подгрузку: раз в LMS_SYNC_INTERVAL_HOURS часов (по умолчанию 20, то есть раз в день:
     запас в 4 часа, чтобы запуск не уезжал на час позже каждый день и не пропадал, пока сервис спит),
     после неудачного запуска повтор раньше."""
     now = now or _now()
     last = get_sync_state(conn, "last_run")
     if not last:
+        return True
+    if schedule_dir and get_sync_state(conn, "sources_version") != sources_version(schedule_dir):
         return True
     wait = interval_hours() if get_sync_state(conn, "last_ok") == "1" else min(interval_hours(), FAILED_RETRY_HOURS)
     return now - datetime.fromisoformat(last) >= timedelta(hours=wait)
@@ -598,6 +612,21 @@ async def run_sync(conn, schedule_dir, list_only=False, client_factory=None):
     return report
 
 
+def _previous_counts(conn, schedule_dir, previous):
+    """Группы прошлой версии файла так, как их читает нынешний парсер. Если парсер поменял названия групп
+    (у магистратуры «Направленность: ...» стала «МП-01-26»), сравнение со старыми названиями
+    отклонило бы новую версию за «пропавшие» группы. Готовое расписание берётся из базы, файл
+    скачивается, только если оно устарело (так же было бы при следующем старте)."""
+    try:
+        item = get_synced_parsed(conn, previous["key"])
+        if item:
+            return count_groups(synced_file_records(conn, item, schedule_dir, parsed_version(schedule_dir)))
+    except Exception:
+        logger.exception("прошлая версия %s не читается нынешним парсером, сравниваю с сохранёнными группами",
+                         previous["key"])
+    return json.loads(previous["group_counts"])
+
+
 async def _process(conn, schedule_dir, report, stored, name, file_name, content, min_ratio, disk_counts, on_pages=(),
                    level=None):
     ext = file_extension(file_name, content)
@@ -633,7 +662,7 @@ async def _process(conn, schedule_dir, report, stored, name, file_name, content,
 
     new_counts = count_groups(records)
     if previous:
-        baseline, require_all = json.loads(previous["group_counts"]), True
+        baseline, require_all = _previous_counts(conn, schedule_dir, previous), True
     else:
         # первого скачивания этого файла в базе ещё нет: сравниваем с тем, что бот показывает сейчас
         if disk_counts is None:
@@ -686,8 +715,10 @@ def source_summary(conn):
     return "\n".join(lines)
 
 
-def record_run(conn, report):
+def record_run(conn, report, schedule_dir=None):
     set_sync_state(conn, "last_run", _now().isoformat(timespec="seconds"))
+    if schedule_dir:
+        set_sync_state(conn, "sources_version", sources_version(schedule_dir))
     set_sync_state(conn, "last_ok", "0" if report.problems else "1")
     if report.downloaded:
         status["checked_at"] = _now().isoformat(timespec="seconds")

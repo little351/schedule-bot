@@ -557,6 +557,22 @@ def get_synced_content(conn, key):
     return bytes(row[0]) if row and row[0] is not None else None
 
 
+def get_synced_parsed(conn, key):
+    """{key, file_name, parsed, parsed_version} одного файла без содержимого (или None)."""
+    query = "SELECT key, file_name, parsed, parsed_version FROM synced_files WHERE key = "
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute(query + "%s", (key,))
+            row = cur.fetchone()
+    else:
+        row = conn.execute(query + "?", (key,)).fetchone()
+    if not row:
+        return None
+    key, file_name, parsed, version = row
+    return {"key": key, "file_name": file_name, "parsed": bytes(parsed) if parsed is not None else None,
+            "parsed_version": version}
+
+
 def set_synced_parsed(conn, key, parsed, version):
     if PG_DSN:
         import psycopg2
