@@ -534,8 +534,7 @@ def test_week_text_ends_with_donation_note_within_telegram_limit(tmp_path, recor
             "SELECT DISTINCT program, course, group_name, week_sheet FROM lessons").fetchall():
         grid = get_week_schedule_grid(conn, GroupRef(program, course, name), week)
         text = with_donation_note(format_week_text(name, week, grid))
-        assert text.endswith("вкусным → [поддержать](https://www.tbank-online.com/rm/r_WsRMiOrgqo.QhpzTfkirw/r9qIg95159)")
-        assert "79995567597" not in text
+        assert text.endswith("вкусным → `+79995567597` \\(перевод по СБП\\)")
         longest = max(longest, len(text))
     assert longest < 4096  # лимит Telegram на одно сообщение
 

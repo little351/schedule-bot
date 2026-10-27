@@ -89,6 +89,14 @@
     color: var(--hint);
     padding: 14px 0 6px;
   }
+  .phone-copy {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+  }
 
   .lesson-card {
     background: var(--card);
@@ -190,32 +198,36 @@
     color: var(--hint);
     margin: 0;
   }
-  .support-btn {
-    display: block;
-    width: 100%;
-    margin-top: 12px;
-    background: var(--accent);
-    color: #ffffff;
-    border: none;
+  .support-details {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card-pressed);
     border-radius: 10px;
-    padding: 12px;
+    padding: 10px 12px;
+    margin-top: 12px;
+  }
+  .support-number {
     font-size: 15px;
-    font-weight: 600;
-    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: 0.3px;
   }
   .support-bank {
     font-size: 12px;
     color: var(--hint);
-    margin-top: 6px;
-    text-align: center;
+    margin-top: 2px;
   }
-  .donate-link {
-    background: none;
+  .copy-btn {
+    background: var(--accent);
+    color: #ffffff;
     border: none;
-    padding: 0;
-    color: var(--accent);
-    font: inherit;
-    text-decoration: underline;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    flex: 0 0 auto;
+  }
+  .copy-btn.copied {
+    background: #34c759;
   }
 
   /* --- Вкладка "Другое" --- */
@@ -625,7 +637,7 @@
     <div class="status">Загрузка...</div>
   </div>
   <div class="updated-note" id="updatedNote"></div>
-  <div class="donation">Угости создателя чем-нибудь вкусным → <button class="donate-link" data-donate>поддержать</button></div>
+  <div class="donation">Угости создателя чем-нибудь вкусным → <button class="phone-copy" id="phoneCopy">+79995567597</button> (перевод по СБП)</div>
 </div>
 
 <div id="importantTab" style="display:none;">
@@ -639,8 +651,13 @@
   <div class="info-card">
     <h2>Поддержать проект</h2>
     <p>Приложение делается и поддерживается одним человеком в свободное время. Если оно тебе полезно — можешь угостить разработчика вкусняшкой, это не обязательно, но приятно 🙂</p>
-    <button class="support-btn" data-donate>💛 Поддержать</button>
-    <div class="support-bank">Сбор в Т-Банке, откроется в браузере</div>
+    <div class="support-details">
+      <div>
+        <div class="support-number">8 999 556 75 97</div>
+        <div class="support-bank">Т-Банк, перевод по СБП</div>
+      </div>
+      <button class="copy-btn" id="copyBtn">Скопировать</button>
+    </div>
   </div>
 </div>
 
@@ -1542,17 +1559,38 @@ randEl.range.value = rand.yes;
 randEl.titleInput.value = rand.title;
 renderRand();
 
-// --- Поддержать проект: сбор в Т-Банке открывается во внешнем браузере ---
-const DONATION_URL = "https://www.tbank-online.com/rm/r_WsRMiOrgqo.QhpzTfkirw/r9qIg95159";
-for (const el of document.querySelectorAll("[data-donate]")) {
-  el.addEventListener("click", () => {
-    try {
-      tg.openLink(DONATION_URL);
-    } catch (err) {
-      window.open(DONATION_URL, "_blank", "noopener");
-    }
-  });
+// --- Копирование номера для перевода по СБП ---
+const PHONE_NUMBER = "89995567597";
+async function copyPhone() {
+  try {
+    await navigator.clipboard.writeText(PHONE_NUMBER);
+  } catch (err) {
+    // фолбэк для окружений без Clipboard API
+    const ta = document.createElement("textarea");
+    ta.value = PHONE_NUMBER;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
 }
+document.getElementById("copyBtn").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  await copyPhone();
+  btn.textContent = "Скопировано";
+  btn.classList.add("copied");
+  setTimeout(() => {
+    btn.textContent = "Скопировать";
+    btn.classList.remove("copied");
+  }, 1500);
+});
+// номер под расписанием: нажатие копирует его
+document.getElementById("phoneCopy").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  await copyPhone();
+  btn.textContent = "скопировано";
+  setTimeout(() => { btn.textContent = "+79995567597"; }, 1500);
+});
 
 // сообщаем серверу о заходе (для статистики), результат не важен
 if (tg.initData) {
