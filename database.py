@@ -456,6 +456,12 @@ def import_backup(conn, data):
     return added
 
 
+def program_level(code):
+    """Уровень по коду направления: 38.04.02 - магистратура ("m"), остальные (38.03.02, 51.03.05) - бакалавриат ("b")."""
+    parts = str(code or "").split(".")
+    return "m" if len(parts) == 3 and parts[1] == "04" else "b"
+
+
 def user_stats(rows, now=None, top=10):
     """Счётчики по пользователям из list_users(): без имён и ID. now - aware datetime (по умолчанию сейчас, UTC).
     Даты first_seen/last_seen хранятся в UTC ISO; у записей до появления учёта и из резервной копии их может не быть."""
@@ -470,12 +476,14 @@ def user_stats(rows, now=None, top=10):
 
     stats = {"total": len(rows), "no_group": 0, "no_first_seen": 0, "no_last_seen": 0,
              "new": {1: 0, 7: 0, 30: 0}, "active": {1: 0, 7: 0, 30: 0},
-             "courses": {}, "programs": {}, "groups": {}}
+             "courses": {}, "level_courses": {}, "programs": {}, "groups": {}}
     for _, _, _, group_name, first_seen, last_seen, program, course in rows:
         if not group_name:
             stats["no_group"] += 1
         else:
             stats["courses"][course] = stats["courses"].get(course, 0) + 1
+            key = (program_level(program), course)  # 1 курс бакалавриата и 1 курс магистратуры - разные
+            stats["level_courses"][key] = stats["level_courses"].get(key, 0) + 1
             stats["programs"][program] = stats["programs"].get(program, 0) + 1
             key = (program, course, group_name)
             stats["groups"][key] = stats["groups"].get(key, 0) + 1

@@ -567,6 +567,28 @@ def test_user_stats_counts_without_personal_data():
     assert "@" not in text and "id" not in text.lower().split()  # ни username, ни ID
 
 
+def test_stats_split_bachelor_and_master_courses():
+    from datetime import datetime, timezone
+    from database import user_stats
+
+    now = datetime(2026, 10, 27, 12, 0, tzinfo=timezone.utc)
+    seen = "2026-10-27T08:00:00+00:00"
+    rows = [
+        (1, None, "А", "4 группа", seen, seen, "49.03.04", 1),
+        (2, None, "Б", "МП-14-25", seen, seen, "49.04.03", 2),
+        (3, None, "В", "МП-01-26", seen, seen, "49.04.01", 1),
+    ]
+    stats = user_stats(rows, now)
+    assert stats["courses"] == {1: 2, 2: 1}
+    assert stats["level_courses"] == {("b", 1): 1, ("m", 2): 1, ("m", 1): 1}
+
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    from bot import format_stats
+    text = format_stats(stats)
+    assert "По курсам:\nБакалавриат:\n1 курс: 1\nМагистратура:\n1 курс: 1\n2 курс: 1" in text
+    assert "49.04.03, магистратура (49.04.03): 1" in text and "49.03.04 (49.03.04): 1" in text
+
+
 def test_lms_check_reports_each_step_and_hides_password():
     import httpx
     from lms_check import run_checks

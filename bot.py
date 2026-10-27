@@ -76,7 +76,8 @@ def catalog_summary():
     lines = []
     for program in get_catalog(conn):
         by_course = ", ".join(f"{c['course']} курс {len(c['groups'])}" for c in program["courses"])
-        lines.append(f"{program['code']} {program['name']}: групп {by_course}")
+        level = " (магистратура)" if program_level(program["code"]) == "m" else ""
+        lines.append(f"{program['code']} {program['name']}{level}: групп {by_course}")
     return "\n".join(lines) if lines else "расписание пока не загружено"
 
 
@@ -86,12 +87,12 @@ NO_GROUP_MSG = "Сначала выбери направление и групп
 START_TEXT = (
     "Привет! Я показываю расписание.\n\n"
     "Как пользоваться:\n"
-    "1. Выбери курс, направление и группу кнопками ниже. Сменить их можно в любой момент: /group "
+    "1. Выбери курс, направление и группу кнопками ниже (для магистрантов сначала «Магистратура»). Сменить их можно в любой момент: /group "
     "(или просто напиши номер группы).\n"
     "2. /app — открыть расписание в мини-приложении.\n"
     "3. Расписание прямо в чате: /week — эта неделя, "
     "/nweek — следующая, /weekdate 05.10 — неделя по дате.\n\n"
-    "⚠️ Бот неофициальный: расписание загружается вручную и может измениться или содержать "
+    "⚠️ Бот неофициальный: расписание берётся с сайта вуза и может измениться или содержать "
     "неточности, поэтому сверяйся с официальным. Бот работает на бесплатном хостинге: после простоя "
     "он может отвечать с задержкой (до ~30 секунд), а иногда быть временно недоступен. "
     "Если ничего не происходит — подожди и повтори."
@@ -434,10 +435,16 @@ def format_stats(stats, program_name=lambda code: code):
         lines.append(f"Без даты обращения: {max(stats['no_first_seen'], stats['no_last_seen'])} "
                      "(записи из старой копии, в «новых» и «активных» не учтены)")
     if stats["courses"]:
+        by_level = stats.get("level_courses") or {("b", c): n for c, n in stats["courses"].items()}
+        levels = sorted({level for level, _ in by_level})
         lines += ["", "По курсам:"]
-        lines += [f"{c} курс: {n}" for c, n in sorted(stats["courses"].items(), key=lambda kv: (kv[0] is None, kv[0]))]
+        for level in levels:
+            if len(levels) > 1:
+                lines.append(f"{LEVEL_NAMES[level]}:")
+            lines += [f"{c} курс: {n}" for (lv, c), n in sorted(by_level.items(), key=lambda kv: (kv[0][1] is None, kv[0][1]))
+                      if lv == level]
         lines += ["", "По направлениям:"]
-        lines += [f"{program_name(p)} ({p}): {n}"
+        lines += [f"{program_name(p)}{', магистратура' if program_level(p) == 'm' else ''} ({p}): {n}"
                   for p, n in sorted(stats["programs"].items(), key=lambda kv: (-kv[1], kv[0] or ""))]
         lines += ["", "Популярные группы:"]
         lines += [f"{name} ({p}, {c} курс): {n}" for (p, c, name), n in stats["top_groups"]]
