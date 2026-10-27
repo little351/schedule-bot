@@ -89,6 +89,14 @@
     color: var(--hint);
     padding: 14px 0 6px;
   }
+  .phone-copy {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+  }
 
   .lesson-card {
     background: var(--card);
@@ -629,7 +637,7 @@
     <div class="status">Загрузка...</div>
   </div>
   <div class="updated-note" id="updatedNote"></div>
-  <div class="donation">Угости создателя чем-нибудь вкусным → +79995567597</div>
+  <div class="donation">Угости создателя чем-нибудь вкусным → <button class="phone-copy" id="phoneCopy">+79995567597</button> (перевод по СБП)</div>
 </div>
 
 <div id="importantTab" style="display:none;">
@@ -646,7 +654,7 @@
     <div class="support-details">
       <div>
         <div class="support-number">8 999 556 75 97</div>
-        <div class="support-bank">Т-Банк</div>
+        <div class="support-bank">Т-Банк, перевод по СБП</div>
       </div>
       <button class="copy-btn" id="copyBtn">Скопировать</button>
     </div>
@@ -1551,27 +1559,37 @@ randEl.range.value = rand.yes;
 randEl.titleInput.value = rand.title;
 renderRand();
 
-// --- Копирование номера карты ---
-document.getElementById("copyBtn").addEventListener("click", async (e) => {
-  const number = "89995567597";
-  const btn = e.currentTarget;
+// --- Копирование номера для перевода по СБП ---
+const PHONE_NUMBER = "89995567597";
+async function copyPhone() {
   try {
-    await navigator.clipboard.writeText(number);
+    await navigator.clipboard.writeText(PHONE_NUMBER);
   } catch (err) {
     // фолбэк для окружений без Clipboard API
     const ta = document.createElement("textarea");
-    ta.value = number;
+    ta.value = PHONE_NUMBER;
     document.body.appendChild(ta);
     ta.select();
     document.execCommand("copy");
     document.body.removeChild(ta);
   }
+}
+document.getElementById("copyBtn").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  await copyPhone();
   btn.textContent = "Скопировано";
   btn.classList.add("copied");
   setTimeout(() => {
     btn.textContent = "Скопировать";
     btn.classList.remove("copied");
   }, 1500);
+});
+// номер под расписанием: нажатие копирует его
+document.getElementById("phoneCopy").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  await copyPhone();
+  btn.textContent = "скопировано";
+  setTimeout(() => { btn.textContent = "+79995567597"; }, 1500);
 });
 
 // сообщаем серверу о заходе (для статистики), результат не важен

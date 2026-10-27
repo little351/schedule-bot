@@ -1,7 +1,10 @@
 import re
 from database import DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS
 
-DONATION_NOTE = "Угости создателя чем-нибудь вкусным → +79995567597"  # подпись под расписанием (то же в webapp/index.html)
+# подпись под расписанием (то же в webapp/index.html); номер моноширинным: в Telegram он копируется нажатием
+DONATION_NOTE = "Угости создателя чем-нибудь вкусным →"
+DONATION_PHONE = "+79995567597"
+DONATION_HINT = "(перевод по СБП)"
 
 MDV2_SPECIAL = r'_*[]()~`>#+-=|{}.!'
 
@@ -43,4 +46,4 @@ def format_week_text(group_name, week_sheet, grid):
 
 def with_donation_note(text):
     """Текст расписания (MarkdownV2) с подписью через пустую строку."""
-    return f"{text}\n\n{escape_md(DONATION_NOTE)}"
+    return f"{text}\n\n{escape_md(DONATION_NOTE)} `{DONATION_PHONE}` {escape_md(DONATION_HINT)}"
