@@ -19,6 +19,13 @@ GROUPS_PREFIX_RE = re.compile(r"\bгрупп[аы]?\s+(?=[А-ЯA-Z]{1,2}\d)", re
 COURSE_RE = re.compile(r"[Кк]урс\s+(\d+)")
 # подгруппа может стоять в конце (Т2-07-26/2) или после номера группы (Т1-12/1-26)
 GROUP_CODE_RE = re.compile(r"[А-ЯA-Z]{1,2}\d-\d{1,2}[А-Я]?(?:/\d)?-\d{2}(?:/\d)?")
+# группы магистратуры пишут по-разному: «МП-01-26», «МП 25-26», «МП - 14.1- 26», «МП - 14.2.-26»
+MASTER_CODE_RE = re.compile(r"\bМП\s*-?\s*(\d{1,2}(?:\.\d)?)\.?\s*-\s*(\d{2})\b")
+
+
+def master_codes(text) -> list[str]:
+    """Коды групп магистратуры из текста, в одном виде: 'МП - 14.1- 26' -> 'МП-14.1-26'."""
+    return [f"МП-{number}-{year}" for number, year in MASTER_CODE_RE.findall(text)]
 
 
 def normalize_group(name) -> str:
@@ -49,6 +56,8 @@ def extract_meta(sheet, max_rows=15) -> SheetMeta:
         m = GROUPS_PREFIX_RE.search(text)
         if m:
             group_codes.extend(c for c in GROUP_CODE_RE.findall(text[m.end():]) if c not in group_codes)
+        if "групп" in text.lower():
+            group_codes.extend(c for c in master_codes(text) if c not in group_codes)
     return SheetMeta(programs, course, group_codes)
 
 

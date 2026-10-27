@@ -109,9 +109,19 @@ def actions_markup():
     ])
 
 
-# --- выбор курса, направления и группы кнопками ---
-# callback_data: c:<курс> | p:<курс>:<направление> | g:<направление>:<курс>:<группа>
-#                b:c (назад к курсам) | b:<курс> (назад к направлениям курса)
+# --- выбор уровня, курса, направления и группы кнопками ---
+# callback_data: l:<уровень> | c:<курс>[:<уровень>] | p:<курс>:<направление> | g:<направление>:<курс>:<группа>
+#                b:l (назад к уровням) | b:c[:<уровень>] (назад к курсам) | b:<курс>[:<уровень>] (назад к направлениям)
+# уровень: b - бакалавриат, m - магистратура; без уровня - бакалавриат (так работают кнопки старых сообщений)
+LEVEL_NAMES = {"b": "Бакалавриат", "m": "Магистратура"}
+
+
+program_level = lms_sync.program_level
+
+
+def _levels(catalog):
+    return sorted({program_level(p["code"]) for p in catalog})
+
 
 def _courses(catalog):
     return sorted({c["course"] for p in catalog for c in p["courses"]})
@@ -135,33 +145,49 @@ def _back_row(target):
     return [[InlineKeyboardButton("‹ Назад", callback_data=f"b:{target}")]] if target else []
 
 
-def picker_screen(step="course", course=None, program=None):
-    """Текст и клавиатура очередного шага: курс -> направление -> группа.
-    Шаг направления пропускается, если на курсе одно направление."""
+def _suffix(level):
+    return ":m" if level == "m" else ""
+
+
+def picker_screen(step="course", course=None, program=None, level=None):
+    """Текст и клавиатура очередного шага: уровень -> курс -> направление -> группа.
+    Шаг уровня есть, только если в расписании есть и бакалавриат, и магистратура;
+    шаг направления пропускается, если на курсе одно направление."""
     catalog = get_catalog(conn)
     if not catalog:
         return "Расписание пока не загружено, попробуй позже.", None
+    levels = _levels(catalog)
+    if step == "level" and len(levels) > 1:
+        buttons = [InlineKeyboardButton(LEVEL_NAMES[lv], callback_data=f"l:{lv}") for lv in levels]
+        return "Выбери уровень обучения:", InlineKeyboardMarkup([buttons])
+    if level not in levels:
+        level = "b" if "b" in levels else levels[0]
+    catalog = [p for p in catalog if program_level(p["code"]) == level]
     courses = _courses(catalog)
+    head = f"{LEVEL_NAMES[level]}, " if len(levels) > 1 else ""
 
-    if step == "course" or course not in courses:
-        buttons = [InlineKeyboardButton(f"{c} курс", callback_data=f"c:{c}") for c in courses]
-        return "Выбери курс:", InlineKeyboardMarkup([buttons[i:i + 3] for i in range(0, len(buttons), 3)])
+    if step in ("course", "level") or course not in courses:
+        buttons = [InlineKeyboardButton(f"{c} курс", callback_data=f"c:{c}{_suffix(level)}") for c in courses]
+        rows = [buttons[i:i + 3] for i in range(0, len(buttons), 3)]
+        text = f"{LEVEL_NAMES[level]}. Выбери курс:" if head else "Выбери курс:"
+        return text, InlineKeyboardMarkup(rows + (_back_row("l") if head else []))
 
     programs = _programs_of_course(catalog, course)
     if step == "program" and len(programs) > 1:
         rows = [[InlineKeyboardButton(f"{p['code']} {p['name']}", callback_data=f"p:{course}:{p['code']}")]
                 for p in programs]
-        return f"{course} курс. Выбери направление подготовки:", InlineKeyboardMarkup(rows + _back_row("c"))
+        return f"{head}{course} курс. Выбери направление подготовки:", \
+            InlineKeyboardMarkup(rows + _back_row("c" + _suffix(level)))
 
     entry = next((p for p in programs if p["code"] == program), programs[0])
     groups = get_groups(conn, entry["code"], course)
-    back = str(course) if len(programs) > 1 else "c"
-    return (f"{course} курс, {entry['code']} {entry['name']}. Выбери группу:",
+    back = (str(course) if len(programs) > 1 else "c") + _suffix(level)
+    return (f"{head}{course} курс, {entry['code']} {entry['name']}. Выбери группу:",
             InlineKeyboardMarkup(_group_buttons(groups) + _back_row(back)))
 
 
 async def group_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text, markup = picker_screen()
+    text, markup = picker_screen("level")
     await update.message.reply_text(text, reply_markup=markup)
 
 
@@ -179,14 +205,19 @@ async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(DONE_TEXT.format(title=group.title), reply_markup=actions_markup())
         return
 
-    if parts[0] == "c" and len(parts) >= 2 and parts[1].isdigit():
-        text, markup = picker_screen("program", course=int(parts[1]))
+    level = parts[2] if len(parts) >= 3 and parts[0] in ("c", "b") else None
+    if parts[0] == "l" and len(parts) >= 2:
+        text, markup = picker_screen("course", level=parts[1])
+    elif parts[0] == "c" and len(parts) >= 2 and parts[1].isdigit():
+        text, markup = picker_screen("program", course=int(parts[1]), level=level)
     elif parts[0] == "p" and len(parts) >= 3 and parts[1].isdigit():
-        text, markup = picker_screen("groups", course=int(parts[1]), program=parts[2])
+        text, markup = picker_screen("groups", course=int(parts[1]), program=parts[2], level=program_level(parts[2]))
     elif parts[0] == "b" and len(parts) >= 2 and parts[1].isdigit():
-        text, markup = picker_screen("program", course=int(parts[1]))
+        text, markup = picker_screen("program", course=int(parts[1]), level=level)
+    elif parts[0] == "b" and len(parts) >= 2 and parts[1] == "c":
+        text, markup = picker_screen("course", level=level)
     else:
-        text, markup = picker_screen()
+        text, markup = picker_screen("level")
     await query.edit_message_text(text, reply_markup=markup)
 
 
@@ -876,7 +907,7 @@ def build_application():
     application.add_handler(TypeHandler(Update, track_user), group=-1)
     application.add_handler(CommandHandler("start", start, filters=new_message))
     application.add_handler(CommandHandler("group", group_command, filters=new_message))
-    application.add_handler(CallbackQueryHandler(on_pick, pattern=r"^(p|c|g|b)(:|$)"))
+    application.add_handler(CallbackQueryHandler(on_pick, pattern=r"^(l|p|c|g|b)(:|$)"))
     application.add_handler(CallbackQueryHandler(on_action, pattern=r"^a:"))
     application.add_handler(CommandHandler("week", week, filters=new_message))
     application.add_handler(CommandHandler("nweek", nweek, filters=new_message))
