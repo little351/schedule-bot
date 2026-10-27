@@ -27,7 +27,7 @@ import httpx
 
 from database import (
     LOCAL_TZ, delete_synced_file, get_sync_state, get_synced_content, get_synced_parsed, list_synced_files,
-    list_synced_parsed, save_synced_file, set_sync_state, set_synced_parsed,
+    list_synced_parsed, program_level, save_synced_file, set_sync_state, set_synced_parsed,
 )
 import schedule_parsers
 from schedule_parsers import list_schedule_files, parse_all, parse_file
@@ -280,12 +280,6 @@ def parse_bytes(content, ext, schedule_dir):
         return parse_file(path, load_config(schedule_dir))
     finally:
         os.unlink(path)
-
-
-def program_level(code):
-    """Уровень по коду направления: 38.04.02 - магистратура ("m"), остальные (38.03.02, 51.03.05) - бакалавриат ("b")."""
-    parts = str(code or "").split(".")
-    return "m" if len(parts) == 3 and parts[1] == "04" else "b"
 
 
 def group_key(r):
