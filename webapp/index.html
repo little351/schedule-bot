@@ -642,6 +642,13 @@
     border-top: 1px solid var(--border);
     padding: 8px 0 max(8px, env(safe-area-inset-bottom));
   }
+  /* в Telegram низ окна гуляет, пока палец тянет окно (свайпы по расписанию тоже): по совету Telegram
+     панель держится за «устойчивую» высоту окна, а не за его текущий низ */
+  .tg-stable .tab-bar {
+    bottom: auto;
+    top: var(--tg-viewport-stable-height, 100vh);
+    transform: translateY(-100%);
+  }
   .tab-btn {
     flex: 1;
     background: none;
@@ -831,6 +838,8 @@
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
+// --tg-viewport-stable-height ставит telegram-web-app.js; без Telegram (в браузере) панель просто прижата к низу
+if (tg.viewportStableHeight) document.body.classList.add("tg-stable");
 
 const telegramId = tg.initDataUnsafe?.user?.id;
 // сервер узнаёт пользователя по подписанным данным Telegram, а не по id из запроса
