@@ -45,6 +45,20 @@
     font-size: 16px;
     flex: 0 0 auto;
   }
+  /* слева от ленты: день недели выбранной даты, нажатие возвращает на сегодня */
+  .today-btn {
+    flex: 0 0 auto;
+    min-width: 48px;
+    align-self: stretch;
+    background: var(--card);
+    border: none;
+    border-radius: 14px;
+    padding: 0 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+  }
   .date-pills {
     display: flex;
     gap: 6px;
@@ -61,6 +75,7 @@
     text-align: center;
     font-size: 12px;
     line-height: 1.4;
+    transition: transform 0.15s ease-out;
   }
   .date-pill .num {
     display: block;
@@ -70,6 +85,7 @@
   }
   .date-pill.selected {
     background: var(--accent);
+    transform: scale(1.12);  /* выбранная дата чуть крупнее соседних */
   }
   .date-pill.selected .num,
   .date-pill.selected {
@@ -645,6 +661,7 @@
   </div>
 
   <div class="date-strip">
+    <button class="today-btn" id="todayBtn" aria-label="Вернуться на сегодня"></button>
     <button class="chevron" id="prevBtn">‹</button>
     <div class="date-pills" id="datePills"></div>
     <button class="chevron" id="nextBtn">›</button>
@@ -808,6 +825,7 @@ const telegramId = tg.initDataUnsafe?.user?.id;
 const authHeaders = { "X-Init-Data": tg.initData || "" };
 
 const DAY_ABBR = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const MONTH_ABBR = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 let selectedDate = new Date();
 selectedDate.setHours(0, 0, 0, 0);
 
@@ -824,15 +842,32 @@ function addDays(d, n) {
   return nd;
 }
 
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function renderTodayButton() {
+  document.getElementById("todayBtn").textContent = DAY_ABBR[(selectedDate.getDay() + 6) % 7];
+}
+
+document.getElementById("todayBtn").addEventListener("click", () => {
+  if (fmtISO(selectedDate) === fmtISO(startOfToday())) return;
+  selectedDate = startOfToday();
+  renderDateStrip();
+  loadDay();
+});
+
 function renderDateStrip() {
+  renderTodayButton();
   const pillsEl = document.getElementById("datePills");
   pillsEl.innerHTML = "";
   for (let offset = -2; offset <= 2; offset++) {
     const d = addDays(selectedDate, offset);
     const btn = document.createElement("button");
     btn.className = "date-pill" + (offset === 0 ? " selected" : "");
-    const jsWeekday = (d.getDay() + 6) % 7; // приводим к Пн=0
-    btn.innerHTML = `${DAY_ABBR[jsWeekday]}<span class="num">${d.getDate()}</span>`;
+    btn.innerHTML = `<span class="num">${d.getDate()}</span>${MONTH_ABBR[d.getMonth()]}`;
     btn.addEventListener("click", () => {
       selectedDate = d;
       selectedDate.setHours(0, 0, 0, 0);
