@@ -45,6 +45,30 @@
     font-size: 16px;
     flex: 0 0 auto;
   }
+  /* слева от ленты: день недели выбранной даты, нажатие возвращает на сегодня */
+  .today-btn {
+    flex: 0 0 auto;
+    min-width: 56px;
+    background: var(--card);
+    border: none;
+    border-radius: 14px;
+    padding: 6px 6px;
+    color: var(--text);
+    font-family: inherit;
+    line-height: 1.3;
+    text-align: center;
+  }
+  .today-btn .today-day {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .today-btn .today-sub {
+    display: block;
+    font-size: 11px;
+    color: var(--hint);
+  }
+  .today-btn.away .today-sub { color: var(--accent); font-weight: 600; }
   .date-pills {
     display: flex;
     gap: 6px;
@@ -624,6 +648,7 @@
   </div>
 
   <div class="date-strip">
+    <button class="today-btn" id="todayBtn" aria-label="Вернуться на сегодня"><span class="today-day" id="todayDay"></span><span class="today-sub" id="todaySub"></span></button>
     <button class="chevron" id="prevBtn">‹</button>
     <div class="date-pills" id="datePills"></div>
     <button class="chevron" id="nextBtn">›</button>
@@ -786,7 +811,21 @@ function addDays(d, n) {
   return nd;
 }
 
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function renderTodayButton() {
+  const away = fmtISO(selectedDate) !== fmtISO(startOfToday());
+  document.getElementById("todayDay").textContent = DAY_ABBR[(selectedDate.getDay() + 6) % 7];
+  document.getElementById("todaySub").textContent = away ? "к сегодня" : "сегодня";
+  document.getElementById("todayBtn").classList.toggle("away", away);
+}
+
 function renderDateStrip() {
+  renderTodayButton();
   const pillsEl = document.getElementById("datePills");
   pillsEl.innerHTML = "";
   for (let offset = -2; offset <= 2; offset++) {
@@ -1111,6 +1150,12 @@ async function loadDay() {
   }
 }
 
+document.getElementById("todayBtn").addEventListener("click", () => {
+  if (fmtISO(selectedDate) === fmtISO(startOfToday())) return;
+  selectedDate = startOfToday();
+  renderDateStrip();
+  loadDay();
+});
 document.getElementById("prevBtn").addEventListener("click", () => {
   selectedDate = addDays(selectedDate, -1);
   renderDateStrip();
