@@ -99,6 +99,13 @@
     min-height: 45vh;
     touch-action: pan-y;
   }
+  /* карточки, уехавшие за край при свайпе, обрезаются у края экрана: иначе страница на миг
+     становится шире и Telegram растягивает нижнюю панель (она «дёргается» вбок) */
+  #scheduleTab {
+    overflow-x: clip;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
   /* день ещё грузится: прежние карточки остаются бледными, высота не прыгает */
   #container.stale { opacity: 0.4; }
   #container.swipe-settle {
