@@ -824,6 +824,13 @@ function renderTodayButton() {
   document.getElementById("todayBtn").classList.toggle("away", away);
 }
 
+document.getElementById("todayBtn").addEventListener("click", () => {
+  if (fmtISO(selectedDate) === fmtISO(startOfToday())) return;
+  selectedDate = startOfToday();
+  renderDateStrip();
+  loadDay();
+});
+
 function renderDateStrip() {
   renderTodayButton();
   const pillsEl = document.getElementById("datePills");
@@ -1150,12 +1157,6 @@ async function loadDay() {
   }
 }
 
-document.getElementById("todayBtn").addEventListener("click", () => {
-  if (fmtISO(selectedDate) === fmtISO(startOfToday())) return;
-  selectedDate = startOfToday();
-  renderDateStrip();
-  loadDay();
-});
 document.getElementById("prevBtn").addEventListener("click", () => {
   selectedDate = addDays(selectedDate, -1);
   renderDateStrip();
