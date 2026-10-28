@@ -97,6 +97,8 @@
     min-height: 45vh;
     touch-action: pan-y;
   }
+  /* день ещё грузится: прежние карточки остаются бледными, высота не прыгает */
+  #container.stale { opacity: 0.4; }
   #container.swipe-settle {
     transition: transform 0.18s ease-out, opacity 0.18s ease-out;
   }
@@ -1019,6 +1021,8 @@ function askForGroup() {
   showChooseGroup();
 }
 function showChooseGroup() {
+  renderedKey = null;
+  document.getElementById("container").classList.remove("stale");
   document.getElementById("container").innerHTML =
     '<div class="status">Выбери свою группу: <button class="link-btn" data-open-group>Моя группа</button></div>';
 }
@@ -1071,7 +1075,12 @@ function writeDayCache(date, data) {
   }
 }
 
-function renderLessons(container, lessons, note) {
+let renderedKey = null;  // что сейчас на экране: тот же день с теми же парами заново не рисуем, чтобы ничего не мигало
+
+function renderLessons(container, lessons, note, key = null) {
+  container.classList.remove("stale");
+  if (key && !note && key === renderedKey) return;
+  renderedKey = note ? null : key;
   const head = note ? `<div class="status cache-note">${esc(note)}</div>` : "";
   if (lessons.length === 0) {
     container.innerHTML = head + '<div class="status">В этот день пар нет</div>';
@@ -1134,11 +1143,17 @@ async function loadDay() {
 
   const date = fmtISO(selectedDate);
   const cached = readDayCache(date);
+  const keyOf = lessons => date + JSON.stringify(lessons);
   if (cached) {
-    renderLessons(container, cached.lessons, "Сохранённое расписание, обновляю...");
+    // сохранённое показываем сразу и без подписи: свежий ответ заменит его, только если пары изменились
+    renderLessons(container, cached.lessons, null, keyOf(cached.lessons));
     showFreshness(cached);
+  } else if (renderedKey) {
+    container.classList.add("stale");  // пока грузится, прежние карточки бледные, а не «Загрузка...» со сдвигом страницы
+    renderedKey = null;
   } else {
     container.innerHTML = '<div class="status">Загрузка...</div>';
+    renderedKey = null;
   }
 
   try {
@@ -1149,6 +1164,8 @@ async function loadDay() {
       const data = await res.json();
       if (request !== dayRequest) return;
       writeDayCache(date, null);
+      container.classList.remove("stale");
+      renderedKey = null;
       if (data.detail === "group_not_set") {
         showChooseGroup();
       } else {
@@ -1161,7 +1178,7 @@ async function loadDay() {
     const data = await res.json();
     if (request !== dayRequest) return;
     writeDayCache(date, data);
-    renderLessons(container, data.lessons);
+    renderLessons(container, data.lessons, null, keyOf(data.lessons));
     showFreshness(data);
 
   } catch (err) {
@@ -1169,6 +1186,8 @@ async function loadDay() {
     if (cached) {
       renderLessons(container, cached.lessons, "Сервер не отвечает, показано сохранённое расписание.");
     } else {
+      container.classList.remove("stale");
+      renderedKey = null;
       container.innerHTML = '<div class="status">Ошибка загрузки. Попробуй позже.</div>';
     }
   }
