@@ -89,6 +89,13 @@
     color: var(--hint);
     padding: 14px 0 6px;
   }
+  .link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+  }
   .phone-copy {
     background: none;
     border: none;
@@ -130,13 +137,12 @@
   .page-header {
     margin-bottom: 14px;
   }
-  /* заголовок «Расписание», под ним курс, направление и группа в одной строке */
+  /* заголовок «Расписание», справа текущая группа: нажатие открывает «Другое» → «Моя группа» */
   .title-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 10px;
   }
   .page-header h1 {
     margin: 0;
@@ -146,17 +152,37 @@
   @media (max-width: 300px) {
     .page-header h1 { font-size: 20px; }
   }
-  .pickers {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 6px;
+  .group-chip {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    background: var(--card);
+    color: var(--text);
+    border: none;
+    border-radius: 10px;
+    padding: 0 12px;
+    height: 36px;
+    font-size: 14px;
+    font-family: inherit;
   }
+  .group-chip.empty { color: var(--accent); font-weight: 600; }
+  /* «Другое» → «Моя группа»: уровень, курс, направление и группа столбиком */
+  .group-form {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 6px 16px 16px;
+  }
+  .group-form label {
+    display: block;
+    font-size: 13px;
+    color: var(--hint);
+    margin: 12px 0 6px;
+  }
+  .group-form label[hidden] { display: none; }
+  .group-form .group-select { width: 100%; background-color: var(--card-pressed); }
   .group-select[hidden] {
     display: none;
-  }
-  .pickers .group-select {
-    flex: 0 1 auto;  /* не влезает - сжимается, лишний текст обрезается, строка не переносится */
   }
   .group-select {
     min-width: 0;
@@ -614,12 +640,7 @@
   <div class="page-header">
     <div class="title-row">
       <h1>Расписание</h1>
-      <select class="group-select" id="levelSelect" hidden></select>
-    </div>
-    <div class="pickers">
-      <select class="group-select" id="courseSelect"></select>
-      <select class="group-select" id="programSelect" hidden></select>
-      <select class="group-select" id="groupSelect"></select>
+      <button class="group-chip" id="groupChip"></button>
     </div>
   </div>
 
@@ -664,6 +685,9 @@
 <div id="otherTab" style="display:none;">
   <div id="otherMenu">
     <h1>Другое</h1>
+    <button class="menu-card" data-screen="paneGroup">
+      <span class="menu-icon blue">👥</span><span class="menu-title">Моя группа</span><span class="menu-arrow">›</span>
+    </button>
     <button class="menu-card" data-screen="paneNotes">
       <span class="menu-icon orange">📝</span><span class="menu-title">Заметки и дедлайны</span><span class="menu-arrow">›</span>
     </button>
@@ -679,6 +703,20 @@
     <button class="menu-card" data-screen="paneMap">
       <span class="menu-icon green">🗺️</span><span class="menu-title">Карта вуза</span><span class="menu-arrow">›</span>
     </button>
+  </div>
+
+  <div id="paneGroup" class="other-screen" style="display:none;">
+    <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Моя группа</h1></div>
+    <div class="group-form">
+      <label for="levelSelect" id="levelLabel" hidden>Уровень</label>
+      <select class="group-select" id="levelSelect" hidden></select>
+      <label for="courseSelect">Курс</label>
+      <select class="group-select" id="courseSelect"></select>
+      <label for="programSelect" id="programLabel" hidden>Направление</label>
+      <select class="group-select" id="programSelect" hidden></select>
+      <label for="groupSelect">Группа</label>
+      <select class="group-select" id="groupSelect"></select>
+    </div>
   </div>
 
   <div id="paneNotes" class="other-screen" style="display:none;">
@@ -824,27 +862,6 @@ function optionsHtml(items, selected) {
   ).join("");
 }
 
-// ширина селекта по выбранному тексту, без пустого места перед стрелкой
-let measureCtx = null;
-function fitSelect(select) {
-  if (select.hidden) return;
-  try {
-    measureCtx = measureCtx || document.createElement("canvas").getContext("2d");
-    const style = getComputedStyle(select);
-    measureCtx.font = `${style.fontSize} ${style.fontFamily}`;
-    const option = select.options[select.selectedIndex];
-    const text = option ? option.text : "";
-    const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-    select.style.width = Math.ceil(measureCtx.measureText(text).width + padding + 2) + "px";
-  } catch (err) {
-    select.style.width = "";
-  }
-}
-
-function fitPickers() {
-  [levelSelect, programSelect, courseSelect, groupSelect].forEach(fitSelect);
-}
-
 // порядок выбора: уровень (если есть и бакалавриат, и магистратура) -> курс -> направление -> группа
 // уровень по коду направления: 38.04.02 - магистратура, остальные - бакалавриат
 const levelOf = code => String(code).split(".")[1] === "04" ? "m" : "b";
@@ -865,16 +882,20 @@ function programsOfCourse(course) {
   return levelCatalog().filter(p => p.courses.some(c => String(c.course) === String(course)));
 }
 
-// тесное отображение нижней строки на узких экранах: «8 группа» -> «8 гр.»
-let compact = false;
 const courseLabel = c => `${c} курс`;
 const levelLabel = l => ({ b: "Бакалавриат", m: "Магистратура" })[l];
-const groupLabel = g => compact ? g.replace(/ группа$/, " гр.") : g;
+const groupChip = document.getElementById("groupChip");
 
-function renderPickers(tight = false) {
-  compact = tight;
+// в шапке расписания: «МП-14-25 · 2 курс» или приглашение выбрать группу
+function renderGroupChip() {
+  groupChip.textContent = chosen.group ? `${chosen.group} · ${courseLabel(chosen.course)}` : "Выбрать группу";
+  groupChip.classList.toggle("empty", !chosen.group);
+}
+
+function renderPickers() {
   const levels = allLevels();
   levelSelect.hidden = levels.length < 2;  // пока магистратуры нет, всё как раньше
+  document.getElementById("levelLabel").hidden = levelSelect.hidden;
   levelSelect.innerHTML = optionsHtml(levels.map(l => ({ value: l, label: levelLabel(l) })), chosen.level);
   courseSelect.innerHTML = optionsHtml(
     allCourses().map(c => ({ value: c, label: courseLabel(c) })), chosen.course);
@@ -882,25 +903,14 @@ function renderPickers(tight = false) {
   const programs = programsOfCourse(chosen.course);
   const program = programs.find(p => p.code === chosen.program);
   programSelect.hidden = programs.length < 2;  // одно направление выбирать не из чего
-  programSelect.innerHTML = optionsHtml(programs.map(p => ({ value: p.code, label: p.code })), chosen.program);
-  programSelect.title = program ? program.name : "";
+  document.getElementById("programLabel").hidden = programSelect.hidden;
+  programSelect.innerHTML = optionsHtml(programs.map(p => ({ value: p.code, label: `${p.code} ${p.name}` })), chosen.program);
 
   const entry = program && program.courses.find(c => String(c.course) === String(chosen.course));
   const placeholder = chosen.group ? "" : `<option value="" selected disabled>Группа</option>`;
   groupSelect.innerHTML = placeholder + optionsHtml(
-    (entry ? entry.groups : []).map(g => ({ value: g, label: groupLabel(g) })), chosen.group);
-  fitPickers();
-  if (!compact && pickersOverflow()) {
-    renderPickers(true);  // не влезло в одну строку: сокращаем подписи, а не переносим группу вниз
-  }
-}
-
-function pickersOverflow() {
-  const box = document.querySelector(".pickers");
-  const selects = [courseSelect, programSelect, groupSelect].filter(s => !s.hidden);
-  const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
-  const total = selects.reduce((sum, s) => sum + (parseFloat(s.style.width) || s.offsetWidth), 0) + gap * (selects.length - 1);
-  return total > box.clientWidth;
+    (entry ? entry.groups : []).map(g => ({ value: g, label: g })), chosen.group);
+  renderGroupChip();
 }
 
 async function loadGroups() {
@@ -918,6 +928,7 @@ async function loadGroups() {
       chosen = { level: chosen.level, program: programsOfCourse(course)[0].code, course, group: null };
     }
     renderPickers();
+    if (!cur && catalog.length) openGroupScreen();  // первый вход: сразу к выбору группы
   } catch (err) {
     groupSelect.innerHTML = "";
   }
@@ -962,13 +973,22 @@ let pickingGroup = false;
 function askForGroup() {
   pickingGroup = true;
   dayRequest++;  // ответ на уже отправленный запрос дня больше не нужен
-  document.getElementById("container").innerHTML = '<div class="status">Выбери свою группу в списке выше.</div>';
+  showChooseGroup();
+}
+function showChooseGroup() {
+  document.getElementById("container").innerHTML =
+    '<div class="status">Выбери свою группу: <button class="link-btn" data-open-group>Моя группа</button></div>';
 }
 groupSelect.addEventListener("change", () => {
   pickingGroup = false;
   chosen.group = groupSelect.value;
-  fitPickers();
+  renderGroupChip();
   saveGroup();
+  showTab(tabs[0]);  // группа выбрана: обратно к расписанию
+});
+groupChip.addEventListener("click", openGroupScreen);
+document.getElementById("container").addEventListener("click", e => {
+  if (e.target.closest("[data-open-group]")) openGroupScreen();
 });
 
 let dayRequest = 0;  // номер последнего запроса дня: ответы на прежние (при быстром листании) отбрасываются
@@ -1087,7 +1107,7 @@ async function loadDay() {
       if (request !== dayRequest) return;
       writeDayCache(date, null);
       if (data.detail === "group_not_set") {
-        container.innerHTML = '<div class="status">Выбери свою группу в списке выше.</div>';
+        showChooseGroup();
       } else {
         container.innerHTML = '<div class="status">Расписание на эту дату не найдено.</div>';
       }
@@ -1128,13 +1148,14 @@ const tabs = [
   { page: document.getElementById("importantTab"), btn: document.getElementById("tabImportant") },
   { page: document.getElementById("otherTab"), btn: document.getElementById("tabOther") },
 ];
+function showTab(tab) {
+  for (const t of tabs) {
+    t.page.style.display = t === tab ? "" : "none";
+    t.btn.classList.toggle("active", t === tab);
+  }
+}
 for (const tab of tabs) {
-  tab.btn.addEventListener("click", () => {
-    for (const t of tabs) {
-      t.page.style.display = t === tab ? "" : "none";
-      t.btn.classList.toggle("active", t === tab);
-    }
-  });
+  tab.btn.addEventListener("click", () => showTab(tab));
 }
 
 // --- Раздел «Другое»: список пунктов и отдельные экраны с кнопкой «назад» ---
@@ -1152,6 +1173,10 @@ for (const card of document.querySelectorAll(".menu-card")) {
     if (card.dataset.screen === "paneTeachers" && !teachersLoaded) loadTeachers();
     if (card.dataset.screen === "paneGame") openGame();
   });
+}
+function openGroupScreen() {
+  showTab(tabs[2]);
+  showOther("paneGroup");
 }
 for (const back of document.querySelectorAll(".back-btn")) {
   back.addEventListener("click", () => showOther(null));
