@@ -35,25 +35,27 @@
     gap: 6px;
     margin-bottom: 16px;
   }
+  /* стрелки без подложки: крупнее, но уже, место отдано датам */
   .chevron {
-    background: var(--card);
+    background: none;
     border: none;
     color: var(--text);
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    font-size: 16px;
+    width: 22px;
+    height: 44px;
+    padding: 0;
+    font-size: 28px;
+    line-height: 1;
     flex: 0 0 auto;
   }
   /* слева от ленты: день недели выбранной даты, нажатие возвращает на сегодня */
   .today-btn {
     flex: 0 0 auto;
-    min-width: 48px;
+    min-width: 40px;
     align-self: stretch;
     background: var(--card);
     border: none;
     border-radius: 14px;
-    padding: 0 8px;
+    padding: 0 6px;
     color: var(--text);
     font-family: inherit;
     font-size: 16px;
