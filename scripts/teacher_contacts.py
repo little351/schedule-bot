@@ -99,6 +99,20 @@ def get(client, url, attempts=3):
             time.sleep(5 * (i + 1))
 
 
+def subpage_urls(dept_url, links, limit=10):
+    """Подстраницы кафедры (кадровый состав и т.п.): ссылки на один уровень глубже её адреса."""
+    base = urlparse(dept_url).path.rstrip("/")
+    urls = []
+    for href in links:
+        url = urljoin(dept_url + "/", href)
+        path = urlparse(url).path.rstrip("/")
+        if urlparse(url).netloc.endswith("gtsolifk.ru") and path.startswith(base + "/") and path.count("/") == base.count("/") + 1:
+            url = BASE + path
+            if url not in urls:
+                urls.append(url)
+    return urls[:limit]
+
+
 def department_urls(client):
     _, links = parse(get(client, INDEX))
     urls = []
@@ -112,35 +126,72 @@ def department_urls(client):
     return urls
 
 
-def extract_contacts(lines):
-    """[(ФИО, телефон, почта)]: контакт относится к последнему полному ФИО перед ним.
+# подписи полей в карточке сотрудника на сайте
+LABELS = {
+    "должность": "site_position",
+    "регалии": "regalia",
+    "адрес": "address",
+    "телефон": "phone",
+    "электронная почта": "email",
+    "e-mail": "email",
+    "почта": "email",
+}
+# строки после контактов, которые стоит показать студенту («Образование: ...» и т.п.)
+INFO_RE = re.compile(r"^(Образование|Сфера научных интересов|Научные интересы|Индекс Хирша)\b", re.I)
+NAME_LINE_RE = re.compile(r"[А-ЯЁ][А-Яа-яЁё() -]+")
 
-    Карточка на сайте: ФИО, должность, телефон, почта. Почта закрывает карточку, а дальше
-    CARD_LINES строк от ФИО контакты не ищем: так подвал страницы не достаётся последнему в списке."""
-    found = {}
-    order = []
-    current = None
+
+def extract_cards(lines):
+    """Карточки сотрудников: [{name, phone, email, address, regalia, info}].
+
+    Карточка на сайте: ФИО, должность, (ФИО ещё раз во всплывающем окне), «Должность», «Регалии»,
+    «Адрес», «Телефон», «Электронная почта», потом строки «Образование: ...» и т.п.
+    Телефон и почта ищутся не дальше CARD_LINES строк от ФИО; почта закрывает поиск контактов,
+    так подвал страницы не достаётся последнему в списке."""
+    cards = []
+    card = None
+    section = None
     since = 0
+    closed = False
     for ln in lines:
         fio = FIO_RE.fullmatch(ln) or (len(ln) < 60 and FIO_RE.match(ln))
         if fio:
-            current = fio.group(0)
-            since = 0
+            name = ln if NAME_LINE_RE.fullmatch(ln) and len(ln) < 80 else fio.group(0)
+            name = " ".join(name.split())
+            if card is None or norm(card["name"]) != norm(name):
+                card = {"name": name, "phone": None, "email": None, "address": None, "regalia": [], "info": []}
+                cards.append(card)
+                closed = False
+            section, since = None, 0
             continue
         since += 1
-        if not current or since > CARD_LINES:
+        if card is None or since > CARD_LINES:
             continue
-        rec = found.setdefault(current, {"phone": None, "email": None})
-        if current not in order:
-            order.append(current)
-        phone = PHONE_RE.search(ln)
-        if phone and not rec["phone"]:
-            rec["phone"] = clean_phone(phone.group(0))
-        if not rec["email"]:
-            rec["email"] = find_email(ln)
-            if rec["email"]:
-                current = None
-    return [(n, found[n]["phone"], found[n]["email"]) for n in order if found[n]["phone"] or found[n]["email"]]
+        label = LABELS.get(ln.lower().rstrip(":"))
+        if label:
+            section = None if closed else label  # после почты карточка кончилась: дальше подвал
+            continue
+        if INFO_RE.match(ln):
+            if len(ln) <= 600 and ln not in card["info"]:
+                card["info"].append(ln)
+            section = None
+            continue
+        if not closed:
+            phone = PHONE_RE.search(ln)
+            if phone and not card["phone"]:
+                card["phone"] = clean_phone(phone.group(0))
+            email = find_email(ln)
+            if email and not card["email"]:
+                card["email"] = email
+                closed = True
+            if phone or email:
+                section = None
+                continue
+        if section == "regalia" and len(ln) <= 120 and len(card["regalia"]) < 6 and ln not in card["regalia"]:
+            card["regalia"].append(ln)
+        elif section == "address" and not card["address"] and len(ln) <= 150:
+            card["address"] = ln
+    return [c for c in cards if c["phone"] or c["email"] or c["address"] or c["regalia"] or c["info"]]
 
 
 def find_email(line):
@@ -181,17 +232,24 @@ def fio_close(site, ours):
     return similar(a[0], b[0]) >= 0.85 and similar(a[1], b[1]) >= 0.8
 
 
+FIELDS = ("phone", "email", "address", "regalia", "info")
+
+
 def match(pages, departments):
-    """Сопоставить карточки с сайта с нашим списком. -> {id преподавателя: (телефон, почта)}, источники, отчёт."""
+    """Сопоставить карточки с сайта с нашим списком.
+
+    -> ({id преподавателя: карточка}, {id кафедры: url}, [(сайт, наш)], [(ФИО, url)])"""
     by_name = {}
     for dept in departments:
         for t in dept["teachers"]:
             by_name.setdefault(norm(t["name"]), []).append(t)
-    contacts, sources, fuzzy, unmatched = {}, {}, [], []
+    found, sources, fuzzy, unmatched = {}, {}, [], []
 
-    def put(t, phone, email):
-        old = contacts.get(t["id"], (None, None))
-        contacts[t["id"]] = (old[0] or phone, old[1] or email)
+    def put(t, card):
+        old = found.setdefault(t["id"], {"name": card["name"]})
+        for f in FIELDS:
+            if not old.get(f) and card.get(f):
+                old[f] = card[f]
 
     for page in pages:
         dept = None
@@ -199,20 +257,52 @@ def match(pages, departments):
             best = max(departments, key=lambda d: similar(norm(d["name"]), norm(page["title"])))
             if similar(norm(best["name"]), norm(page["title"])) >= 0.75:
                 dept = best
-                sources[dept["id"]] = page["url"]
-        for name, phone, email in page["contacts"]:
-            exact = by_name.get(norm(name))
+                sources.setdefault(dept["id"], page["url"])
+        for card in page["cards"]:
+            exact = by_name.get(norm(card["name"]))
             if exact:
                 for t in exact:
-                    put(t, phone, email)
+                    put(t, card)
                 continue
-            cands = [t for t in (dept["teachers"] if dept else []) if fio_close(name, t["name"])]
+            cands = [t for t in (dept["teachers"] if dept else []) if fio_close(card["name"], t["name"])]
             if len(cands) == 1:
-                put(cands[0], phone, email)
-                fuzzy.append((name, cands[0]["name"]))
-            elif email != "rectorat@gtsolifk.ru":  # подвал сайта (приёмная ректора), не карточка кафедры
-                unmatched.append((name, phone, email, page["url"]))
-    return contacts, sources, fuzzy, unmatched
+                put(cands[0], card)
+                if (card["name"], cands[0]["name"]) not in fuzzy:
+                    fuzzy.append((card["name"], cands[0]["name"]))
+            elif card.get("phone") or card.get("email"):
+                unmatched.append((card["name"], page["url"]))
+    return found, sources, fuzzy, unmatched
+
+
+def site_name(ours, site):
+    """ФИО как на сайте; наше оставляем, только если оно и есть сайтовое с уточнением в конце
+    («Мирзоев Октай Мирза оглы (Октай Мирзоевич)» при «Мирзоев Октай Мирза оглы» на сайте)."""
+    if norm(ours).startswith(norm(site)):
+        return ours
+    return site
+
+
+def apply(departments, found, sources):
+    """Записать найденное в список. -> (изменено записей, [(было, стало)])."""
+    changed, renamed = 0, []
+    for dept in departments:
+        if dept["id"] in sources:
+            dept["source"] = sources[dept["id"]]
+        for t in dept["teachers"]:
+            card = found.get(t["id"], {})
+            before = json.dumps(t, ensure_ascii=False, sort_keys=True)
+            if card:
+                new_name = site_name(t["name"], card["name"])
+                if new_name != t["name"]:
+                    renamed.append((t["name"], new_name))
+                    t["name"] = new_name
+            for f in FIELDS:
+                if card.get(f):
+                    t[f] = card[f]
+                else:
+                    t.pop(f, None)
+            changed += before != json.dumps(t, ensure_ascii=False, sort_keys=True)
+    return changed, renamed
 
 
 def main():
@@ -248,44 +338,41 @@ def main():
                 except httpx.HTTPError as e:
                     print(f"! {url}: {e!r}")
                     continue
-                lines, _ = parse(page_html)
-                pages.append({"url": url, "title": page_title(lines), "contacts": extract_contacts(lines)})
+                lines, links = parse(page_html)
+                page = {"url": url, "title": page_title(lines), "cards": extract_cards(lines)}
+                # «Кадровый состав» и т.п. на подстраницах кафедры
+                for sub in subpage_urls(url, links):
+                    try:
+                        sub_lines, _ = parse(get(client, sub))
+                    except httpx.HTTPError as e:
+                        print(f"! {sub}: {e!r}")
+                        continue
+                    page["cards"] += extract_cards(sub_lines)
+                pages.append(page)
         if not pages:
             print("Ни одной страницы не загрузилось, файл не меняю")
             return 1
 
-    contacts, sources, fuzzy, unmatched = match(pages, departments)
+    found, sources, fuzzy, unmatched = match(pages, departments)
+    changed, renamed = apply(departments, found, sources)
 
-    changed = 0
-    ids = set()
-    for dept in departments:
-        if dept["id"] in sources:
-            dept["source"] = sources[dept["id"]]
-        for t in dept["teachers"]:
-            ids.add(t["id"])
-            phone, email = contacts.get(t["id"], (None, None))
-            before = (t.get("phone"), t.get("email"))
-            for field, value in (("phone", phone), ("email", email)):
-                if value:
-                    t[field] = value
-                else:
-                    t.pop(field, None)
-            changed += before != (t.get("phone"), t.get("email"))
-
+    ids = {t["id"] for d in departments for t in d["teachers"]}
+    with_contacts = {i for i, c in found.items() if c.get("phone") or c.get("email")}
     for page in pages:
-        print(f"{len(page['contacts']):3} карточек  {page['title']}  {page['url']}")
+        print(f"{len(page['cards']):3} карточек  {page['title']}  {page['url']}")
     print(f"\nКафедр с привязанной страницей: {len(sources)} из {len(departments)}")
-    print(f"Людей в списке: {len(ids)}, с контактами: {len(contacts)}, изменено записей: {changed}")
-    print(f"Телефон: {sum(1 for c in contacts.values() if c[0])}, почта: {sum(1 for c in contacts.values() if c[1])}")
-    print(f"Без контактов: {', '.join(sorted({t['name'] for d in departments for t in d['teachers'] if t['id'] not in contacts}))}")
-    if fuzzy:
-        print(f"\nСопоставлено с поправкой на опечатку ({len(fuzzy)}): сайт -> наш список")
-        for site, ours in fuzzy:
-            print(f"  {site} -> {ours}")
+    print(f"Людей в списке: {len(ids)}, с контактами: {len(with_contacts)}, изменено записей: {changed}")
+    for f in FIELDS:
+        print(f"  {f}: {sum(1 for c in found.values() if c.get(f))}")
+    print(f"Без контактов: {', '.join(sorted({t['name'] for d in departments for t in d['teachers'] if t['id'] not in with_contacts}))}")
+    if renamed:
+        print(f"\nФИО исправлено по сайту ({len(renamed)}):")
+        for old, new in renamed:
+            print(f"  {old} -> {new}")
     if unmatched:
         print(f"\nНа сайте есть, в нашем списке нет ({len(unmatched)}):")
-        for name, phone, email, url in unmatched:
-            print(f"  {name} | {phone} | {email} | {url.rsplit('/', 1)[-1]}")
+        for name, url in unmatched:
+            print(f"  {name} | {url.rsplit('/', 1)[-1]}")
     if not args.from_log:
         print("\nPAGES_JSON " + json.dumps(pages, ensure_ascii=False))
 
@@ -298,7 +385,7 @@ def main():
 
 def fetch(url):
     with httpx.Client(timeout=60, follow_redirects=True) as client:
-        return client.get(url).text
+        return get(client, url)
 
 
 if __name__ == "__main__":

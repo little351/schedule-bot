@@ -626,17 +626,45 @@
   .teacher-position { font-size: 14px; color: var(--accent); margin-top: 2px; }
   .teacher-position::first-letter { text-transform: uppercase; }
   .teacher-about { font-size: 13px; color: var(--hint); margin-top: 4px; line-height: 1.4; }
-  .teacher-link {
+  .teacher-card { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .teacher-card:active { background: var(--card-pressed); }
+  .teacher-card-body { flex: 1; min-width: 0; }
+  .teacher-card .menu-arrow { flex: 0 0 auto; }
+  /* экран преподавателя: каждое поле копируется нажатием */
+  .tp-name { font-size: 22px; font-weight: 700; line-height: 1.25; word-break: break-word; margin: 0 2px 4px; }
+  .tp-position { font-size: 15px; color: var(--accent); margin: 0 2px 14px; }
+  .tp-position::first-letter { text-transform: uppercase; }
+  .tp-field {
     display: block;
-    margin-top: 8px;
-    padding: 9px 12px;
-    background: var(--card-pressed);
-    border-radius: 10px;
+    width: 100%;
+    text-align: left;
+    background: var(--card);
+    border: none;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
     color: var(--text);
-    text-decoration: none;
-    font-size: 14px;
-    word-break: break-all;
+    font: inherit;
   }
+  .tp-field:active { background: var(--card-pressed); }
+  .tp-label { font-size: 12px; color: var(--hint); display: flex; justify-content: space-between; gap: 8px; }
+  .tp-label .tp-copied { color: #34c759; }
+  .tp-value { font-size: 15px; margin-top: 3px; line-height: 1.4; word-break: break-word; white-space: pre-line; }
+  .tp-actions { display: flex; gap: 8px; margin: 6px 0 8px; }
+  .tp-actions a, .tp-actions button {
+    flex: 1;
+    text-align: center;
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    font: inherit;
+    font-size: 15px;
+    text-decoration: none;
+  }
+  .tp-actions .secondary { background: var(--card); color: var(--accent); }
+  .tp-hint { text-align: center; color: var(--hint); font-size: 12px; margin-top: 10px; }
 
   /* --- Нижняя панель вкладок --- */
   .tab-bar {
@@ -782,6 +810,11 @@
     <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Преподаватели</h1></div>
     <input type="search" class="teacher-search" id="teacherSearch" placeholder="Поиск по ФИО или кафедре" autocomplete="off">
     <div id="teachersList"></div>
+  </div>
+
+  <div id="paneTeacher" class="other-screen" style="display:none;">
+    <div class="screen-head"><button class="back-btn" data-back="paneTeachers" aria-label="Назад">‹</button><h1>Преподаватель</h1></div>
+    <div id="teacherProfile"></div>
   </div>
 
   <div id="paneRandom" class="other-screen" style="display:none;">
@@ -1293,7 +1326,10 @@ function openGroupScreen() {
   showOther("paneGroup");
 }
 for (const back of document.querySelectorAll(".back-btn")) {
-  back.addEventListener("click", () => showOther(null));
+  back.addEventListener("click", () => {
+    showOther(back.dataset.back || null);
+    if (back.dataset.back === "paneTeachers") window.scrollTo(0, teachersScroll);
+  });
 }
 
 // --- Игра «Сессия»: код в game.js грузится только при первом открытии карточки ---
@@ -1380,24 +1416,23 @@ function renderTeachers() {
       const card = document.createElement("div");
       card.className = "teacher-card";
       card.dataset.teacherId = t.id || "";  // устойчивый id: к нему потом можно привязать отзывы
+      const body = document.createElement("div");
+      body.className = "teacher-card-body";
       const add = (cls, text) => {
         const el = document.createElement("div");
         el.className = cls;
         el.textContent = text;
-        card.appendChild(el);
+        body.appendChild(el);
       };
       add("teacher-name", t.name);
       if (t.position) add("teacher-position", t.position);
       if (t.about) add("teacher-about", t.about);
-      const link = (href, text) => {
-        const a = document.createElement("a");
-        a.className = "teacher-link";
-        a.href = href;
-        a.textContent = text;
-        card.appendChild(a);
-      };
-      if (t.phone) link(telHref(t.phone), "📞 " + t.phone);
-      if (t.email) link("mailto:" + t.email, "✉️ " + t.email);
+      card.appendChild(body);
+      const arrow = document.createElement("span");
+      arrow.className = "menu-arrow";
+      arrow.textContent = "›";
+      card.appendChild(arrow);
+      card.addEventListener("click", () => openTeacher(t, dept));
       teachersList.appendChild(card);
     }
   }
@@ -1407,6 +1442,102 @@ function renderTeachers() {
     empty.textContent = q ? "Никого не нашлось." : "Список пока пуст.";
     teachersList.appendChild(empty);
   }
+}
+
+// --- Экран преподавателя: нажатие на поле копирует его ---
+let teachersScroll = 0;
+const teacherProfile = document.getElementById("teacherProfile");
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    // фолбэк для окружений без Clipboard API
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+  if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+}
+
+function openTeacher(t, dept) {
+  teachersScroll = window.scrollY;
+  teacherProfile.textContent = "";
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  teacherProfile.appendChild(el("div", "tp-name", t.name));
+  if (t.position) teacherProfile.appendChild(el("div", "tp-position", t.position));
+
+  const lines = [t.name];
+  const field = (label, value) => {
+    if (!value) return;
+    lines.push(label + ": " + value.replace(/\n/g, ", "));
+    const btn = el("button", "tp-field");
+    const head = el("div", "tp-label");
+    head.appendChild(el("span", "", label));
+    const mark = el("span", "tp-copied", "");
+    head.appendChild(mark);
+    btn.appendChild(head);
+    btn.appendChild(el("div", "tp-value", value));
+    btn.addEventListener("click", async () => {
+      await copyText(value);
+      mark.textContent = "скопировано";
+      setTimeout(() => { mark.textContent = ""; }, 1500);
+    });
+    teacherProfile.appendChild(btn);
+  };
+  const actions = (items) => {
+    const row = el("div", "tp-actions");
+    for (const [text, href] of items) {
+      const a = el("a", "", text);
+      a.href = href;
+      row.appendChild(a);
+    }
+    teacherProfile.appendChild(row);
+  };
+
+  if (t.position) lines.splice(1, 0, t.position);
+  field("Телефон", t.phone);
+  if (t.phone) actions([["📞 Позвонить", telHref(t.phone)]]);
+  field("Почта", t.email);
+  if (t.email) actions([["✉️ Написать", "mailto:" + t.email]]);
+  field("Кабинет", t.address);
+  field("Кафедра", dept.name);
+  field("Учёная степень и звание", (t.regalia || []).join("\n"));
+  for (const item of t.info || []) {
+    // «Образование: ...» -> поле с подписью «Образование»
+    const m = item.match(/^([^:]{2,40}):\s*(.+)$/s);
+    if (m) field(m[1], m[2]);
+    else field("Ещё", item);
+  }
+  if (t.about) field("О преподавателе", t.about);
+  if (!t.phone && !t.email) teacherProfile.appendChild(el("div", "tp-hint", "На сайте вуза у преподавателя нет контактов."));
+
+  const row = el("div", "tp-actions");
+  const all = el("button", "secondary", "Скопировать всё");
+  all.addEventListener("click", async () => {
+    await copyText(lines.join("\n"));
+    all.textContent = "Скопировано";
+    setTimeout(() => { all.textContent = "Скопировать всё"; }, 1500);
+  });
+  row.appendChild(all);
+  if (dept.source) {
+    const site = el("a", "secondary", "На сайте вуза");
+    site.href = dept.source;
+    site.target = "_blank";
+    site.rel = "noopener";
+    row.appendChild(site);
+  }
+  teacherProfile.appendChild(row);
+  teacherProfile.appendChild(el("div", "tp-hint", "Нажми на любое поле, чтобы скопировать его."));
+  showOther("paneTeacher");
 }
 
 async function loadTeachers() {
