@@ -99,14 +99,19 @@ def get(client, url, attempts=3):
             time.sleep(5 * (i + 1))
 
 
-def subpage_urls(dept_url, links, limit=10):
-    """Подстраницы кафедры (кадровый состав и т.п.): ссылки на один уровень глубже её адреса."""
+STAFF_PAGE_RE = re.compile(r"stav|sostav|person|sotrudn", re.I)  # адрес страницы «Кадровый состав» (…/stav_01770)
+
+
+def subpage_urls(dept_url, links, limit=3):
+    """Подстраницы кафедры с кадровым составом: на один уровень глубже её адреса, в адресе «stav» и т.п."""
     base = urlparse(dept_url).path.rstrip("/")
     urls = []
     for href in links:
         url = urljoin(dept_url + "/", href)
         path = urlparse(url).path.rstrip("/")
-        if urlparse(url).netloc.endswith("gtsolifk.ru") and path.startswith(base + "/") and path.count("/") == base.count("/") + 1:
+        last = path.rsplit("/", 1)[-1]
+        if urlparse(url).netloc.endswith("gtsolifk.ru") and path.startswith(base + "/") \
+                and path.count("/") == base.count("/") + 1 and STAFF_PAGE_RE.search(last):
             url = BASE + path
             if url not in urls:
                 urls.append(url)
