@@ -1511,13 +1511,15 @@ function openTeacher(t, dept) {
   field("Кабинет", t.address);
   field("Кафедра", dept.name);
   field("Учёная степень и звание", (t.regalia || []).join("\n"));
+  const extra = [];
   for (const item of t.info || []) {
-    // «Образование: ...» -> поле с подписью «Образование»
+    // «Образование: ...» -> поле с подписью «Образование», остальное - одним полем «О преподавателе»
     const m = item.match(/^([^:]{2,40}):\s*(.+)$/s);
     if (m) field(m[1], m[2]);
-    else field("Ещё", item);
+    else extra.push(item);
   }
-  if (t.about) field("О преподавателе", t.about);
+  if (t.about) extra.unshift(t.about);
+  field("О преподавателе", extra.join("\n"));
   if (!t.phone && !t.email) teacherProfile.appendChild(el("div", "tp-hint", "На сайте вуза у преподавателя нет контактов."));
 
   const row = el("div", "tp-actions");

@@ -137,61 +137,110 @@ LABELS = {
     "почта": "email",
 }
 # строки после контактов, которые стоит показать студенту («Образование: ...» и т.п.)
-INFO_RE = re.compile(r"^(Образование|Сфера научных интересов|Научные интересы|Индекс Хирша)\b", re.I)
-NAME_LINE_RE = re.compile(r"[А-ЯЁ][А-Яа-яЁё() -]+")
+INFO_RE = re.compile(r"^(Образование|Уровень образования|Сфера научных интересов|Область научных интересов|Научные интересы|Индекс Хирша)\b", re.I)
+NAME_LINE_RE = re.compile(r"[А-ЯЁ][А-Яа-яЁё() -]+")  # ФИО целиком, вкл. «оглы», «(Октай Мирзоевич)»
+
+
+PATRONYMIC_RE = re.compile(r"(вич|вна|ична|чна|оглы|кызы|улы)$")
+STOP_LINES = {"×", "✕", "Новости и события"}  # конец всплывающей карточки / начало ленты новостей
+MAX_INFO_LINES = 12
+
+
+def card_name(line):
+    """ФИО из строки карточки: «Иванов Иван Иванович» или «Иванов Иван Иванович - доцент»."""
+    parts = re.split(r"\s+[-—–]\s+", line, maxsplit=1)
+    part = parts[0].strip()
+    if not (len(part) < 80 and NAME_LINE_RE.fullmatch(part) and FIO_RE.match(part)):
+        return None
+    words = part.split()
+    # «Финалист Чемпионата России среди ...» - не ФИО: нужно отчество, подпись «- должность» или ровно три слова
+    if PATRONYMIC_RE.search(words[2]) or len(parts) > 1 or len(words) == 3:
+        return " ".join(words)
+    return None
+
+
+def join_info(raw):
+    """Строки описания -> пункты: «Образование: ...» начинает пункт, продолжение (со строчной буквы
+    или после «:», «,», «;») приклеивается к предыдущему."""
+    items = []
+    for ln in raw:
+        cont = items and (ln[:1].islower() or items[-1].endswith((":", ",", ";")))
+        if cont and not INFO_RE.match(ln):
+            items[-1] = (items[-1] + " " + ln)[:600]
+        elif ln not in items:
+            items.append(ln[:600])
+    return items
 
 
 def extract_cards(lines):
     """Карточки сотрудников: [{name, phone, email, address, regalia, info}].
 
-    Карточка на сайте: ФИО, должность, (ФИО ещё раз во всплывающем окне), «Должность», «Регалии»,
-    «Адрес», «Телефон», «Электронная почта», потом строки «Образование: ...» и т.п.
+    Карточка на сайте: ФИО (иногда «ФИО - должность»), должность, (ФИО ещё раз во всплывающем окне),
+    «Должность», «Регалии», «Адрес», «Телефон», «Электронная почта», затем описание
+    («Образование: ...», интересы, индекс Хирша) до «×». Описание бывает и до подписей полей.
     Телефон и почта ищутся не дальше CARD_LINES строк от ФИО; почта закрывает поиск контактов,
     так подвал страницы не достаётся последнему в списке."""
     cards = []
     card = None
     section = None
     since = 0
-    closed = False
+    closed = False      # почта найдена: дальше только описание
+    info_open = False   # собираем описание после почты
+    labeled = False     # уже были подписи полей («Должность», «Телефон»...)
     for ln in lines:
-        fio = FIO_RE.fullmatch(ln) or (len(ln) < 60 and FIO_RE.match(ln))
-        if fio:
-            name = ln if NAME_LINE_RE.fullmatch(ln) and len(ln) < 80 else fio.group(0)
-            name = " ".join(name.split())
+        name = card_name(ln)
+        if name:
             if card is None or norm(card["name"]) != norm(name):
-                card = {"name": name, "phone": None, "email": None, "address": None, "regalia": [], "info": []}
+                card = {"name": name, "phone": None, "email": None, "address": None, "regalia": [], "raw": []}
                 cards.append(card)
-                closed = False
+                closed = info_open = labeled = False
             section, since = None, 0
             continue
         since += 1
         if card is None or since > CARD_LINES:
             continue
-        label = LABELS.get(ln.lower().rstrip(":"))
-        if label:
-            section = None if closed else label  # после почты карточка кончилась: дальше подвал
+        if ln in STOP_LINES:
+            section, info_open = None, False
             continue
-        if INFO_RE.match(ln):
-            if len(ln) <= 600 and ln not in card["info"]:
-                card["info"].append(ln)
+        label = LABELS.get(ln.lower().rstrip(":").strip())
+        if label:
+            labeled = True
+            section = None if closed else label  # после почты карточка кончилась
+            info_open = False if closed else info_open
+            continue
+        if closed:
+            if PHONE_RE.search(ln) or find_email(ln):
+                continue  # повтор контактов (во всплывающем окне они дублируются)
+            looks_info = INFO_RE.match(ln) or ":" in ln or ln[:1].islower() or \
+                (card["raw"] and card["raw"][-1].endswith((":", ",", ";")))
+            if not looks_info:
+                info_open = False  # дальше уже не описание (меню, подвал)
+            if info_open and len(card["raw"]) < MAX_INFO_LINES:
+                card["raw"].append(ln)
+            continue
+        phone = PHONE_RE.search(ln)
+        if phone and not card["phone"]:
+            card["phone"] = clean_phone(phone.group(0))
+        email = find_email(ln)
+        if email and not card["email"]:
+            card["email"] = email
+            closed = info_open = True
+        if phone or email:
             section = None
             continue
-        if not closed:
-            phone = PHONE_RE.search(ln)
-            if phone and not card["phone"]:
-                card["phone"] = clean_phone(phone.group(0))
-            email = find_email(ln)
-            if email and not card["email"]:
-                card["email"] = email
-                closed = True
-            if phone or email:
-                section = None
-                continue
         if section == "regalia" and len(ln) <= 120 and len(card["regalia"]) < 6 and ln not in card["regalia"]:
             card["regalia"].append(ln)
         elif section == "address" and not card["address"] and len(ln) <= 150:
             card["address"] = ln
-    return [c for c in cards if c["phone"] or c["email"] or c["address"] or c["regalia"] or c["info"]]
+        elif not labeled and section is None and (ln[:1].isupper() or INFO_RE.match(ln)) \
+                and len(card["raw"]) < MAX_INFO_LINES:
+            card["raw"].append(ln)  # описание перед подписями полей (формат «ФИО - должность»)
+    result = []
+    for c in cards:
+        c["info"] = join_info(c.pop("raw")) if c["phone"] or c["email"] else []
+        if c["phone"] or c["email"] or c["address"] or c["regalia"]:
+            result.append(c)
+    return result
 
 
 def find_email(line):
