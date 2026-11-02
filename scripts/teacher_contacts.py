@@ -32,7 +32,7 @@ TEACHERS_FILE = os.path.join(ROOT, "data", "teachers.json")
 
 PHONE_RE = re.compile(r"\+7\s*\(\d{3}\)\s*[\d-]{7,9}(?:\s*,?\s*доб\.?\s*[\d-]+)?", re.I)
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-UNI_EMAIL_RE = re.compile(r"(?<![\w.%+@-])[A-Za-z0-9._%+-]+@gtsolifk\.ru(?![\w.-])", re.I)
+UNI_EMAIL_RE = re.compile(r"(?<![\w.%+@-])[A-Za-z0-9._%+-]+@gtsolifk\.ru(?![\w-]|\.\w)", re.I)
 CARD_LINES = 40  # дальше этого от ФИО контакты не ищем (подвал страницы)
 # ФИО полностью: три слова с заглавной кириллической буквы (фамилия может быть двойной)
 FIO_RE = re.compile(r"[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+")

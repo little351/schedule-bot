@@ -8,12 +8,16 @@
     {
      "id": "komova-elena-viktorovna",
      "name": "Комова Елена Викторовна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "komova.ev@gtsolifk.ru"
     },
     {
      "id": "litvinov-sergey-vladimirovich",
      "name": "Литвинов Сергей Владимирович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "litvinov.sv@gtsolifk.ru"
     },
     {
      "id": "myagkova-svetlana-nikolaevna",
@@ -23,49 +27,68 @@
     {
      "id": "udalova-marina-yurevna",
      "name": "Удалова Марина Юрьевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "udalova.my@gtsolifk.ru"
     },
     {
      "id": "pereverzeva-natalya-aleksandrovna",
      "name": "Переверзева Наталья Александровна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "pereverzeva.na@gtsolifk.ru"
     },
     {
      "id": "volkova-marina-sergeevna",
      "name": "Волкова Марина Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-30",
+     "email": "volkova.ms@gtsolifk.ru"
     },
     {
      "id": "kapustina-yuliya-aleksandrovna",
      "name": "Капустина Юлия Александровна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-30",
+     "email": "kapustina.ya@gtsolifk.ru"
     },
     {
      "id": "varichev-aleksandr-mikhaylovich",
      "name": "Варичев Александр Михайлович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "varichev.am@gtsolifk.ru"
     },
     {
      "id": "belyakova-ekaterina-aleksandrovna",
      "name": "Белякова Екатерина Александровна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "belyakova.ea@gtsolifk.ru"
     },
     {
      "id": "khodyreva-irina-nikolaevna",
      "name": "Ходырева Ирина Николаевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "khodyreva.in@gtsolifk.ru"
     },
     {
      "id": "babel-tatyana-anatolevna",
      "name": "Бабель Татьяна Анатольевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "babel.ta@gtsolifk.ru"
     },
     {
      "id": "finagina-oksana-alekseevna",
      "name": "Финагина Оксана Алексеевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-64",
+     "email": "fldep@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/inostrannih_yazikov_i_lingvistiki"
   },
   {
    "id": "boksa-kikboksinga-i-vostochnykh-boevykh-iskusstv-im-k-v-grad",
@@ -74,69 +97,95 @@
     {
      "id": "gorbachev-stanislav-sergeevich",
      "name": "Горбачев Станислав Сергеевич",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-37",
+     "email": "gorbachev.ss@gtsolifk.ru"
     },
     {
      "id": "kalmykov-evgeniy-viktorovich",
      "name": "Калмыков Евгений Викторович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-38",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "kleshchev-vadim-nikolaevich",
      "name": "Клещев Вадим Николаевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-38",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "kiselev-vladimir-andreevich",
      "name": "Киселев Владимир Андреевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-38",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "epov-oleg-georgievich",
      "name": "Эпов Олег Георгиевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 51-97",
+     "email": "epov.og@gtsolifk.ru"
     },
     {
      "id": "orlov-yuriy-leonidovich",
      "name": "Орлов Юрий Леонидович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-91",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "demchenko-natalya-sergeevna",
      "name": "Демченко Наталья Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-98",
+     "email": "demchenko.ns@gtsolifk.ru"
     },
     {
      "id": "mandych-ivan-nikolaevich",
      "name": "Мандыч Иван Николаевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-61",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "bagomedov-khizri-abdurashidovich",
      "name": "Багомедов Хизри Абдурашидович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-31",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "fedorov-aleksey-dmitrievich",
      "name": "Федоров Алексей Дмитриевич",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-38",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "sudakov-denis-alekseevich",
      "name": "Судаков Денис Алексеевич",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "isaeva-mariya-sergeevna",
      "name": "Исаева Мария Сергеевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-35",
+     "email": "chair.boxing@gtsolifk.ru"
     },
     {
      "id": "dichenko-marina-aleksandrovna",
      "name": "Диченко Марина Александровна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-61",
+     "email": "chair.boxing@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_boksa_i_kikboksinga_im_kv_gradopolova"
   },
   {
    "id": "biokhimii-i-bioenergetiki-sporta-im-n-i-volkova",
@@ -145,34 +194,46 @@
     {
      "id": "tambovtseva-ritta-viktorovna",
      "name": "Тамбовцева Ритта Викторовна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-93",
+     "email": "tambovceva.rv@gtsolifk.ru"
     },
     {
      "id": "sechin-dmitriy-ivanovich",
      "name": "Сечин Дмитрий Иванович",
-     "position": "доцент, заведующий лабораторией"
+     "position": "доцент, заведующий лабораторией",
+     "phone": "+7 (495) 961-31-11, доб. 54-93",
+     "email": "sechin.di@gtsolifk.ru"
     },
     {
      "id": "nikulina-irina-aleksandrovna",
      "name": "Никулина Ирина Александровна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-94",
+     "email": "nikulina.ia@gtsolifk.ru"
     },
     {
      "id": "volkov-vasiliy-vasilevich",
      "name": "Волков Василий Васильевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-93",
+     "email": "volkov.vv@gtsolifk.ru"
     },
     {
      "id": "pletneva-elena-viktorovna",
      "name": "Плетнева Елена Викторовна",
-     "position": "старший преподаватель, специалист по учебно-методической работе"
+     "position": "старший преподаватель, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-93",
+     "email": "pletneva.ev@gtsolifk.ru"
     },
     {
      "id": "orlova-anastasiya-vladimirovna",
      "name": "Орлова Анастасия Владимировна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-93"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/biohimii_i_bioenergetiki_sporta_im_ni_volkova"
   },
   {
    "id": "biomekhaniki-i-estestvennonauchnykh-distsiplin",
@@ -181,54 +242,74 @@
     {
      "id": "popov-grigoriy-ivanovich",
      "name": "Попов Григорий Иванович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 50-73",
+     "email": "popov.gi@gtsolifk.ru"
     },
     {
      "id": "furaev-aleksandr-nikolaevich",
      "name": "Фураев Александр Николаевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 52-25"
     },
     {
      "id": "yashkina-elena-nikolaevna",
      "name": "Яшкина Елена Николаевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-74",
+     "email": "chair.biomec@gtsolifk.ru"
     },
     {
      "id": "markaryan-vartanush-stepanovna",
      "name": "Маркарян Вартануш Степановна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-74",
+     "email": "markaryan.vs@gtsolifk.ru"
     },
     {
      "id": "konyukhov-vladimir-georgievich",
      "name": "Конюхов Владимир Георгиевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-74",
+     "email": "chair.biomec@gtsolifk.ru"
     },
     {
      "id": "vagin-andrey-yurevich",
      "name": "Вагин Андрей Юрьевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-25",
+     "email": "chair.biomec@gtsolifk.ru"
     },
     {
      "id": "tarkhanov-ivan-vladimirovich",
      "name": "Тарханов Иван Владимирович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-25",
+     "email": "chair.biomec@gtsolifk.ru"
     },
     {
      "id": "perlova-vera-vladimirovna",
      "name": "Перлова Вера Владимировна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 52-25",
+     "email": "chair.biomec@gtsolifk.ru"
     },
     {
      "id": "ganina-marta-vladimirovna",
      "name": "Ганина Марта Владимировна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-74",
+     "email": "chair.biomec@gtsolifk.ru"
     },
     {
      "id": "lebedeva-olga-anatolevna",
      "name": "Лебедева Ольга Анатольевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-74",
+     "email": "chair.biomec@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/biomehaniki_i_estestvennonauchnih_distsiplin"
   },
   {
    "id": "anatomii-i-biologicheskoy-antropologii",
@@ -237,39 +318,54 @@
     {
      "id": "grichanova-tatyana-gennadevna",
      "name": "Гричанова Татьяна Геннадьевна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 50-77",
+     "email": "grichanova.tg@gtsolifk.ru"
     },
     {
      "id": "savostyanova-evgeniya-borisovna",
      "name": "Савостьянова Евгения Борисовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-69",
+     "email": "anatomy@gtsolifk.ru"
     },
     {
      "id": "silaeva-lyudmila-viktorovna",
      "name": "Силаева Людмила Викторовна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 50-70",
+     "email": "anatomy@gtsolifk.ru"
     },
     {
      "id": "ilin-aleksandr-borisovich",
      "name": "Ильин Александр Борисович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-71",
+     "email": "anatomy@gtsolifk.ru"
     },
     {
      "id": "meshtel-aleksandr-vitalievich",
      "name": "Мештель Александр Виталиевич",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 50-68",
+     "email": "anatomy@gtsolifk.ru"
     },
     {
      "id": "glazunova-elena-aleksandrovna",
      "name": "Глазунова Елена Александровна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-68",
+     "email": "anatomy@gtsolifk.ru"
     },
     {
      "id": "anisimova-marina-valerevna",
      "name": "Анисимова Марина Валерьевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-68",
+     "email": "anatomy@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/anatomii_i_biologicheskoy_antropologii"
   },
   {
    "id": "futbola",
@@ -278,17 +374,23 @@
     {
      "id": "leksakov-andrey-vladimirovich",
      "name": "Лексаков Андрей Владимирович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 52-69",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "kotov-yuriy-nikolaevich",
      "name": "Котов Юрий Николаевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-30",
+     "email": "chair.handball@gtsolifk.ru"
     },
     {
      "id": "belyakov-aleksandr-konstantinovich",
      "name": "Беляков Александр Константинович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-27",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "makeev-pavel-viktorovich",
@@ -303,27 +405,37 @@
     {
      "id": "polishkis-mikhail-mikhaylovich",
      "name": "Полишкис Михаил Михайлович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-29",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "shagin-nikita-igorevich",
      "name": "Шагин Никита Игоревич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-27",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "chigarev-nikolay-nikolaevich",
      "name": "Чигарев Николай Николаевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-30",
+     "email": "chair.handball@gtsolifk.ru"
     },
     {
      "id": "pokataev-andrey-vyacheslavovich",
      "name": "Покатаев Андрей Вячеславович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-27",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "shalygin-denis-aleksandrovich",
      "name": "Шалыгин Денис Александрович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-27",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "divankuliev-dovlet-gaipovich",
@@ -333,39 +445,53 @@
     {
      "id": "shadrin-aleksandr-sergeevich",
      "name": "Шадрин Александр Сергеевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-28",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "nesmelov-aleksandr-alekseevich",
      "name": "Несмелов Александр Алексеевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-28",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "furukina-mariya-sergeevna",
      "name": "Фурукина Мария Сергеевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-30",
+     "email": "chair.handball@gtsolifk.ru"
     },
     {
      "id": "kolyshkina-ekaterina-olegovna",
      "name": "Колышкина Екатерина Олеговна",
-     "position": "преподаватель, специалист по учебно-методической работе"
+     "position": "преподаватель, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-27",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "varganova-olga-aleksandrovna",
      "name": "Варганова Ольга Александровна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-27",
+     "email": "chair.football@gtsolifk.ru"
     },
     {
      "id": "abagero-irina-vladimirovna",
      "name": "Абагеро Ирина Владимировна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-30"
     },
     {
      "id": "varganova-anastasiya-antonovna",
      "name": "Варганова Анастасия Антоновна",
-     "position": "заведующий лабораторией"
+     "position": "заведующий лабораторией",
+     "phone": "+7 (495) 961-31-11, доб. 53-27",
+     "email": "chair.football@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_futbola"
   },
   {
    "id": "fitnesa-rekreatsii-i-turizma",
@@ -375,17 +501,23 @@
     {
      "id": "pavlov-evgeniy-aleksandrovich",
      "name": "Павлов Евгений Александрович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-61",
+     "email": "pavlov.ea@gtsolifk.ru"
     },
     {
      "id": "dusenko-svetlana-viktorovna",
      "name": "Дусенко Светлана Викторовна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 51-47",
+     "email": "dusenko.sv@gtsolifk.ru"
     },
     {
      "id": "avilova-natalya-leonidovna",
      "name": "Авилова Наталья Леонидовна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-48",
+     "email": "avilova.nl@gtsolifk.ru"
     },
     {
      "id": "adamova-ilona-vladimirovna",
@@ -395,74 +527,95 @@
     {
      "id": "petracheva-irina-vitalevna",
      "name": "Петрачева Ирина Витальевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-66"
     },
     {
      "id": "chepkasova-irina-vladimirovna",
      "name": "Чепкасова Ирина Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-10",
+     "email": "belyakova.iv@gtsolifk.ru"
     },
     {
      "id": "sirakovskaya-yana-vadimovna",
      "name": "Сираковская Яна Вадимовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-35",
+     "email": "sirakovskaya.yv@gtsolifk.ru"
     },
     {
      "id": "tsapuk-dmitriy-anatolevich",
      "name": "Цапук Дмитрий Анатольевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-48",
+     "email": "tsapuk.da@gtsolifk.ru"
     },
     {
      "id": "rezenova-mariya-vladimirovna",
      "name": "Резенова Мария Владимировна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-40"
     },
     {
      "id": "shevchenko-irina-yurevna",
      "name": "Шевченко Ирина Юрьевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-40"
     },
     {
      "id": "andropova-elena-mikhaylovna",
      "name": "Андропова Елена Михайловна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-38"
     },
     {
      "id": "gridchina-lyudmila-anatolevna",
      "name": "Гридчина Людмила Анатольевна",
-     "position": "старший преподаватель, специалист по учебно-методической работе"
+     "position": "старший преподаватель, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-65",
+     "email": "gridchina.la@gtsolifk.ru"
     },
     {
      "id": "rogacheva-olga-alekseevna",
      "name": "Рогачева Ольга Алексеевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-48",
+     "email": "rogacheva.oa@gtsolifk.ru"
     },
     {
      "id": "mitin-aleksandr-alekseevich",
      "name": "Митин Александр Алексеевич",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-35"
     },
     {
      "id": "surovtsova-veronika-yurevna",
      "name": "Суровцова Вероника Юрьевна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-35"
     },
     {
      "id": "makhrova-ekaterina-vadimovna",
      "name": "Махрова Екатерина Вадимовна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-61",
+     "email": "mahrova.ev@gtsolifk.ru"
     },
     {
      "id": "bronnikova-yuliya-konstantinovna",
      "name": "Бронникова Юлия Константиновна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-40"
     },
     {
      "id": "samoylov-nikita-sergeevich",
      "name": "Самойлов Никита Сергеевич",
-     "position": "инструктор по спорту"
+     "position": "инструктор по спорту",
+     "phone": "+7 (495) 961-31-11, доб. 51-35"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/kafedra_fitnesa_rekreatsii_i_turizma"
   },
   {
    "id": "fizicheskoy-reabilitatsii-massazha-i-ozdorovitelnoy-fiziches",
@@ -471,79 +624,100 @@
     {
      "id": "tkachenko-svetlana-anatolevna",
      "name": "Ткаченко Светлана Анатольевна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-36",
+     "email": "tkachenko.sa@gtsolifk.ru"
     },
     {
      "id": "dobrynina-lyudmila-aleksandrovna",
      "name": "Добрынина Людмила Александровна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-11",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "ermolaeva-yuliya-anatolevna",
      "name": "Ермолаева Юлия Анатольевна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "ermolaeva.ya@gtsolifk.ru"
     },
     {
      "id": "vlasova-natalya-anatolevna",
      "name": "Власова Наталья Анатольевна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "lunina-natalya-vladimirovna",
      "name": "Лунина Наталья Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "shvygina-natalya-vladimirovna",
      "name": "Швыгина Наталья Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "mikhaylova-marina-gennadevna",
      "name": "Михайлова Марина Геннадьевна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "inst.trrf@gtsolifk.ru"
     },
     {
      "id": "ivanova-nadezhda-leonidovna",
      "name": "Иванова Надежда Леонидовна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "ivanova.nl@gtsolifk.ru"
     },
     {
      "id": "salamatov-mikhail-borisovich",
      "name": "Саламатов Михаил Борисович",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "larin-aleksandr-vladimirovich",
      "name": "Ларин Александр Владимирович",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "kostyaeva-viktoriya-vasilevna",
      "name": "Костяева Виктория Васильевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-89",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "mikhaylin-grigoriy-andreevich",
      "name": "Михайлин Григорий Андреевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "lopukhov-oleg-evgenevich",
      "name": "Лопухов Олег Евгеньевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "sobchuk-irina-vladimirovna",
      "name": "Собчук Ирина Владимировна",
-     "position": "старший преподаватель, специалист по учебно-методической работе"
+     "position": "старший преподаватель, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-99",
+     "email": "lfk@gtsolifk.ru"
     },
     {
      "id": "chulyukova-natalya-aleksandrovna",
      "name": "Чулюкова Наталья Александровна",
-     "position": "преподаватель, специалист по учебно-методической работе"
+     "position": "преподаватель, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-12",
+     "email": "lfk@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/fizicheskoy_reabilitatsii_massaga_i_ozdorovitelnoy_fizicheskoy_kulturi_im_im_sarkizova-serazini"
   },
   {
    "id": "fiziologii",
@@ -552,64 +726,85 @@
     {
      "id": "melnikov-andrey-aleksandrovich",
      "name": "Мельников Андрей Александрович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 51-85",
+     "email": "melnikov.aa@gtsolifk.ru"
     },
     {
      "id": "sonkin-valentin-dmitrievich",
      "name": "Сонькин Валентин Дмитриевич",
-     "position": "профессор"
+     "position": "профессор",
+     "email": "sonkin.vd@gtsolifk.ru"
     },
     {
      "id": "zakhareva-natalya-nikolaevna",
      "name": "Захарьева Наталья Николаевна",
-     "position": "профессор"
+     "position": "профессор",
+     "email": "zakhareva.nn@gtsolifk.ru"
     },
     {
      "id": "levushkin-sergey-petrovich",
      "name": "Левушкин Сергей Петрович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 51-98",
+     "email": "levushkin.sp@gtsolifk.ru"
     },
     {
      "id": "belyaev-fedor-pavlovich",
      "name": "Беляев Федор Павлович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-86",
+     "email": "belyaev.fp@gtsolifk.ru"
     },
     {
      "id": "bogdanova-tatyana-borisovna",
      "name": "Богданова Татьяна Борисовна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "bogdanova.tb@gtsolifk.ru"
     },
     {
      "id": "andreeva-albina-maratovna",
      "name": "Андреева Альбина Маратовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-86",
+     "email": "andreeva.am@gtsolifk.ru"
     },
     {
      "id": "shiryaeva-taisiya-petrovna",
      "name": "Ширяева Таисия Петровна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-85",
+     "email": "shiryaeva.tp@gtsolifk.ru"
     },
     {
      "id": "belitskaya-lyubov-aleksandrovna",
      "name": "Белицкая Любовь Александровна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-86",
+     "email": "belitskaya.la@gtsolifk.ru"
     },
     {
      "id": "utkina-tatyana-sergeevna",
      "name": "Уткина Татьяна Сергеевна",
-     "position": "заведующая лабораторией"
+     "position": "заведующая лабораторией",
+     "phone": "+7 (495) 961-31-11, доб. 51-86",
+     "email": "utkina.ts@gtsolifk.ru"
     },
     {
      "id": "mazurin-veniamin-borisovich",
      "name": "Мазурин Вениамин Борисович",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 51-87"
     },
     {
      "id": "peganov-aleksandr-yurevich",
      "name": "Пеганов Александр Юрьевич",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 51-87",
+     "email": "chair.physiology@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/fiziologii"
   },
   {
    "id": "teorii-i-metodiki-khokkeya-im-a-v-tarasova",
@@ -618,49 +813,67 @@
     {
      "id": "uryupin-nikolay-nikolaevich",
      "name": "Урюпин Николай Николаевич",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 50-19",
+     "email": "chair.hokkey@gtsolifk.ru"
     },
     {
      "id": "krutskikh-vladislav-vyacheslavovich",
      "name": "Крутских Владислав Вячеславович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-21",
+     "email": "chair.hokkey@gtsolifk.ru"
     },
     {
      "id": "cherenkov-dmitriy-robertovich",
      "name": "Черенков Дмитрий Робертович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-21"
     },
     {
      "id": "davydov-aleksey-petrovich",
      "name": "Давыдов Алексей Петрович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-21",
+     "email": "chair.hokkey@gtsolifk.ru"
     },
     {
      "id": "sasin-aleksey-nikolaevich",
      "name": "Сасин Алексей Николаевич",
-     "position": "заведующий лабораторией"
+     "position": "заведующий лабораторией",
+     "phone": "+7 (495) 961-31-11, доб. 50-21",
+     "email": "chair.hokkey@gtsolifk.ru"
     },
     {
      "id": "kostichkin-pavel-viktorovich",
      "name": "Костичкин Павел Викторович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 50-21",
+     "email": "chair.hokkey@gtsolifk.ru"
     },
     {
      "id": "russu-andrey-anatolevich",
      "name": "Руссу Андрей Анатольевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 50-21",
+     "email": "chair.hokkey@gtsolifk.ru"
     },
     {
      "id": "zakharov-artemiy-andreevich",
      "name": "Захаров Артемий Андреевич",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11, доб. 50-21",
+     "email": "chair.hokkey@gtsolifk.ru"
     },
     {
      "id": "shmeleva-svetlana-anatolevna",
      "name": "Шмелева Светлана Анатольевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-21",
+     "email": "chair.hokkey@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_hokkeya_im_av_tarasova"
   },
   {
    "id": "teorii-i-metodiki-fekhtovaniya-sovremennogo-pyatiborya-i-str",
@@ -669,27 +882,37 @@
     {
      "id": "ryzhkova-larisa-gennadevna",
      "name": "Рыжкова Лариса Геннадьевна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-94",
+     "email": "chair.fencing@gtsolifk.ru"
     },
     {
      "id": "movshovich-alek-davydovich",
      "name": "Мовшович Алек Давыдович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-90",
+     "email": "chair.fencing@gtsolifk.ru"
     },
     {
      "id": "moiseev-aleksandr-borisovich",
      "name": "Моисеев Александр Борисович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-90",
+     "email": "chair.fencing@gtsolifk.ru"
     },
     {
      "id": "shamis-vladislav-viktorovich",
      "name": "Шамис Владислав Викторович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-90",
+     "email": "chair.fencing@gtsolifk.ru"
     },
     {
      "id": "borodin-aleksey-yurevich",
      "name": "Бородин Алексей Юрьевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-34",
+     "email": "chair.fencing@gtsolifk.ru"
     },
     {
      "id": "polishkite-kotrina",
@@ -699,24 +922,33 @@
     {
      "id": "neposhlova-elizaveta-mikhaylovna",
      "name": "Непошлова Елизавета Михайловна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-90",
+     "email": "chair.fencing@gtsolifk.ru"
     },
     {
      "id": "taktashov-eduard-islyamovich",
      "name": "Такташов Эдуард Ислямович",
-     "position": "начальник тира"
+     "position": "начальник тира",
+     "phone": "+7 (495) 961-31-11, доб. 54-33",
+     "email": "chair.fencing@gtsolifk.ru"
     },
     {
      "id": "krivova-elena-borisovna",
      "name": "Кривова Елена Борисовна",
-     "position": "инженер"
+     "position": "инженер",
+     "phone": "+7 (495) 961-31-11, доб. 54-32",
+     "email": "chair.fencing@gtsolifk.ru"
     },
     {
      "id": "burina-tatyana-sergeevna",
      "name": "Бурина Татьяна Сергеевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-32",
+     "email": "chair.fencing@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_fehtovaniya_sovremennogo_pyatiborya_i_strelkovih_vidov_sporta"
   },
   {
    "id": "teorii-i-metodiki-tyazheloatleticheskikh-vidov-sporta-im-a-s",
@@ -725,44 +957,57 @@
     {
      "id": "skotnikov-vitaliy-fedorovich",
      "name": "Скотников Виталий Федорович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-59",
+     "email": "chair.wl@gtsolifk.ru"
     },
     {
      "id": "smirnov-vyacheslav-evgenevich",
      "name": "Смирнов Вячеслав Евгеньевич",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "chair.wl@gtsolifk.ru"
     },
     {
      "id": "gromov-vasiliy-andreevich",
      "name": "Громов Василий Андреевич",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "gromov.va@gtsolifk.ru"
     },
     {
      "id": "atlas-aleksandr-aleksandrovich",
      "name": "Атлас Александр Александрович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-46",
+     "email": "chair.wl@gtsolifk.ru"
     },
     {
      "id": "solovev-vasiliy-borisovich",
      "name": "Соловьев Василий Борисович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-46",
+     "email": "chair.wl@gtsolifk.ru"
     },
     {
      "id": "vorobev-sergey-viktorovich",
      "name": "Воробьев Сергей Викторович",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "email": "chair.wl@gtsolifk.ru"
     },
     {
      "id": "kurbonzoda-shodmoni-burkhon",
      "name": "Курбонзода Шодмони Бурхон",
-     "position": "лаборант"
+     "position": "лаборант",
+     "phone": "+7 (495) 961-31-11, доб. 53-50",
+     "email": "kurbonzoda.sb@gtsolifk.ru"
     },
     {
      "id": "vorobev-viktor-sergeevich",
      "name": "Воробьев Виктор Сергеевич",
-     "position": "заведующий лабораторией"
+     "position": "заведующий лабораторией",
+     "phone": "+7 (495) 961-31-11"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_tyageloatleticheskih_vidov_sporta_im_as_medvedeva"
   },
   {
    "id": "teorii-i-metodiki-tennisa-nastolnogo-tennisa-i-badmintona",
@@ -771,37 +1016,49 @@
     {
      "id": "dzhumok-aleksandr-aleksandrovich",
      "name": "Джумок Александр Александрович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 50-39",
+     "email": "chair.tennis@gtsolifk.ru"
     },
     {
      "id": "barchukova-galina-vasilevna",
      "name": "Барчукова Галина Васильевна",
-     "position": "профессор"
+     "position": "профессор",
+     "email": "barchukova.gv@gtsolifk.ru"
     },
     {
      "id": "ivanova-tatyana-semenovna",
      "name": "Иванова Татьяна Семеновна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 50-36",
+     "email": "chair.tennis@gtsolifk.ru"
     },
     {
      "id": "laptev-aleksey-ivanovich",
      "name": "Лаптев Алексей Иванович",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "laptev.ai@gtsolifk.ru"
     },
     {
      "id": "ivanov-leonid-yurevich",
      "name": "Иванов Леонид Юрьевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-36",
+     "email": "chair.tennis@gtsolifk.ru"
     },
     {
      "id": "stepanova-mariya-evgenevna",
      "name": "Степанова Мария Евгеньевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-38",
+     "email": "stepanova.me@gtsolifk.ru"
     },
     {
      "id": "abitaev-isa-omarovich",
      "name": "Абитаев Иса Омарович",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 50-36",
+     "email": "chair.tennis@gtsolifk.ru"
     },
     {
      "id": "rakitina-marina-anatolevna",
@@ -811,22 +1068,30 @@
     {
      "id": "melnichuk-konstantin-nikolaevich",
      "name": "Мельничук Константин Николаевич",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11",
+     "email": "chair.tennis@gtsolifk.ru"
     },
     {
      "id": "ivanova-karina-aleksandrovna",
      "name": "Иванова Карина Александровна",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11",
+     "email": "chair.tennis@gtsolifk.ru"
     },
     {
      "id": "egorov-sergey-vladimirovich",
      "name": "Егоров Сергей Владимирович",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-36",
+     "email": "chair.tennis@gtsolifk.ru"
     },
     {
      "id": "egorova-nadezhda-vasilevna",
      "name": "Егорова Надежда Васильевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 51-03",
+     "email": "egorova.na@gtsolifk.ru"
     },
     {
      "id": "shipunov-saveliy-dmitrievich",
@@ -836,9 +1101,12 @@
     {
      "id": "shabanova-anastasiya-vitalevna",
      "name": "Шабанова Анастасия Витальевна",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11",
+     "email": "chabanova.av@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_tennisa_nastolnogo_tennisa_i_badmintona"
   },
   {
    "id": "teorii-i-metodiki-tantsevalnogo-sporta",
@@ -879,7 +1147,8 @@
      "name": "Ракитина Татьяна Михайловна",
      "position": "старший преподаватель"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/todiki_tantsevalnogo_sporta"
   },
   {
    "id": "teorii-i-metodiki-lyzhnykh-vidov-sporta",
@@ -888,44 +1157,57 @@
     {
      "id": "batalov-aleksey-grigorevich",
      "name": "Баталов Алексей Григорьевич",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-76",
+     "email": "batalov.ag@gtsolifk.ru"
     },
     {
      "id": "burdina-marina-evgenevna",
      "name": "Бурдина Марина Евгеньевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-75",
+     "email": "burdina.me@gtsolifk.ru"
     },
     {
      "id": "dubrovinskiy-sergey-sergeevich",
      "name": "Дубровинский Сергей Сергеевич",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "dubrovinskiy.ss@gtsolifk.ru"
     },
     {
      "id": "senatskaya-valentina-gennadevna",
      "name": "Сенатская Валентина Геннадьевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "email": "senatskaya.vg@gtsolifk.ru"
     },
     {
      "id": "shchukin-andrey-vladimirovich",
      "name": "Щукин Андрей Владимирович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "email": "shchukin.av@gtsolifk.ru"
     },
     {
      "id": "lunina-anzhelika-viktorovna",
      "name": "Лунина Анжелика Викторовна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "email": "lunina.av@gtsolifk.ru"
     },
     {
      "id": "khitrova-anna-andreevna",
      "name": "Хитрова Анна Андреевна",
-     "position": "старший преподаватель, специалист по учебно-методической работе"
+     "position": "старший преподаватель, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-75",
+     "email": "khitrova.aa@gtsolifk.ru"
     },
     {
      "id": "dzunovich-anna-sergeevna",
      "name": "Дзунович Анна Сергеевна",
-     "position": "специалист по учебно-методической работе, преподаватель"
+     "position": "специалист по учебно-методической работе, преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-75",
+     "email": "dzunovich.as@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/kafedra_teorii_i_metodiki_lignih_vidov_sporta"
   },
   {
    "id": "teorii-i-metodiki-legkoy-atletiki-im-n-g-ozolina",
@@ -934,59 +1216,79 @@
     {
      "id": "mirzoev-oktay-mirza-ogly-oktay-mirzoevich",
      "name": "Мирзоев Октай Мирза оглы (Октай Мирзоевич)",
-     "position": "исполняющий обязанности заведующего кафедрой"
+     "position": "исполняющий обязанности заведующего кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-30",
+     "email": "mirzoev.om@gtsolifk.ru"
     },
     {
      "id": "syachin-vladimir-dmitrievich",
      "name": "Сячин Владимир Дмитриевич",
-     "position": "профессор"
+     "position": "профессор",
+     "email": "syachin.vd@gtsolifk.ru"
     },
     {
      "id": "mironenko-igor-nikolaevich",
      "name": "Мироненко Игорь Николаевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-30",
+     "email": "mironenko.in@gtsolifk.ru"
     },
     {
      "id": "gridasova-elena-yakovlevna",
      "name": "Гридасова Елена Яковлевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-22",
+     "email": "gridasova.ey@gtsolifk.ru"
     },
     {
      "id": "nikonov-vladimir-igorevich",
      "name": "Никонов Владимир Игоревич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-56",
+     "email": "nikonov.vi@gtsolifk.ru"
     },
     {
      "id": "ketlerova-evgeniya-svyatoslavna",
      "name": "Кетлерова Евгения Святославна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-22",
+     "email": "ketlerova.es@gtsolifk.ru"
     },
     {
      "id": "tatarinov-ivan-dmitrievich",
      "name": "Татаринов Иван Дмитриевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-10",
+     "email": "tatarinov.id@gtsolifk.ru"
     },
     {
      "id": "stepanova-anastasiya-maksimovna",
      "name": "Степанова Анастасия Максимовна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-76",
+     "email": "stepanova.am@gtsolifk.ru"
     },
     {
      "id": "uskov-ivan-vladimirovich",
      "name": "Усков Иван Владимирович",
-     "position": "старший преподаватель, специалист по учебно-методической работе"
+     "position": "старший преподаватель, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-93",
+     "email": "uskov.iv@gtsolifk.ru"
     },
     {
      "id": "pavlovskiy-mikhail-aleksandrovich",
      "name": "Павловский Михаил Александрович",
-     "position": "специалист по учебно-методической работе, ассистент"
+     "position": "специалист по учебно-методической работе, ассистент",
+     "email": "pavlovskiy.ma@gtsolifk.ru"
     },
     {
      "id": "fazliev-ilnaz-faritovich",
      "name": "Фазлиев Ильназ Фаритович",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_legkoy_atletiki_im_ng_ozolina"
   },
   {
    "id": "teorii-i-metodiki-konkobezhnogo-sporta-figurnogo-kataniya-na",
@@ -995,17 +1297,23 @@
     {
      "id": "razinov-yuriy-ivanovich",
      "name": "Разинов Юрий Иванович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 52-33",
+     "email": "razinov.yi@gtsolifk.ru"
     },
     {
      "id": "zhgun-elena-vyacheslavovna",
      "name": "Жгун Елена Вячеславовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-77",
+     "email": "skating@gtsolifk.ru"
     },
     {
      "id": "shevchenko-ekaterina-izosimovna",
      "name": "Шевченко Екатерина Изосимовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-81",
+     "email": "shevchenko.ei@gtsolifk.ru"
     },
     {
      "id": "kitaeva-natalya-vladimirovna",
@@ -1015,29 +1323,40 @@
     {
      "id": "kuznetsova-larisa-vladimirovna",
      "name": "Кузнецова Лариса Владимировна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-74",
+     "email": "kuznetsova.lv@gtsolifk.ru"
     },
     {
      "id": "tavrikov-evgeniy-evgenevich",
      "name": "Тавриков Евгений Евгеньевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-81",
+     "email": "skating@gtsolifk.ru"
     },
     {
      "id": "ilyanova-anastasiya-valerevna",
      "name": "Ильянова Анастасия Валерьевна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 51-74",
+     "email": "skating@gtsolifk.ru"
     },
     {
      "id": "mikhaylyuk-vinera-rimovna",
      "name": "Михайлюк Винера Римовна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 51-74",
+     "email": "skating@gtsolifk.ru"
     },
     {
      "id": "smirnova-anastasiya-vladimirovna",
      "name": "Смирнова Анастасия Владимировна",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7(495) 961-31-11, доб. 51-74",
+     "email": "skating@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_konkobegnogo_sporta_figurnogo_kataniya_na_konkah_i_kyorlinga"
   },
   {
    "id": "teorii-i-metodiki-kompyuternogo-sporta-shakhmat-i-tsifrovykh",
@@ -1046,7 +1365,9 @@
     {
      "id": "novoselov-mikhail-alekseevich",
      "name": "Новоселов Михаил Алексеевич",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-54",
+     "email": "novoselov.ma@gtsolifk.ru"
     },
     {
      "id": "gabbazova-asyya-yakupovna",
@@ -1056,39 +1377,52 @@
     {
      "id": "ermakov-aleksey-valerevich",
      "name": "Ермаков Алексей Валерьевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-41",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "antonova-nadezhda-pavlovna",
      "name": "Антонова Надежда Павловна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-29",
+     "email": "antonova.np@gtsolifk.ru"
     },
     {
      "id": "akimushkin-roman-valerevich",
      "name": "Акимушкин Роман Валерьевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-29",
+     "email": "akimushkin.rv@gtsolifk.ru"
     },
     {
      "id": "chigrov-andrey-sergeevich",
      "name": "Чигров Андрей Сергеевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-19",
+     "email": "chigrov.as@gtsolifk.ru"
     },
     {
      "id": "barybin-denis-aleksandrovich",
      "name": "Барыбин Денис Александрович",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-53",
+     "email": "barybin.da@gtsolifk.ru"
     },
     {
      "id": "zubov-dmitriy-sergeevich",
      "name": "Зубов Дмитрий Сергеевич",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-19"
     },
     {
      "id": "loginov-sergey-evgenevich",
      "name": "Логинов Сергей Евгеньевич",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/dtsport"
   },
   {
    "id": "teorii-i-metodiki-edinoborstv",
@@ -1097,64 +1431,89 @@
     {
      "id": "ivanchenko-mikhail-mikhaylovich",
      "name": "Иванченко Михаил Михайлович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-56",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "tabakov-sergey-evgenevich",
      "name": "Табаков Сергей Евгеньевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 52-41",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "shevtsov-aleksey-viktorovich",
      "name": "Шевцов Алексей Викторович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 52-77",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "popov-dmitriy-vladimirovich",
      "name": "Попов Дмитрий Владимирович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 52-41",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "konakov-aleksandr-vladimirovich",
      "name": "Конаков Александр Владимирович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 52-41",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "dmitriev-roman-mikhaylovich",
      "name": "Дмитриев Роман Михайлович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 52-41",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "garkin-nikolay-ivanovich",
      "name": "Гаркин Николай Иванович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-51",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "kolesov-andrey-anatolevich",
      "name": "Колесов Андрей Анатольевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-51",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "ermakov-aleksey-valerevich",
      "name": "Ермаков Алексей Валерьевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-41",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "makhmudov-mekhtikhan-magomedkhanovich",
      "name": "Махмудов Мехтихан Магомедханович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-51",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "bokova-evgeniya-rashidovna",
      "name": "Бокова Евгения Рашидовна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 52-41",
+     "email": "chair.ed@gtsolifk.ru"
     },
     {
      "id": "maryanyan-suren-aramovich",
      "name": "Марьянян Сурен Арамович",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11, доб. 52-41",
+     "email": "chair.ed@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_edinoborstv"
   },
   {
    "id": "teorii-i-metodiki-grebnogo-i-parusnogo-sporta-im-a-f-komarov",
@@ -1163,34 +1522,47 @@
     {
      "id": "krylov-leonid-yurevich",
      "name": "Крылов Леонид Юрьевич",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-95",
+     "email": "rowing@gtsolifk.ru"
     },
     {
      "id": "dolgova-evgeniya-vitalevna",
      "name": "Долгова Евгения Витальевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-02",
+     "email": "rowing@gtsolifk.ru"
     },
     {
      "id": "epifanova-liliya-nikolaevna",
      "name": "Епифанова Лилия Николаевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-20",
+     "email": "rowing@gtsolifk.ru"
     },
     {
      "id": "koloskov-filipp-aleksandrovich",
      "name": "Колосков Филипп Александрович",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-70",
+     "email": "tf@gtsolifk.ru"
     },
     {
      "id": "ilchenko-mariya-anatolevna",
      "name": "Ильченко Мария Анатольевна",
-     "position": "специалист по учебно-методической работе, преподаватель"
+     "position": "специалист по учебно-методической работе, преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-17",
+     "email": "rowing@gtsolifk.ru"
     },
     {
      "id": "bereza-ekaterina-ivanovna",
      "name": "Береза Екатерина Ивановна",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11",
+     "email": "rowing@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_grebnogo_i_parusnogo_sporta_im_af_komarova"
   },
   {
    "id": "teorii-i-metodiki-gimnastiki",
@@ -1199,32 +1571,43 @@
     {
      "id": "novikova-larisa-aleksandrovna",
      "name": "Новикова Лариса Александровна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-44",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "lisitskaya-tatyana-solomonovna",
      "name": "Лисицкая Татьяна Соломоновна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "kuvshinnikova-svetlana-anushevanovna",
      "name": "Кувшинникова Светлана Анушевановна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "andreasyan-knarik-borisovna",
      "name": "Андреасян Кнарик Борисовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-45"
     },
     {
      "id": "beklemisheva-elena-valerevna",
      "name": "Беклемишева Елена Валерьевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "ivlev-mikhail-petrovich",
      "name": "Ивлев Михаил Петрович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "kozlov-valeriy-vladimirovich",
@@ -1234,12 +1617,16 @@
     {
      "id": "kolesnikova-ekaterina-sergeevna",
      "name": "Колесникова Екатерина Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "mikhalina-galina-mikhaylovna",
      "name": "Михалина Галина Михайловна",
-     "position": "доцент, специалист по учебно-методической работе"
+     "position": "доцент, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "parakhin-viktor-aleksandrovich",
@@ -1249,69 +1636,94 @@
     {
      "id": "rostovtseva-marina-yurevna",
      "name": "Ростовцева Марина Юрьевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "kletsov-konstantin-gennadevich",
      "name": "Клецов Константин Геннадьевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "kletsov.kg@gtsolifk.ru"
     },
     {
      "id": "igonova-ekaterina-sergeevna",
      "name": "Игонова Екатерина Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "popova-elena-yurevna",
      "name": "Попова Елена Юрьевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "dubovitskaya-irina-alekseevna",
      "name": "Дубовицкая Ирина Алексеевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "ivashina-valeriya-vladimirovna",
      "name": "Ивашина Валерия Владимировна",
-     "position": "старший преподаватель, специалист по учебно-методической работе"
+     "position": "старший преподаватель, специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-45"
     },
     {
      "id": "markhakshinova-viktoriya-nikolaevna",
      "name": "Мархакшинова Виктория Николаевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-21",
+     "email": "markhakshinova.vn@gtsolifk.ru"
     },
     {
      "id": "zakharchuk-mariya-sergeevna",
      "name": "Захарчук Мария Сергеевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "serochudinova-natalya-sergeevna",
      "name": "Серочудинова Наталья Сергеевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "bulgacheva-polina-vitalevna",
      "name": "Булгачева Полина Витальевна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "sergeeva-veronika-alekseevna",
      "name": "Сергеева Вероника Алексеевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-45"
     },
     {
      "id": "semenova-larisa-anatolevna",
      "name": "Семенова Лариса Анатольевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     },
     {
      "id": "kalitkina-kristina-vitalevna",
      "name": "Калиткина Кристина Витальевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-45",
+     "email": "chair.gym@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_gimnastiki"
   },
   {
    "id": "teorii-i-metodiki-voleybola",
@@ -1320,44 +1732,61 @@
     {
      "id": "bulykina-larisa-vladimirovna",
      "name": "Булыкина Лариса Владимировна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 52-95",
+     "email": "chair.volleyball@gtsolifk.ru"
     },
     {
      "id": "guba-vladimir-petrovich",
      "name": "Губа Владимир Петрович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 52-95",
+     "email": "chair.volleyball@gtsolifk.ru"
     },
     {
      "id": "grigorev-viktor-anatolevich",
      "name": "Григорьев Виктор Анатольевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-95",
+     "email": "chair.volleyball@gtsolifk.ru"
     },
     {
      "id": "ananin-aleksandr-sergeevich",
      "name": "Ананьин Александр Сергеевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-95",
+     "email": "ananin.as@gtsolifk.ru"
     },
     {
      "id": "efimov-aleksey-sergeevich",
      "name": "Ефимов Алексей Сергеевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-95",
+     "email": "chair.volleyball@gtsolifk.ru"
     },
     {
      "id": "pshenichnaya-aleksandra-mikhaylovna",
      "name": "Пшеничная Александра Михайловна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-95",
+     "email": "chair.volleyball@gtsolifk.ru"
     },
     {
      "id": "sukhanova-alevtina-vasilevna",
      "name": "Суханова Алевтина Васильевна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-95",
+     "email": "chair.volleyball@gtsolifk.ru"
     },
     {
      "id": "pavlova-nina-vladimirovna",
      "name": "Павлова Нина Владимировна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 52-95",
+     "email": "chair.volleyball@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_voleybola"
   },
   {
    "id": "teorii-i-metodiki-vodnykh-vidov-sporta",
@@ -1366,84 +1795,108 @@
     {
      "id": "popov-oleg-igorevich",
      "name": "Попов Олег Игоревич",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 50-26",
+     "email": "popov.oi@gtsolifk.ru"
     },
     {
      "id": "bulgakova-nina-zhanovna",
      "name": "Булгакова Нина Жановна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 50-26",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "maksimova-mariya-nikolaevna",
      "name": "Максимова Мария Николаевна",
-     "position": "профессор"
+     "position": "профессор",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "solomatin-viktor-radievich",
      "name": "Соломатин Виктор Радиевич",
-     "position": "профессор"
+     "position": "профессор",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "chebotareva-irina-vladimirovna",
      "name": "Чеботарева Ирина Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "kolesov-andrey-dmitrievich",
      "name": "Колесов Андрей Дмитриевич",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "kolesov.ad@gtsolifk.ru"
     },
     {
      "id": "nikitina-svetlana-mikhaylovna",
      "name": "Никитина Светлана Михайловна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-32",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "pavlova-tatyana-nikolaevna",
      "name": "Павлова Татьяна Николаевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 50-30",
+     "email": "pavlova.tn@gtsolifk.ru"
     },
     {
      "id": "voytenko-yuriy-leonidovich",
      "name": "Войтенко Юрий Леонидович",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "tabakova-elena-anatolevna",
      "name": "Табакова Елена Анатольевна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "mekhteleva-elena-aleksandrovna",
      "name": "Мехтелева Елена Александровна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11",
+     "email": "mekhteleva.ea@gtsolifk.ru"
     },
     {
      "id": "chistova-natalya-aleksandrovna",
      "name": "Чистова Наталья Александровна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "shakina-elena-evgenevna",
      "name": "Шакина Елена Евгеньевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "vistin-dmitriy-lenardovich",
      "name": "Вистинь Дмитрий Ленардович",
-     "position": "заведующий лабораторией"
+     "position": "заведующий лабораторией",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "korpacheva-alla-vyacheslavovna",
      "name": "Корпачева Алла Вячеславовна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-32",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "sologub-svetlana-lvovna",
      "name": "Сологуб Светлана Львовна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-32",
+     "email": "chair.swimsport@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/kafedra_teorii_i_metodiki_vodnih_vidov_sporta"
   },
   {
    "id": "teorii-i-metodiki-velosipednogo-sporta-triatlona-i-golfa",
@@ -1452,44 +1905,55 @@
     {
      "id": "zakharov-andrey-anatolevich",
      "name": "Захаров Андрей Анатольевич",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "email": "chair.velosport@gtsolifk.ru"
     },
     {
      "id": "yakovlev-boris-anatolevich",
      "name": "Яковлев Борис Анатольевич",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "chair.velosport@gtsolifk.ru"
     },
     {
      "id": "dyshakov-aleksey-sergeevich",
      "name": "Дышаков Алексей Сергеевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-53",
+     "email": "chair.velosport@gtsolifk.ru"
     },
     {
      "id": "butkov-dmitriy-alekseevich",
      "name": "Бутков Дмитрий Алексеевич",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "chair.velosport@gtsolifk.ru"
     },
     {
      "id": "yakovleva-natalya-borisovna",
      "name": "Яковлева Наталья Борисовна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "email": "chair.velosport@gtsolifk.ru"
     },
     {
      "id": "logachev-valeriy-vladimirovich",
      "name": "Логачев Валерий Владимирович",
-     "position": "инженер"
+     "position": "инженер",
+     "email": "chair.velosport@gtsolifk.ru"
     },
     {
      "id": "tyurina-irina-anatolevna",
      "name": "Тюрина Ирина Анатольевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-92",
+     "email": "chair.velosport@gtsolifk.ru"
     },
     {
      "id": "ostrovenko-dmitriy-aleksandrovich",
      "name": "Островенко Дмитрий Александрович",
-     "position": "заведующий лабораторией"
+     "position": "заведующий лабораторией",
+     "email": "chair.velosport@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_velosipednogo_sporta_triatlona_i_golfa"
   },
   {
    "id": "teorii-i-metodiki-basketbola",
@@ -1498,49 +1962,68 @@
     {
      "id": "chernov-sergey-viktorovich",
      "name": "Чернов Сергей Викторович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-57",
+     "email": "chair.basketball@gtsolifk.ru"
     },
     {
      "id": "makeeva-vera-stepanovna",
      "name": "Макеева Вера Степановна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-31",
+     "email": "makeeva.vs@gtsolifk.ru"
     },
     {
      "id": "loseva-irina-vladimirovna",
      "name": "Лосева Ирина Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-25",
+     "email": "loseva.iv@gtsolifk.ru"
     },
     {
      "id": "lapshin-nikolay-aleksandrovich",
      "name": "Лапшин Николай Александрович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-58",
+     "email": "lapshin.na@gtsolifk.ru"
     },
     {
      "id": "fesenko-mariya-sergeevna",
      "name": "Фесенко Мария Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-21",
+     "email": "fesenko.ms@gtsolifk.ru"
     },
     {
      "id": "laptev-sergey-olegovich",
      "name": "Лаптев Сергей Олегович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-58",
+     "email": "laptev.so@gtsolifk.ru"
     },
     {
      "id": "sorokin-sergey-aleksandrovich",
      "name": "Сорокин Сергей Александрович",
-     "position": "старший преподаватель, заведующий лабораторией"
+     "position": "старший преподаватель, заведующий лабораторией",
+     "phone": "+7 (495) 961-31-11, доб. 53-31",
+     "email": "sorokin.sa@gtsolifk.ru"
     },
     {
      "id": "kamenev-andrey-leonidovich",
      "name": "Каменев Андрей Леонидович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-58",
+     "email": "kamenev.al@gtsolifk.ru"
     },
     {
      "id": "komina-elena-nikolaevna",
      "name": "Комина Елена Николаевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-24",
+     "email": "chair.basketball@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_basketbola"
   },
   {
    "id": "teorii-i-metodiki-adaptivnoy-fizicheskoy-kultury",
@@ -1549,49 +2032,65 @@
     {
      "id": "rubtsova-natalya-olegovna",
      "name": "Рубцова Наталья Олеговна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-41",
+     "email": "chair.afk@gtsolifk.ru"
     },
     {
      "id": "mozdokova-yuliya-stepanovna",
      "name": "Моздокова Юлия Степановна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-79"
     },
     {
      "id": "gromova-olga-vladimirovna",
      "name": "Громова Ольга Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-79",
+     "email": "chair.afk@gtsolifk.ru"
     },
     {
      "id": "artamonova-tatyana-viktorovna",
      "name": "Артамонова Татьяна Викторовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-79",
+     "email": "chair.afk@gtsolifk.ru"
     },
     {
      "id": "zhukov-yuriy-yurevich",
      "name": "Жуков Юрий Юрьевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-56"
     },
     {
      "id": "spirina-irina-konstantinovna",
      "name": "Спирина Ирина Константиновна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11"
     },
     {
      "id": "gorokhova-nataliya-petrovna",
      "name": "Горохова Наталия Петровна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-79",
+     "email": "chair.afk@gtsolifk.ru"
     },
     {
      "id": "zhurina-mariya-yurevna",
      "name": "Журина Мария Юрьевна",
-     "position": "заведующий лабораторией, старший преподаватель"
+     "position": "заведующий лабораторией, старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-79",
+     "email": "chair.afk@gtsolifk.ru"
     },
     {
      "id": "karaulov-sergey-vladimirovich",
      "name": "Караулов Сергей Владимирович",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-79",
+     "email": "chair.afk@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teorii_i_metodiki_adaptivnoy_fizicheskoy_kulturi"
   },
   {
    "id": "teoretiko-metodicheskikh-osnov-fizicheskoy-kultury-i-sporta",
@@ -1600,17 +2099,22 @@
     {
      "id": "vovk-sergey-ivanovich",
      "name": "Вовк Сергей Иванович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-56",
+     "email": "vovk.si@gtsolifk.ru"
     },
     {
      "id": "polyanskiy-valeriy-petrovich",
      "name": "Полянский Валерий Петрович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-58"
     },
     {
      "id": "kim-tatyana-konstantinovna",
      "name": "Ким Татьяна Константиновна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-59",
+     "email": "kim.tk@gtsolifk.ru"
     },
     {
      "id": "gasanova-matveeva-zemfira-arif-kyzy",
@@ -1620,44 +2124,59 @@
     {
      "id": "machkanova-elena-vyacheslavovna",
      "name": "Мачканова Елена Вячеславовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-60",
+     "email": "machkanova.ev@gtsolifk.ru"
     },
     {
      "id": "rabadanov-magomedrasul-nadirovich",
      "name": "Рабаданов Магомедрасул Надирович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-60"
     },
     {
      "id": "borisyuk-darya-valerevna",
      "name": "Борисюк Дарья Валерьевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-57",
+     "email": "borisiuk@gtsolifk.ru"
     },
     {
      "id": "sologub-svetlana-lvovna",
      "name": "Сологуб Светлана Львовна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 50-32",
+     "email": "chair.swimsport@gtsolifk.ru"
     },
     {
      "id": "truneva-tatyana-vladimirovna",
      "name": "Трунева Татьяна Владимировна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-57"
     },
     {
      "id": "osipova-anastasiya-aleksandrovna",
      "name": "Осипова Анастасия Александровна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-60",
+     "email": "osipova.aa@gtsolifk.ru"
     },
     {
      "id": "krivenkov-aleksey-aleksandrovich",
      "name": "Кривенков Алексей Александрович",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11, доб. 54-57",
+     "email": "chair.ofkis@gtsolifk.ru"
     },
     {
      "id": "bereza-ekaterina-ivanovna",
      "name": "Береза Екатерина Ивановна",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11",
+     "email": "rowing@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/teoretiko-metodicheskih_osnov_fizicheskoy_kulturi_i_sporta"
   },
   {
    "id": "sportivnoy-meditsiny",
@@ -1666,64 +2185,89 @@
     {
      "id": "smolenskiy-andrey-vadimovich",
      "name": "Смоленский Андрей Вадимович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-97",
+     "email": "chair.sportmed@gtsolifk.ru"
     },
     {
      "id": "belichenko-oleg-igorevich",
      "name": "Беличенко Олег Игоревич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-98",
+     "email": "chair.sportmed@gtsolifk.ru"
     },
     {
      "id": "miroshnikov-aleksandr-borisovich",
      "name": "Мирошников Александр Борисович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-71",
+     "email": "miroshnikov.ab@gtsolifk.ru"
     },
     {
      "id": "zolicheva-svetlana-yurevna",
      "name": "Золичева Светлана Юрьевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-98",
+     "email": "chair.sportmed@gtsolifk.ru"
     },
     {
      "id": "tarasov-aleksandr-viktorovich",
      "name": "Тарасов Александр Викторович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-98",
+     "email": "chair.sportmed@gtsolifk.ru"
     },
     {
      "id": "grigoreva-olga-valentinovna",
      "name": "Григорьева Ольга Валентиновна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11",
+     "email": "grigoreva.ov@gtsolifk.ru"
     },
     {
      "id": "karenov-sergey-rudolfovich",
      "name": "Карьёнов Сергей Рудольфович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-52",
+     "email": "karenov.sr@gtsolifk.ru"
     },
     {
      "id": "kosinova-valeriya-pavlovna",
      "name": "Косинова Валерия Павловна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-98",
+     "email": "chair.sportmed@gtsolifk.ru"
     },
     {
      "id": "sokolova-natalya-leonidovna",
      "name": "Соколова Наталья Леонидовна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-98",
+     "email": "sokolova.nl@gtsolifk.ru"
     },
     {
      "id": "nikulenkova-galina-grigorevna",
      "name": "Никуленкова Галина Григорьевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-98",
+     "email": "chair.sportmed@gtsolifk.ru"
     },
     {
      "id": "filatova-olesya-andreevna",
      "name": "Филатова Олеся Андреевна",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-98",
+     "email": "chair.sportmed@gtsolifk.ru"
     },
     {
      "id": "mikhaylova-rushaniya-bayazitovna",
      "name": "Михайлова Рушания Баязитовна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 54-98",
+     "email": "mikhailova.rb@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/sportivnoy_meditsini"
   },
   {
    "id": "reklamy-svyazey-s-obshchestvennostyu-i-sotsialno-gumanitarny",
@@ -1732,44 +2276,61 @@
     {
      "id": "kosheleva-anna-vladimirovna",
      "name": "Кошелева Анна Владимировна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495)961-31-11, доб. 53-95",
+     "email": "chair.reklamy@gtsolifk.ru"
     },
     {
      "id": "shishova-natalya-sergeevna",
      "name": "Шишова Наталья Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-15",
+     "email": "chair.reklamy@gtsolifk.ru"
     },
     {
      "id": "protasova-nadezhda-vadimovna",
      "name": "Протасова Надежда Вадимовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-15",
+     "email": "chair.reklamy@gtsolifk.ru"
     },
     {
      "id": "melnikov-vitaliy-vladimirovich",
      "name": "Мельников Виталий Владимирович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495)961-31-11, доб. 53-15",
+     "email": "chair.reklamy@gtsolifk.ru"
     },
     {
      "id": "mysenko-galina-vladimirovna",
      "name": "Мысенко Галина Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-86",
+     "email": "mysenko.gv@gtsolifk.ru"
     },
     {
      "id": "mayorov-oleg-vyacheslavovich",
      "name": "Майоров Олег Вячеславович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-15",
+     "email": "chair.reklamy@gtsolifk.ru"
     },
     {
      "id": "barienikova-ekaterina-evgenevna",
      "name": "Бариеникова Екатерина Евгеньевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495)961-31-11, доб. 53-05",
+     "email": "chair.reklamy@gtsolifk.ru"
     },
     {
      "id": "lonshakova-lyudmila-viktorovna",
      "name": "Лоншакова Людмила Викторовна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495)961-31-11, доб. 53-15",
+     "email": "chair.reklamy@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/reklami_svyazey_s_obschestvennostyu_i_sotsialno-gumanitarnih_problem"
   },
   {
    "id": "rezhissury-massovykh-sportivno-khudozhestvennykh-predstavlen",
@@ -1778,69 +2339,95 @@
     {
      "id": "kuzmicheva-elena-vyacheslavovna",
      "name": "Кузьмичева Елена Вячеславовна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-34",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "druzhkov-aleksandr-lvovich",
      "name": "Дружков Александр Львович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "zharikova-elena-leonidovna",
      "name": "Жарикова Елена Леонидовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "kornyushina-ekaterina-olegovna",
      "name": "Корнюшина Екатерина Олеговна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "tomashevich-anastasiya-mikhaylovna",
      "name": "Томашевич Анастасия Михайловна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "konstantinova-svetlana-evgenevna",
      "name": "Константинова Светлана Евгеньевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "makhno-sergey-mikhaylovich",
      "name": "Махно Сергей Михайлович",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "salakhudinova-elena-sergeevna",
      "name": "Салахудинова Елена Сергеевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "drobyshevskaya-natalya-vladimirovna",
      "name": "Дробышевская Наталья Владимировна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "bykov-leonid-aleksandrovich",
      "name": "Быков Леонид Александрович",
-     "position": "заведующий лабораторией"
+     "position": "заведующий лабораторией",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "filippov-egor-dmitrievich",
      "name": "Филиппов Егор Дмитриевич",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "manzyuk-ekaterina-vadimovna",
      "name": "Манзюк Екатерина Вадимовна",
-     "position": "ассистент"
+     "position": "ассистент",
+     "email": "chair.sportregis@gtsolifk.ru"
     },
     {
      "id": "shein-vyacheslav-mikhaylovich",
      "name": "Шеин Вячеслав Михайлович",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-39",
+     "email": "chair.sportregis@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/regissuri_massovih_sportivno-hudogestvennih_predstavleniy_im_va_gubanova"
   },
   {
    "id": "psikhologii-filosofii-i-sotsiologii",
@@ -1849,74 +2436,102 @@
     {
      "id": "baykovskiy-yuriy-viktorovich",
      "name": "Байковский Юрий Викторович",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 50-92",
+     "email": "baikovskiy.yv@gtsolifk.ru"
     },
     {
      "id": "ismailov-asomiddin-ismailovich",
      "name": "Исмаилов Асомиддин Исмаилович",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-45",
+     "email": "chair.psychology@gtsolifk.ru"
     },
     {
      "id": "lubysheva-lyudmila-ivanovna",
      "name": "Лубышева Людмила Ивановна",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 53-22",
+     "email": "lubysheva.li@gtsolifk.ru"
     },
     {
      "id": "moskvina-nina-viktorovna",
      "name": "Москвина Нина Викторовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-68",
+     "email": "chair.psychology@gtsolifk.ru"
     },
     {
      "id": "shumova-nataliya-sergeevna",
      "name": "Шумова Наталия Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-32",
+     "email": "chair.psychology@gtsolifk.ru"
     },
     {
      "id": "sopov-vladimir-fedorovich",
      "name": "Сопов Владимир Федорович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11",
+     "email": "chair.psychology@gtsolifk.ru"
     },
     {
      "id": "grzhebina-lyudmila-mikhaylovna",
      "name": "Гржебина Людмила Михайловна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-58",
+     "email": "chair.psychology@gtsolifk.ru"
     },
     {
      "id": "voat-aleksey-aleksandrovich",
      "name": "Воат Алексей Александрович",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11",
+     "email": "chair.gump@gtsolifk.ru"
     },
     {
      "id": "titova-galina-sergeevna",
      "name": "Титова Галина Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-27",
+     "email": "chair.psychology@gtsolifk.ru"
     },
     {
      "id": "romanenko-anna-yurevna",
      "name": "Романенко Анна Юрьевна",
-     "position": "доцент"
+     "position": "доцент",
+     "email": "romanenko.ay@gtsolifk.ru"
     },
     {
      "id": "khoreva-yuliya-aleksandrovna",
      "name": "Хорева Юлия Александровна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-68",
+     "email": "chair.psychology@gtsolifk.ru"
     },
     {
      "id": "khalimulina-rimma-sabitovna",
      "name": "Халимулина Римма Сабитовна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-80",
+     "email": "khalimulina.rs@gtsolifk.ru"
     },
     {
      "id": "afanaseva-natalya-nikolaevna",
      "name": "Афанасьева Наталья Николаевна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-96",
+     "email": "chair.psychology@gtsolifk.ru"
     },
     {
      "id": "gromova-zoya-vladimirovna",
      "name": "Громова Зоя Владимировна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 52-26",
+     "email": "chair.psychology@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/psihologii_filosofii_i_sotsiologii"
   },
   {
    "id": "pedagogiki",
@@ -1925,49 +2540,68 @@
     {
      "id": "levchenkova-tatyana-viktorovna",
      "name": "Левченкова Татьяна Викторовна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 54-64",
+     "email": "levchenkova.tv@gtsolifk.ru"
     },
     {
      "id": "neverkovich-sergey-dmitrievich",
      "name": "Неверкович Сергей Дмитриевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-63",
+     "email": "neverkovich.sd@gtsolifk.ru"
     },
     {
      "id": "germanov-gennadiy-nikolaevich",
      "name": "Германов Геннадий Николаевич",
-     "position": "профессор"
+     "position": "профессор",
+     "phone": "+7 (495) 961-31-11, доб. 54-63",
+     "email": "germanov.gn@gtsolifk.ru"
     },
     {
      "id": "kiseleva-elena-vladimirovna",
      "name": "Киселёва Елена Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-63",
+     "email": "kiseleva.ev@gtsolifk.ru"
     },
     {
      "id": "aronova-tatyana-vladimirovna",
      "name": "Аронова Татьяна Владимировна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-63",
+     "email": "aronova.tv@gtsolifk.ru"
     },
     {
      "id": "tsakaev-saydamin-shamaevich",
      "name": "Цакаев Сайдамин Шамаевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-63",
+     "email": "tsakaev.ss@gtsolifk.ru"
     },
     {
      "id": "olkhovik-tatyana-nikolaevna",
      "name": "Ольховик Татьяна Николаевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-63",
+     "email": "olkhovik.tn@gtsolifk.ru"
     },
     {
      "id": "merkureva-alisa-yurevna",
      "name": "Меркурьева Алиса Юрьевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-63",
+     "email": "gorbacheva.ay@gtsolifk.ru"
     },
     {
      "id": "spitsyna-irina-alekseevna",
      "name": "Спицына Ирина Алексеевна",
-     "position": "специалист по учебно-методической работе, старший преподаватель"
+     "position": "специалист по учебно-методической работе, старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-63",
+     "email": "spitsyna.ia@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/pedagogiki"
   },
   {
    "id": "menedzhmenta-i-ekonomiki-sportivnoy-industrii-im-v-v-kuzina",
@@ -1976,7 +2610,9 @@
     {
      "id": "zhukova-olga-vladislavovna",
      "name": "Жукова Ольга Владиславовна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 53-03",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "bukaeva-irina-nikolaevna",
@@ -1986,74 +2622,102 @@
     {
      "id": "kuptsov-egor-igorevich",
      "name": "Купцов Егор Игоревич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-78"
     },
     {
      "id": "oleynik-nataliya-savvatevna",
      "name": "Олейник Наталия Савватьевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-17",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "probin-pavel-sergeevich",
      "name": "Пробин Павел Сергеевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-17",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "ratnikova-irina-pavlovna",
      "name": "Ратникова Ирина Павловна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-78",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "ukhanova-tatyana-vasilevna",
      "name": "Уханова Татьяна Васильевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 52-78",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "ushakova-natalya-aleksandrovna",
      "name": "Ушакова Наталья Александровна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-18",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "frolko-marina-vasilevna",
      "name": "Фролко Марина Васильевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 51-25",
+     "email": "frolko.ms@gtsolifk.ru"
     },
     {
      "id": "petukhov-viktor-dmitrievich",
      "name": "Петухов Виктор Дмитриевич",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 54-18",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "obedkova-larisa-pavlovna",
      "name": "Объедкова Лариса Павловна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-16",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "ratnikov-kirill-sergeevich",
      "name": "Ратников Кирилл Сергеевич",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-78",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "salmaev-bamba-sergeevich",
      "name": "Салмаев Бамба Сергеевич",
-     "position": "преподаватель"
+     "position": "преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 52-62",
+     "email": "salmaev.bs@gtsolifk.ru"
     },
     {
      "id": "kokhno-vladimir-olegovich",
      "name": "Кохно Владимир Олегович",
-     "position": "ассистент"
+     "position": "ассистент",
+     "phone": "+7 (495) 961-31-11, доб. 54-18",
+     "email": "menedgment@gtsolifk.ru"
     },
     {
      "id": "egorkina-mariya-viktorovna",
      "name": "Егоркина Мария Викторовна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-01",
+     "email": "egorkina.mv@gtsolifk.ru"
     },
     {
      "id": "zemlinskiy-eduard-valerevich",
      "name": "Землинский Эдуард Валерьевич",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 53-02",
+     "email": "menedgment@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/menedgmenta_i_ekonomiki_sportivnoy_industrii_im_vv_kuzina"
   },
   {
    "id": "istorii-tsivilizatsii-fizicheskoy-kultury-sporta-i-olimpiysk",
@@ -2062,44 +2726,61 @@
     {
      "id": "melnikova-nataliya-yurevna",
      "name": "Мельникова Наталия Юрьевна",
-     "position": "заведующий кафедрой"
+     "position": "заведующий кафедрой",
+     "phone": "+7 (495) 961-31-11, доб. 50-10",
+     "email": "chair.ifs@gtsolifk.ru"
     },
     {
      "id": "koreneva-mariya-vadimovna",
      "name": "Коренева Мария Вадимовна",
-     "position": "доцент, заведующий лабораторией"
+     "position": "доцент, заведующий лабораторией",
+     "phone": "+7 (495) 961-31-11, доб. 54-91",
+     "email": "chair.ifs@gtsolifk.ru"
     },
     {
      "id": "leonteva-nadezhda-sergeevna",
      "name": "Леонтьева Надежда Сергеевна",
-     "position": "доцент"
+     "position": "доцент",
+     "phone": "+7 (495) 961-31-11, доб. 53-81",
+     "email": "chair.ifs@gtsolifk.ru"
     },
     {
      "id": "nikiforova-aleksandra-yurevna",
      "name": "Никифорова Александра Юрьевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-91",
+     "email": "chair.ifs@gtsolifk.ru"
     },
     {
      "id": "leonteva-lyubov-sergeevna",
      "name": "Леонтьева Любовь Сергеевна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 53-81",
+     "email": "chair.ifs@gtsolifk.ru"
     },
     {
      "id": "samoylova-ekaterina-aleksandrovna",
      "name": "Самойлова Екатерина Александровна",
-     "position": "старший преподаватель"
+     "position": "старший преподаватель",
+     "phone": "+7 (495) 961-31-11, доб. 54-91",
+     "email": "chair.ifs@gtsolifk.ru"
     },
     {
      "id": "shishkova-svetlana-leonidovna",
      "name": "Шишкова Светлана Леонидовна",
-     "position": "специалист по учебно-методической работе"
+     "position": "специалист по учебно-методической работе",
+     "phone": "+7 (495) 961-31-11, доб. 50-91",
+     "email": "chair.ifs@gtsolifk.ru"
     },
     {
      "id": "dementseva-natalya-valerevna",
      "name": "Деменцева Наталья Валерьевна",
-     "position": "заведующий лабораторией"
+     "position": "заведующий лабораторией",
+     "phone": "+7 (495) 961-31-11, доб. 50-91",
+     "email": "chair.ifs@gtsolifk.ru"
     }
-   ]
+   ],
+   "source": "https://gtsolifk.ru/obrazovanie/kafedri/istorii_tsivilizatsii_fizicheskoy_kulturi_sporta_i_olimpiyskogo_obrazovaniya"
   }
  ]
 }

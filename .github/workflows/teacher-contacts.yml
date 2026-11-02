@@ -24,10 +24,7 @@ jobs:
       - run: pip install httpx==0.28.1
       - name: Пробный прогон
         if: github.event_name == 'pull_request'
-        run: |
-          python scripts/teacher_contacts.py --dump https://gtsolifk.ru/obrazovanie/kafedri/pedagogiki > page.txt
-          grep -n -B3 -A30 "Левченкова" page.txt | head -80
-          python scripts/teacher_contacts.py --dry-run
+        run: python scripts/teacher_contacts.py --dry-run
       - name: Обновить и положить в ветку
         if: github.event_name == 'workflow_dispatch'
         run: |
