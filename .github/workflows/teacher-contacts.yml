@@ -1,11 +1,17 @@
+# Контакты преподавателей с сайта вуза (scripts/teacher_contacts.py).
+# - На PR, меняющем скрипт: пробный прогон без записи, в логе отчёт.
+# - Вручную (Actions -> teacher-contacts -> Run workflow): обновлённый data/teachers.json
+#   кладётся в ветку teacher-contacts/<номер запуска>, из неё открывается PR.
+# Нужен потому, что сайт вуза открывается не отовсюду, а с серверов GitHub открывается.
 name: teacher-contacts
 
 on:
   pull_request:
     paths: [scripts/teacher_contacts.py, .github/workflows/teacher-contacts.yml]
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   fetch:
@@ -16,6 +22,18 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install httpx==0.28.1
-      - run: python scripts/teacher_contacts.py --dump https://gtsolifk.ru/obrazovanie/kafedri/anatomii_i_biologicheskoy_antropologii | head -150
-      - run: python scripts/teacher_contacts.py
-      - run: git diff --stat
+      - name: Пробный прогон
+        if: github.event_name == 'pull_request'
+        run: python scripts/teacher_contacts.py --dry-run
+      - name: Обновить и положить в ветку
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          python scripts/teacher_contacts.py
+          if git diff --quiet; then echo "Изменений нет"; exit 0; fi
+          branch="teacher-contacts/${{ github.run_number }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "Контакты преподавателей с сайта вуза (запуск ${{ github.run_number }})"
+          git push origin "$branch"
+          echo "Ветка $branch: открой из неё PR в main"
