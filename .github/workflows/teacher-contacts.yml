@@ -1,0 +1,22 @@
+name: teacher-contacts
+
+on:
+  push:
+    branches: [claude/project-thread-l026e5]
+    paths: [scripts/teacher_contacts.py, .github/workflows/teacher-contacts.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install httpx==0.28.1
+      - run: python scripts/teacher_contacts.py --dump https://gtsolifk.ru/obrazovanie/kafedri/anatomii_i_biologicheskoy_antropologii | head -150
+      - run: python scripts/teacher_contacts.py
+      - run: git diff --stat
