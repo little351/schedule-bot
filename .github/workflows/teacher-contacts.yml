@@ -1,14 +1,19 @@
 # Контакты преподавателей с сайта вуза (scripts/teacher_contacts.py).
-# - На PR, меняющем скрипт: пробный прогон без записи, в логе отчёт.
-# - Вручную (Actions -> teacher-contacts -> Run workflow): обновлённый data/teachers.json
-#   кладётся в ветку teacher-contacts/<номер запуска>, из неё открывается PR.
+# Запуск вручную: Actions -> teacher-contacts -> Run workflow. Обновлённый data/teachers.json
+# кладётся в ветку teacher-contacts/<номер запуска>, из неё открывается PR.
+# С галочкой «только отчёт» файл не меняется, в логе отчёт о найденном.
+# На PR не запускается: сайт вуза иногда не отвечает, и проверка краснела бы не из-за кода
+# (разбор карточек проверяют тесты в tests/test_teacher_contacts.py).
 # Нужен потому, что сайт вуза открывается не отовсюду, а с серверов GitHub открывается.
 name: teacher-contacts
 
 on:
-  pull_request:
-    paths: [scripts/teacher_contacts.py, .github/workflows/teacher-contacts.yml]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Только отчёт, файл не менять"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -23,10 +28,10 @@ jobs:
           python-version: "3.13"
       - run: pip install httpx==0.28.1
       - name: Пробный прогон
-        if: github.event_name == 'pull_request'
+        if: inputs.dry_run
         run: python scripts/teacher_contacts.py --dry-run
       - name: Обновить и положить в ветку
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.dry_run }}
         run: |
           python scripts/teacher_contacts.py
           if git diff --quiet; then echo "Изменений нет"; exit 0; fi

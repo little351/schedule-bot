@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import time
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
@@ -85,8 +86,21 @@ def parse(page_html):
     return p.lines(), p.links
 
 
+def get(client, url, attempts=3):
+    """Сайт вуза иногда долго не отвечает: несколько попыток с паузой."""
+    for i in range(attempts):
+        try:
+            resp = client.get(url)
+            resp.raise_for_status()
+            return resp.text
+        except httpx.HTTPError:
+            if i == attempts - 1:
+                raise
+            time.sleep(5 * (i + 1))
+
+
 def department_urls(client):
-    _, links = parse(client.get(INDEX).text)
+    _, links = parse(get(client, INDEX))
     urls = []
     for href in links:
         url = urljoin(INDEX + "/", href)
@@ -224,17 +238,16 @@ def main():
         pages = json.loads(line.split(" ", 1)[1])
     else:
         pages = []
-        with httpx.Client(timeout=30, follow_redirects=True, headers={"User-Agent": "schedule-bot teacher contacts"}) as client:
+        with httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": "schedule-bot teacher contacts"}) as client:
             urls = department_urls(client)
             print(f"Страниц кафедр: {len(urls)}")
             for url in urls:
                 try:
-                    resp = client.get(url)
-                    resp.raise_for_status()
+                    page_html = get(client, url)
                 except httpx.HTTPError as e:
-                    print(f"! {url}: {e}")
+                    print(f"! {url}: {e!r}")
                     continue
-                lines, _ = parse(resp.text)
+                lines, _ = parse(page_html)
                 pages.append({"url": url, "title": page_title(lines), "contacts": extract_contacts(lines)})
         if not pages:
             print("Ни одной страницы не загрузилось, файл не меняю")
@@ -283,7 +296,7 @@ def main():
 
 
 def fetch(url):
-    with httpx.Client(timeout=30, follow_redirects=True) as client:
+    with httpx.Client(timeout=60, follow_redirects=True) as client:
         return client.get(url).text
 
 
