@@ -224,8 +224,9 @@ def main():
     args = ap.parse_args()
 
     if args.dump:
-        lines, _ = parse(fetch(args.dump))
+        lines, links = parse(fetch(args.dump))
         print("\n".join(lines))
+        print("\nССЫЛКИ:\n" + "\n".join(l for l in links if "kafedri" in l))
         return 0
 
     with open(args.file, encoding="utf-8") as f:

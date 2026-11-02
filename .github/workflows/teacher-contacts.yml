@@ -8,6 +8,8 @@
 name: teacher-contacts
 
 on:
+  pull_request:
+    paths: [scripts/teacher_contacts.py]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -27,11 +29,22 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install httpx==0.28.1
+      - name: debug
+        if: github.event_name == 'pull_request'
+        run: |
+          python scripts/teacher_contacts.py --dump https://gtsolifk.ru/obrazovanie/kafedri/todiki_tantsevalnogo_sporta/stav_01770 > a.txt
+          grep -n -m1 -A140 "Сингина" a.txt || head -c 6000 a.txt
+          echo ====
+          python scripts/teacher_contacts.py --dump https://gtsolifk.ru/obrazovanie/kafedri/pedagogiki > b.txt
+          grep -n "Спицына" b.txt
+          n=$(grep -n "Спицына" b.txt | tail -1 | cut -d: -f1); sed -n "$((n)),$((n+60))p" b.txt
+          echo ====
+          python scripts/teacher_contacts.py --dump https://gtsolifk.ru/obrazovanie/kafedri/todiki_tantsevalnogo_sporta | grep -n -i "состав\|stav\|сотрудник" | head
       - name: Пробный прогон
-        if: inputs.dry_run
+        if: inputs.dry_run || github.event_name == 'pull_request'
         run: python scripts/teacher_contacts.py --dry-run
       - name: Обновить и положить в ветку
-        if: ${{ !inputs.dry_run }}
+        if: github.event_name == 'workflow_dispatch' && !inputs.dry_run
         run: |
           python scripts/teacher_contacts.py
           if git diff --quiet; then echo "Изменений нет"; exit 0; fi
