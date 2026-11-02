@@ -4,12 +4,11 @@
 # С галочкой «только отчёт» файл не меняется, в логе отчёт о найденном.
 # На PR не запускается: сайт вуза иногда не отвечает, и проверка краснела бы не из-за кода
 # (разбор карточек проверяют тесты в tests/test_teacher_contacts.py).
-# Нужен потому, что сайт вуза открывается не отовсюду, а с серверов GitHub открывается.
+# Нужен потому, что сайт вуза открывается не отовсюду, а с серверов GitHub обычно открывается.
+# После частых запросов сайт может на время перестать отвечать: тогда запустить позже.
 name: teacher-contacts
 
 on:
-  pull_request:
-    paths: [scripts/teacher_contacts.py]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -30,10 +29,10 @@ jobs:
           python-version: "3.13"
       - run: pip install httpx==0.28.1
       - name: Пробный прогон
-        if: inputs.dry_run || github.event_name == 'pull_request'
+        if: inputs.dry_run
         run: python scripts/teacher_contacts.py --dry-run
       - name: Обновить и положить в ветку
-        if: github.event_name == 'workflow_dispatch' && !inputs.dry_run
+        if: ${{ !inputs.dry_run }}
         run: |
           python scripts/teacher_contacts.py
           if git diff --quiet; then echo "Изменений нет"; exit 0; fi

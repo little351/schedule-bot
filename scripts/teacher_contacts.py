@@ -287,7 +287,8 @@ def fio_close(site, ours):
     a, b = norm(site).replace("ия", "ья").split(), norm(ours).replace("ия", "ья").split()
     if len(a) < 2 or len(b) < 2:
         return False
-    return similar(a[0], b[0]) >= 0.85 and similar(a[1], b[1]) >= 0.8
+    sur, first = similar(a[0], b[0]), similar(a[1], b[1])  # Пазына/Пазина 0.83, Асыл/Асыя 0.75
+    return sur >= 0.75 and first >= 0.75 and sur + first >= 1.7
 
 
 FIELDS = ("phone", "email", "address", "regalia", "info")
