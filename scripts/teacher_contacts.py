@@ -32,7 +32,8 @@ TEACHERS_FILE = os.path.join(ROOT, "data", "teachers.json")
 
 PHONE_RE = re.compile(r"\+7\s*\(\d{3}\)\s*[\d-]{7,9}(?:\s*,?\s*доб\.?\s*[\d-]+)?", re.I)
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-CARD_LINES = 8  # сколько строк после ФИО считать карточкой
+UNI_EMAIL_RE = re.compile(r"(?<![\w.%+@-])[A-Za-z0-9._%+-]+@gtsolifk\.ru(?![\w.-])", re.I)
+CARD_LINES = 40  # дальше этого от ФИО контакты не ищем (подвал страницы)
 # ФИО полностью: три слова с заглавной кириллической буквы (фамилия может быть двойной)
 FIO_RE = re.compile(r"[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+")
 
@@ -101,7 +102,7 @@ def extract_contacts(lines):
     """[(ФИО, телефон, почта)]: контакт относится к последнему полному ФИО перед ним.
 
     Карточка на сайте: ФИО, должность, телефон, почта. Почта закрывает карточку, а дальше
-    CARD_LINES строк от ФИО контакты не ищем, чтобы подвал страницы не приписать последнему в списке."""
+    CARD_LINES строк от ФИО контакты не ищем: так подвал страницы не достаётся последнему в списке."""
     found = {}
     order = []
     current = None
@@ -129,12 +130,11 @@ def extract_contacts(lines):
 
 
 def find_email(line):
-    """Почта вуза целиком; адрес с опечаткой (кириллица внутри и т.п.) не берём, чтобы не записать обрывок."""
-    for token in line.replace(",", " ").replace(";", " ").split():
-        token = token.strip("<>()[]«».:").lower()
-        if "@" in token:
-            if EMAIL_RE.fullmatch(token) and token.endswith("@gtsolifk.ru") and token != "rectorat@gtsolifk.ru":
-                return token
+    """Почта вуза целиком; адрес с опечаткой (кириллица вплотную и т.п.) не берём, чтобы не записать обрывок."""
+    for m in UNI_EMAIL_RE.finditer(line):
+        email = m.group(0).lower()
+        if email != "rectorat@gtsolifk.ru":  # подвал сайта (приёмная ректора)
+            return email
     return None
 
 
