@@ -86,9 +86,13 @@ def parse(page_html):
     return p.lines(), p.links
 
 
+PAUSE = 2  # секунд между запросами
+
+
 def get(client, url, attempts=3):
     """Сайт вуза иногда долго не отвечает: несколько попыток с паузой."""
     for i in range(attempts):
+        time.sleep(PAUSE)  # не нагружать сайт вуза: после частых запросов он перестаёт отвечать
         try:
             resp = client.get(url)
             resp.raise_for_status()
@@ -96,7 +100,7 @@ def get(client, url, attempts=3):
         except httpx.HTTPError:
             if i == attempts - 1:
                 raise
-            time.sleep(5 * (i + 1))
+            time.sleep(20 * (i + 1))
 
 
 STAFF_PAGE_RE = re.compile(r"stav|sostav|person|sotrudn", re.I)  # адрес страницы «Кадровый состав» (…/stav_01770)
