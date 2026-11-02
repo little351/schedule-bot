@@ -137,6 +137,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--dump")
     ap.add_argument("--file", default=TEACHERS_FILE)
+    ap.add_argument("--from-json", help="не ходить на сайт, взять контакты из строки CONTACTS_JSON прошлого запуска")
     args = ap.parse_args()
 
     client = httpx.Client(timeout=30, follow_redirects=True, headers={"User-Agent": "schedule-bot teacher contacts"})
@@ -152,10 +153,16 @@ def main():
         for t in dept["teachers"]:
             people.setdefault(norm(t["name"]), []).append(t)
 
-    urls = department_urls(client)
-    print(f"Страниц кафедр: {len(urls)}")
     contacts = {}       # норм. ФИО -> (phone, email)
     unmatched = []
+    if args.from_json:
+        with open(args.from_json, encoding="utf-8") as f:
+            line = next(ln for ln in f if ln.startswith("CONTACTS_JSON "))
+        contacts = {k: tuple(v) for k, v in json.loads(line.split(" ", 1)[1]).items()}
+        urls = []
+    else:
+        urls = department_urls(client)
+        print(f"Страниц кафедр: {len(urls)}")
     for url in urls:
         try:
             resp = client.get(url)

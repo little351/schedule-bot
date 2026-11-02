@@ -1,12 +1,11 @@
 name: teacher-contacts
 
 on:
-  push:
-    branches: [claude/project-thread-l026e5]
+  pull_request:
     paths: [scripts/teacher_contacts.py, .github/workflows/teacher-contacts.yml]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   fetch:
