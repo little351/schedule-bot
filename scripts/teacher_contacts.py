@@ -157,13 +157,13 @@ MAX_INFO_LINES = 12
 
 def card_name(line):
     """ФИО из строки карточки: «Иванов Иван Иванович» или «Иванов Иван Иванович - доцент»."""
-    parts = re.split(r"\s+[-—–]\s+", line, maxsplit=1)
+    parts = re.split(r"\s+[-—–]\s*", line, maxsplit=1)  # «ФИО - доцент», «ФИО -доцент»
     part = parts[0].strip()
     if not (len(part) < 80 and NAME_LINE_RE.fullmatch(part) and FIO_RE.match(part)):
         return None
     words = part.split()
     # «Финалист Чемпионата России среди ...» - не ФИО: нужно отчество, подпись «- должность» или ровно три слова
-    if PATRONYMIC_RE.search(words[2]) or len(parts) > 1 or len(words) == 3:
+    if any(PATRONYMIC_RE.search(w) for w in words[2:]) or len(parts) > 1 or len(words) == 3:
         return " ".join(words)
     return None
 
@@ -239,14 +239,15 @@ def extract_cards(lines):
             continue
         if section == "regalia" and len(ln) <= 120 and len(card["regalia"]) < 6 and ln not in card["regalia"]:
             card["regalia"].append(ln)
-        elif section == "address" and not card["address"] and len(ln) <= 150:
+        elif section == "address" and not card["address"] and len(ln) <= 150 and re.search(r"\w\w", ln):
             card["address"] = ln
         elif not labeled and section is None and (ln[:1].isupper() or INFO_RE.match(ln)) \
                 and len(card["raw"]) < MAX_INFO_LINES:
             card["raw"].append(ln)  # описание перед подписями полей (формат «ФИО - должность»)
     result = []
     for c in cards:
-        c["info"] = join_info(c.pop("raw")) if c["phone"] or c["email"] else []
+        raw = c.pop("raw")
+        c["info"] = join_info(raw) if c["phone"] or c["email"] else []
         if c["phone"] or c["email"] or c["address"] or c["regalia"]:
             result.append(c)
     return result
@@ -318,6 +319,7 @@ def match(pages, departments):
                 dept = best
                 sources.setdefault(dept["id"], page["url"])
         for card in page["cards"]:
+            card["name"] = re.split(r"\s+[-—–]\s*", card["name"], maxsplit=1)[0].strip()
             exact = by_name.get(norm(card["name"]))
             if exact:
                 for t in exact:
@@ -333,12 +335,31 @@ def match(pages, departments):
     return found, sources, fuzzy, unmatched
 
 
+# опечатки на сайте, которым не верим: ФИО с сайта -> оставить наше написание
+KEEP_OUR_NAME = {
+    "Диванкувлиев Довлет Гаипович",  # у нас и в расписании «Диванкулиев»
+}
+
+
 def site_name(ours, site):
     """ФИО как на сайте; наше оставляем, только если оно и есть сайтовое с уточнением в конце
     («Мирзоев Октай Мирза оглы (Октай Мирзоевич)» при «Мирзоев Октай Мирза оглы» на сайте)."""
-    if norm(ours).startswith(norm(site)):
+    if norm(ours).startswith(norm(site)) or site in KEEP_OUR_NAME:
         return ours
     return site
+
+
+SKIP_INFO_RE = re.compile(r"^Дата рождения", re.I)  # личное, студентам не нужно
+
+
+def clean_card(card):
+    """Убрать заглушки («...» вместо кабинета) и личное (дата рождения); точка в конце регалий."""
+    card = dict(card)
+    if card.get("address") and not re.search(r"\w\w", card["address"]):
+        card["address"] = None
+    card["regalia"] = [r.rstrip(".").strip() for r in card.get("regalia") or [] if re.search(r"\w\w", r)]
+    card["info"] = [i for i in card.get("info") or [] if not SKIP_INFO_RE.match(i)]
+    return card
 
 
 def apply(departments, found, sources):
@@ -348,7 +369,7 @@ def apply(departments, found, sources):
         if dept["id"] in sources:
             dept["source"] = sources[dept["id"]]
         for t in dept["teachers"]:
-            card = found.get(t["id"], {})
+            card = clean_card(found[t["id"]]) if t["id"] in found else {}
             before = json.dumps(t, ensure_ascii=False, sort_keys=True)
             if card:
                 new_name = site_name(t["name"], card["name"])
