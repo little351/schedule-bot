@@ -349,6 +349,19 @@ def site_name(ours, site):
     return site
 
 
+SKIP_INFO_RE = re.compile(r"^Дата рождения", re.I)  # личное, студентам не нужно
+
+
+def clean_card(card):
+    """Убрать заглушки («...» вместо кабинета) и личное (дата рождения); точка в конце регалий."""
+    card = dict(card)
+    if card.get("address") and not re.search(r"\w\w", card["address"]):
+        card["address"] = None
+    card["regalia"] = [r.rstrip(".").strip() for r in card.get("regalia") or [] if re.search(r"\w\w", r)]
+    card["info"] = [i for i in card.get("info") or [] if not SKIP_INFO_RE.match(i)]
+    return card
+
+
 def apply(departments, found, sources):
     """Записать найденное в список. -> (изменено записей, [(было, стало)])."""
     changed, renamed = 0, []
@@ -356,7 +369,7 @@ def apply(departments, found, sources):
         if dept["id"] in sources:
             dept["source"] = sources[dept["id"]]
         for t in dept["teachers"]:
-            card = found.get(t["id"], {})
+            card = clean_card(found[t["id"]]) if t["id"] in found else {}
             before = json.dumps(t, ensure_ascii=False, sort_keys=True)
             if card:
                 new_name = site_name(t["name"], card["name"])

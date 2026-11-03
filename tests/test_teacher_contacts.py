@@ -111,3 +111,11 @@ def test_card_name_formats():
     assert tc.card_name("Финалист Чемпионата России среди Профессионалов") is None
     # заглушка «...» вместо кабинета - не данные
     assert tc.extract_cards(["Диванкувлиев Довлет Гаипович", "Адрес", "..."]) == []
+
+
+def test_clean_card_drops_placeholders_and_birthdate():
+    card = tc.clean_card({"name": "x", "address": "...", "regalia": ["Доцент.", "…"],
+                          "info": ["Дата рождения: 1 января 1990 года.", "Образование: РГУФК"]})
+    assert card["address"] is None
+    assert card["regalia"] == ["Доцент"]
+    assert card["info"] == ["Образование: РГУФК"]
