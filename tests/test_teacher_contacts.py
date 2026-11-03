@@ -102,3 +102,12 @@ def test_teachers_file_contacts_are_well_formed():
                 assert tc.EMAIL_RE.fullmatch(t["email"]) and t["email"].endswith("@gtsolifk.ru"), t
             for key in ("regalia", "info"):
                 assert all(isinstance(x, str) and x for x in t.get(key, [])), t
+
+
+def test_card_name_formats():
+    assert tc.card_name("Давыдов Алексей Петрович -доцент") == "Давыдов Алексей Петрович"
+    assert tc.card_name("Сингина Надежда Фёдоровна - заведующий кафедрой") == "Сингина Надежда Фёдоровна"
+    assert tc.card_name("Мирзоев Октай Мирза оглы") == "Мирзоев Октай Мирза оглы"
+    assert tc.card_name("Финалист Чемпионата России среди Профессионалов") is None
+    # заглушка «...» вместо кабинета - не данные
+    assert tc.extract_cards(["Диванкувлиев Довлет Гаипович", "Адрес", "..."]) == []
