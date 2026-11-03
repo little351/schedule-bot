@@ -1,0 +1,45 @@
+# Контакты преподавателей с сайта вуза (scripts/teacher_contacts.py).
+# Запуск вручную: Actions -> teacher-contacts -> Run workflow. Обновлённый data/teachers.json
+# кладётся в ветку teacher-contacts/<номер запуска>, из неё открывается PR.
+# С галочкой «только отчёт» файл не меняется, в логе отчёт о найденном.
+# На PR не запускается: сайт вуза иногда не отвечает, и проверка краснела бы не из-за кода
+# (разбор карточек проверяют тесты в tests/test_teacher_contacts.py).
+# Нужен потому, что сайт вуза открывается не отовсюду, а с серверов GitHub обычно открывается.
+# После частых запросов сайт может на время перестать отвечать: тогда запустить позже.
+name: teacher-contacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Только отчёт, файл не менять"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install httpx==0.28.1
+      - name: Пробный прогон
+        if: inputs.dry_run
+        run: python scripts/teacher_contacts.py --dry-run
+      - name: Обновить и положить в ветку
+        if: ${{ !inputs.dry_run }}
+        run: |
+          python scripts/teacher_contacts.py
+          if git diff --quiet; then echo "Изменений нет"; exit 0; fi
+          branch="teacher-contacts/${{ github.run_number }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "Контакты преподавателей с сайта вуза (запуск ${{ github.run_number }})"
+          git push origin "$branch"
+          echo "Ветка $branch: открой из неё PR в main"
