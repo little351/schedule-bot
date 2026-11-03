@@ -681,7 +681,8 @@
      панель держится за «устойчивую» высоту окна, а не за его текущий низ */
   .tg-stable .tab-bar {
     bottom: auto;
-    top: var(--tg-viewport-stable-height, 100vh);
+    /* --tabbar-top считает скрипт ниже: устойчивая высота, но не «свёрнутая» после кнопки «Назад» */
+    top: var(--tabbar-top, var(--tg-viewport-stable-height, 100vh));
     transform: translateY(-100%);
   }
   .tab-btn {
@@ -880,6 +881,29 @@ tg.ready();
 tg.expand();
 // --tg-viewport-stable-height ставит telegram-web-app.js; без Telegram (в браузере) панель просто прижата к низу
 if (tg.viewportStableHeight) document.body.classList.add("tg-stable");
+
+// Системное «Назад» сворачивает мини-апп в полоску внизу чата. Telegram (Android) запоминает её высоту
+// как «устойчивую» и после разворачивания не всегда присылает новую, поэтому панель улетала наверх.
+// Высоту меньше MIN_VIEW_H за настоящую не считаем и берём текущую высоту окна.
+const MIN_VIEW_H = 200;
+function placeTabBar() {
+  const h = [tg.viewportStableHeight, tg.viewportHeight, window.innerHeight]
+    .find(v => v >= MIN_VIEW_H) || window.innerHeight;
+  document.body.style.setProperty("--tabbar-top", h + "px");
+}
+// при возврате в мини-апп просим у Telegram свежие размеры окна
+function refreshViewport() {
+  try { tg.expand(); } catch (e) {}
+  try { window.Telegram.WebView.postEvent("web_app_request_viewport"); } catch (e) {}
+  placeTabBar();
+}
+if (tg.viewportStableHeight) {
+  placeTabBar();
+  tg.onEvent("viewportChanged", placeTabBar);
+  window.addEventListener("resize", placeTabBar);
+  tg.onEvent("activated", refreshViewport);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshViewport(); });
+}
 
 const telegramId = tg.initDataUnsafe?.user?.id;
 // сервер узнаёт пользователя по подписанным данным Telegram, а не по id из запроса
