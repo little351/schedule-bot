@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
-from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError
+from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError, TimedOut
 from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, MessageHandler, TypeHandler, ContextTypes, filters
@@ -192,9 +192,20 @@ async def group_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, reply_markup=markup)
 
 
+async def answer_query(query):
+    """Ответ на нажатие кнопки. Если сервер проспал дольше, чем Telegram ждёт ответа (Render будит его до ~30 с),
+    Telegram отвечает «query is too old»: нажатие всё равно выполняем, просто без снятия «часиков» на кнопке."""
+    try:
+        await query.answer()
+    except BadRequest as e:
+        if not _is_stale_query(e):
+            raise
+        logger.info("нажатие кнопки обработано с опозданием: %s", e)
+
+
 async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    await answer_query(query)
     parts = (query.data or "").split(":", 3)
 
     if parts[0] == "g" and len(parts) == 4 and parts[2].isdigit():
@@ -225,7 +236,7 @@ async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def on_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Кнопки под выбранной группой вызывают те же обработчики, что и команды."""
     query = update.callback_query
-    await query.answer()
+    await answer_query(query)
     action = (query.data or "").split(":", 1)[-1]
     # обработчики команд читают update.message и update.effective_user: подставляем сообщение с кнопкой и нажавшего
     shim = SimpleNamespace(message=query.message, effective_user=query.from_user, callback_query=query)
@@ -618,7 +629,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def broadcast_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not _is_owner(update):
-        await query.answer()
+        await answer_query(query)
         return
     _, action, token = query.data.split(":", 2)
     pending = context.bot_data.get("broadcast")
@@ -626,7 +637,7 @@ async def broadcast_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("Это сообщение уже обработано или заменено новым.", show_alert=True)
         return
     context.bot_data.pop("broadcast")  # повторное нажатие не отправит рассылку второй раз
-    await query.answer()
+    await answer_query(query)  # опоздавший ответ не должен сорвать уже снятую из очереди рассылку
     if action != "send":
         await query.edit_message_text("Рассылка отменена, ничего не отправлено.")
         return
@@ -873,6 +884,18 @@ ERROR_NOTIFY_MINUTES = 30  # об одной и той же ошибке вла�
 _error_notified = {}  # сигнатура ошибки -> когда владелец последний раз о ней узнал
 
 
+def _is_stale_query(error):
+    text = str(error).lower()
+    return isinstance(error, BadRequest) and ("query is too old" in text or "query id is invalid" in text)
+
+
+def _is_harmless(error):
+    """Ошибки, о которых владельцу писать незачем: Telegram не дождался ответа (TimedOut), нажатие кнопки
+    пришло после сна сервера (query is too old), повторное нажатие той же кнопки (message is not modified)."""
+    return (isinstance(error, TimedOut) or _is_stale_query(error)
+            or (isinstance(error, BadRequest) and "message is not modified" in str(error).lower()))
+
+
 async def on_error(update, context: ContextTypes.DEFAULT_TYPE):
     """Любая необработанная ошибка: в лог, пользователю короткий ответ вместо тишины, владельцу сообщение
     (одинаковые ошибки не чаще раза в ERROR_NOTIFY_MINUTES минут)."""
@@ -880,14 +903,17 @@ async def on_error(update, context: ContextTypes.DEFAULT_TYPE):
     logger.error("ошибка при обработке обновления", exc_info=error)
     if isinstance(error, Forbidden):
         return  # пользователь заблокировал бота: ни ответить, ни сообщать нечего
+    harmless = _is_harmless(error)
+    if harmless and not isinstance(error, TimedOut):
+        return  # экран и так показывает нужное: отвечать и сообщать нечего
     message = getattr(update, "effective_message", None)
     if message and message.chat.type == "private":
         try:
             await message.reply_text(ERROR_TEXT)
         except Exception:
             pass
-    if not OWNER_ID.isdigit():
-        return
+    if harmless or not OWNER_ID.isdigit():
+        return  # TimedOut: пользователю ответили (пусть повторит), владельцу не пишем, он есть в логе
     signature = f"{type(error).__name__}: {error}"[:200]
     now = datetime.now(timezone.utc)
     last = _error_notified.get(signature)

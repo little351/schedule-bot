@@ -125,3 +125,66 @@ def test_errors_get_a_short_answer_and_one_owner_notice(monkeypatch):
     context.error = bot.Forbidden("blocked")  # бот заблокирован: молчим
     asyncio.run(bot.on_error(update, context))
     assert len(replies) == 2 and len(owner) == 1
+
+
+def test_harmless_telegram_errors_are_not_sent_to_owner(monkeypatch):
+    """TimedOut, «query is too old» и «message is not modified» только в лог; TimedOut пользователю ответ «повтори»."""
+    import asyncio
+    from types import SimpleNamespace
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+    monkeypatch.setattr(bot, "OWNER_ID", "42")
+    monkeypatch.setattr(bot, "_error_notified", {})
+    replies, owner = [], []
+
+    async def reply_text(text):
+        replies.append(text)
+
+    async def send_message(chat_id, text):
+        owner.append(text)
+
+    update = SimpleNamespace(effective_message=SimpleNamespace(chat=SimpleNamespace(type="private"), reply_text=reply_text),
+                             effective_user=SimpleNamespace(id=7))
+    context = SimpleNamespace(bot=SimpleNamespace(send_message=send_message))
+    for error in (bot.BadRequest("Message is not modified: specified new message content and reply markup are "
+                                 "exactly the same as a current content and reply markup of the message"),
+                  bot.BadRequest("Query is too old and response timeout expired or query id is invalid")):
+        context.error = error
+        asyncio.run(bot.on_error(update, context))
+    assert replies == [] and owner == []
+    context.error = bot.TimedOut()
+    asyncio.run(bot.on_error(update, context))
+    assert replies == [bot.ERROR_TEXT] and owner == []
+    context.error = bot.BadRequest("Chat not found")  # настоящая ошибка по-прежнему приходит владельцу
+    asyncio.run(bot.on_error(update, context))
+    assert len(owner) == 1 and "Chat not found" in owner[0]
+
+
+def test_late_button_press_still_works():
+    """Нажатие после сна сервера: answer() падает с «query is too old», но экран всё равно меняется."""
+    import asyncio
+    from types import SimpleNamespace
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+    edits = []
+
+    async def answer():
+        raise bot.BadRequest("Query is too old and response timeout expired or query id is invalid")
+
+    async def edit_message_text(text, reply_markup=None):
+        edits.append(text)
+
+    query = SimpleNamespace(data="l:b", answer=answer, edit_message_text=edit_message_text,
+                            from_user=SimpleNamespace(id=7))
+    asyncio.run(bot.on_pick(SimpleNamespace(callback_query=query), SimpleNamespace()))
+    assert len(edits) == 1
+
+    async def broken():
+        raise bot.BadRequest("Chat not found")
+    query.answer = broken
+    try:
+        asyncio.run(bot.on_pick(SimpleNamespace(callback_query=query), SimpleNamespace()))
+    except bot.BadRequest:
+        pass
+    else:
+        raise AssertionError("другие ошибки answer() не должны глотаться")
