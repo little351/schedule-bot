@@ -9,16 +9,19 @@
   const REPEAT_DELAY = 170, REPEAT_EVERY = 55;  // удержание кнопки: пауза перед повтором и шаг повтора, мс
   const tg = window.Telegram?.WebApp;
 
-  // Цвета всех блоков по очереди: [основной, светлая грань, тёмная грань]
-  const PALETTE = [
-    ["#0a84ff", "#5eb0ff", "#0057b8"],
-    ["#ff9f0a", "#ffc266", "#b86e00"],
-    ["#30d158", "#7ee69a", "#1d8f3a"],
-    ["#bf5af2", "#d999f7", "#8a2fb8"],
-    ["#ff375f", "#ff8aa1", "#b81f3f"],
-    ["#64d2ff", "#a6e6ff", "#2a94bf"],
-    ["#ffd60a", "#ffe766", "#b89800"],
-  ];
+  // Скины: свой набор цветов (они сменяются каждые COLOR_STEP очков) и свой рисунок блока.
+  // Цены и список купленных хранит сервер, выбранный скин и своя картинка - только на этом телефоне.
+  const SKINS = {
+    classic: { name: "Классика", colors: ["#0a84ff", "#ff9f0a", "#30d158", "#bf5af2", "#ff375f", "#64d2ff", "#ffd60a"], paint: paintClassic },
+    neon: { name: "Неон", colors: ["#00f0ff", "#ff2bd6", "#39ff14", "#ffe600", "#ff6b00", "#8a5cff"], paint: paintNeon },
+    pixel: { name: "Пиксель", colors: ["#e43b44", "#3e8948", "#0099db", "#feae34", "#b55088", "#2ce8f5"], paint: paintPixel },
+    candy: { name: "Конфеты", colors: ["#ff8fab", "#7fd8d4", "#9be8a8", "#f7c873", "#c3a3dc", "#ffadc9"], paint: paintCandy },
+    wood: { name: "Дерево", colors: ["#b5793f", "#8b4a2b", "#d2a56d", "#6b4226", "#c68642", "#a0522d"], paint: paintWood },
+    gold: { name: "Золото", colors: ["#f5c542", "#c0c0c8", "#e8a598", "#cd7f32", "#e5e4e2", "#ffd700"], paint: paintGold },
+    custom: { name: "Свой скин", colors: [null, "#0a84ff", "#ff9f0a", "#30d158", "#bf5af2", "#ff375f"], paint: paintCustom },
+  };
+  const SKIN_KEY = "blocks_skin", IMAGE_KEY = "blocks_custom_image";
+
   // Фигуры: клетки в рамке N×N, поворот по часовой стрелке вокруг центра рамки
   const SHAPES = {
     I: [[0, 1], [1, 1], [2, 1], [3, 1]],
@@ -34,6 +37,7 @@
 
   let root, canvas, ctx, nextCanvas, nextCtx, over, hud, cell = 24;
   let S = null, running = false, rafId = 0, last = 0, best = null;
+  let skin = loadSkin(), customImage = null, shop = null;
 
   function rotated(cells, size, times) {
     let out = cells;
@@ -141,7 +145,7 @@
   }
 
   function colorIndex(score = S.score) {
-    return Math.floor(score / COLOR_STEP) % PALETTE.length;
+    return Math.floor(score / COLOR_STEP) % SKINS[skin].colors.length;
   }
 
   let shownColor = 0;
@@ -179,25 +183,108 @@
     } catch (e) { /* старый Telegram */ }
   }
 
-  // --- Рисование ---
-  function block(c, x, y, size, colors, alpha = 1) {
-    const [main, light, dark] = colors;
+  // --- Рисование: каждый вид блока рисуется один раз в маленький холст и потом только копируется ---
+  function shade(hex, f) {
+    const n = parseInt(hex.slice(1), 16), t = f < 0 ? 0 : 255, k = Math.abs(f);
+    const mix = (v) => Math.round(v + (t - v) * k);
+    return `rgb(${mix(n >> 16)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`;
+  }
+
+  function paintClassic(c, s, col) {
+    const b = Math.max(2, Math.round(s / 7));
+    c.fillStyle = col; c.fillRect(0, 0, s, s);
+    c.fillStyle = shade(col, 0.4); c.fillRect(0, 0, s, b); c.fillRect(0, 0, b, s);
+    c.fillStyle = shade(col, -0.35); c.fillRect(0, s - b, s, b); c.fillRect(s - b, 0, b, s);
+  }
+
+  function paintNeon(c, s, col) {
+    const w = Math.max(2, Math.round(s / 9)), pad = Math.max(2, Math.round(s / 8));
+    c.fillStyle = col; c.globalAlpha = 0.16; c.fillRect(pad, pad, s - 2 * pad, s - 2 * pad); c.globalAlpha = 1;
+    c.shadowColor = col; c.shadowBlur = s / 3;
+    c.strokeStyle = col; c.lineWidth = w;
+    c.strokeRect(pad, pad, s - 2 * pad, s - 2 * pad);
+    c.shadowBlur = 0;
+    c.strokeStyle = shade(col, 0.6); c.lineWidth = 1;
+    c.strokeRect(pad + 0.5, pad + 0.5, s - 2 * pad - 1, s - 2 * pad - 1);
+  }
+
+  function paintPixel(c, s, col) {
+    const u = Math.max(1, Math.floor(s / 8));
+    c.fillStyle = shade(col, -0.5); c.fillRect(0, 0, s, s);
+    c.fillStyle = col; c.fillRect(u, u, s - 2 * u, s - 2 * u);
+    c.fillStyle = shade(col, -0.2); c.fillRect(u, s - 3 * u, s - 2 * u, 2 * u); c.fillRect(s - 3 * u, u, 2 * u, s - 2 * u);
+    c.fillStyle = shade(col, 0.6); c.fillRect(2 * u, 2 * u, 2 * u, u); c.fillRect(2 * u, 2 * u, u, 2 * u);
+  }
+
+  function paintCandy(c, s, col) {
+    const r = s * 0.3, p = 1;
+    c.beginPath();
+    c.roundRect ? c.roundRect(p, p, s - 2 * p, s - 2 * p, r) : c.rect(p, p, s - 2 * p, s - 2 * p);
+    c.fillStyle = col; c.fill();
+    c.save(); c.clip();
+    c.strokeStyle = "rgba(255,255,255,0.28)"; c.lineWidth = s / 7;
+    for (let k = -s; k < s * 2; k += s / 2.2) { c.beginPath(); c.moveTo(k, 0); c.lineTo(k - s, s); c.stroke(); }
+    c.restore();
+    c.fillStyle = "rgba(255,255,255,0.6)";
+    c.beginPath(); c.ellipse(s * 0.33, s * 0.28, s * 0.17, s * 0.09, -0.5, 0, Math.PI * 2); c.fill();
+  }
+
+  function paintWood(c, s, col) {
+    c.fillStyle = col; c.fillRect(0, 0, s, s);
+    c.strokeStyle = shade(col, -0.25); c.lineWidth = Math.max(1, s / 22);
+    for (let k = 1; k <= 4; k++) {
+      const y = (s * k) / 5;
+      c.beginPath(); c.moveTo(0, y);
+      c.bezierCurveTo(s * 0.3, y - s * 0.08, s * 0.6, y + s * 0.08, s, y - s * 0.03);
+      c.stroke();
+    }
+    c.fillStyle = shade(col, -0.35);
+    c.beginPath(); c.ellipse(s * 0.68, s * 0.42, s * 0.08, s * 0.05, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = shade(col, -0.45); c.lineWidth = Math.max(1, s / 14);
+    c.strokeRect(c.lineWidth / 2, c.lineWidth / 2, s - c.lineWidth, s - c.lineWidth);
+  }
+
+  function paintGold(c, s, col) {
+    const g = c.createLinearGradient(0, 0, s, s);
+    g.addColorStop(0, shade(col, 0.6)); g.addColorStop(0.45, col);
+    g.addColorStop(0.55, shade(col, -0.3)); g.addColorStop(1, shade(col, 0.25));
+    c.fillStyle = g; c.fillRect(0, 0, s, s);
+    const b = Math.max(2, Math.round(s / 6));
+    c.strokeStyle = shade(col, -0.45); c.lineWidth = 1; c.strokeRect(0.5, 0.5, s - 1, s - 1);
+    c.strokeStyle = "rgba(255,255,255,0.45)"; c.strokeRect(b + 0.5, b + 0.5, s - 2 * b - 1, s - 2 * b - 1);
+  }
+
+  function paintCustom(c, s, col) {
+    if (!customImage) { paintClassic(c, s, col || "#8e8e93"); return; }
+    c.drawImage(customImage, 0, 0, s, s);
+    if (col) { c.globalAlpha = 0.32; c.fillStyle = col; c.fillRect(0, 0, s, s); c.globalAlpha = 1; }
+    c.strokeStyle = "rgba(0,0,0,0.45)"; c.lineWidth = 1; c.strokeRect(0.5, 0.5, s - 1, s - 1);
+  }
+
+  const tiles = new Map();
+  function tile(name, col, size) {
+    const key = `${name}|${col}|${size}`;
+    let t = tiles.get(key);
+    if (!t) {
+      t = document.createElement("canvas");
+      t.width = t.height = size;
+      const c = t.getContext("2d");
+      c.imageSmoothingEnabled = name !== "pixel";
+      SKINS[name].paint(c, size, col);
+      tiles.set(key, t);
+    }
+    return t;
+  }
+
+  function block(c, x, y, size, col, alpha = 1, name = skin) {
     c.globalAlpha = alpha;
-    c.fillStyle = main;
-    c.fillRect(x, y, size, size);
-    const b = Math.max(2, Math.round(size / 7));
-    c.fillStyle = light;
-    c.fillRect(x, y, size, b);
-    c.fillRect(x, y, b, size);
-    c.fillStyle = dark;
-    c.fillRect(x, y + size - b, size, b);
-    c.fillRect(x + size - b, y, b, size);
+    c.drawImage(tile(name, col, size), x, y);
     c.globalAlpha = 1;
   }
 
   function draw() {
     if (!S || !ctx) return;
-    const colors = PALETTE[colorIndex()];
+    const colors = SKINS[skin].colors[colorIndex()];
     ctx.fillStyle = "#0b0b0f";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = "rgba(255,255,255,0.05)";
@@ -324,7 +411,7 @@
     note.textContent = "Сохраняю результат...";
     lastBoard = null;
     show("Игра окончена", `Счёт: ${score}, линий: ${S.lines}.`,
-      [["Ещё раз", start], ["Таблица лидеров", openBoard, true]], note);
+      [["Ещё раз", start], ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]], note);
     sendScore(score, note);
   }
 
@@ -412,7 +499,7 @@
     draw();
     show("Блоки", `Собирай полные линии, игра бесконечная и постепенно ускоряется. ` +
       `Каждые ${COLOR_STEP} очков блоки меняют цвет.`,
-    [["Играть", start], ["Таблица лидеров", openBoard, true]]);
+    [["Играть", start], ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]]);
   }
 
   // --- Управление: кнопки под полем (удержание повторяет ход) и клавиатура ---
@@ -455,6 +542,173 @@
     ACTIONS[act]();
   }
 
+  // --- Магазин скинов ---
+  function storageGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function storageSet(key, value) {
+    try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+  }
+
+  function loadSkin() {
+    const saved = storageGet(SKIN_KEY);
+    return SKINS[saved] ? saved : "classic";
+  }
+
+  function loadCustomImage() {
+    const data = storageGet(IMAGE_KEY);
+    if (!data) return;
+    const img = new Image();
+    img.onload = () => { customImage = img; tiles.clear(); draw(); };
+    img.src = data;
+  }
+
+  function useSkin(name) {
+    skin = name;
+    storageSet(SKIN_KEY, name);
+    shownColor = S ? colorIndex() : 0;
+    draw();
+  }
+
+  // Своя картинка: квадрат из середины фото, уменьшенный до 96×96, хранится только на этом телефоне
+  function pickImage(done) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height), out = document.createElement("canvas");
+        out.width = out.height = 96;
+        out.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 96, 96);
+        URL.revokeObjectURL(url);
+        const data = out.toDataURL("image/jpeg", 0.85);
+        const small = new Image();
+        small.onload = () => {
+          customImage = small;
+          tiles.clear();
+          const saved = storageSet(IMAGE_KEY, data);
+          done(saved ? "" : "Картинка выбрана, но телефон не дал её сохранить: после перезапуска выбери снова.");
+        };
+        small.src = data;
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); done("Не получилось открыть эту картинку."); };
+      img.src = url;
+    });
+    input.click();
+  }
+
+  async function shopApi(method, path, body) {
+    const res = await fetch("/api/blocks" + path, {
+      method,
+      headers: { "Content-Type": "application/json", "X-Init-Data": tg?.initData || "" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 402) throw new Error("not_enough");
+    if (!res.ok) throw new Error(String(res.status));
+    return res.json();
+  }
+
+  function preview(name) {
+    const c = document.createElement("canvas"), size = 22, cols = SKINS[name].colors;
+    c.width = size * 3;
+    c.height = size * 2;
+    c.className = "tt-skin-preview";
+    const x = c.getContext("2d");
+    [[0, 1], [1, 1], [2, 1], [1, 0]].forEach(([cx, cy], i) => block(x, cx * size, cy * size, size, cols[(i % 2) && cols.length > 1 ? 1 : 0], 1, name));
+    return c;
+  }
+
+  async function openShop() {
+    pause();
+    const modal = document.createElement("div");
+    modal.className = "tt-modal";
+    const sheet = document.createElement("div");
+    sheet.className = "tt-sheet";
+    const title = document.createElement("div");
+    title.className = "tt-title";
+    title.textContent = "Магазин скинов";
+    const head = document.createElement("div");
+    head.className = "tt-board-head";
+    head.textContent = "Загружаю...";
+    const list = document.createElement("div");
+    list.className = "tt-shop";
+    const msg = document.createElement("div");
+    msg.className = "tt-note tt-shop-msg";
+    const close = document.createElement("button");
+    close.className = "tt-btn";
+    close.textContent = "Закрыть";
+    sheet.append(title, head, list, msg, close);
+    modal.append(sheet);
+    const remove = () => modal.remove();
+    close.addEventListener("click", remove);
+    modal.addEventListener("click", (e) => { if (e.target === modal) remove(); });
+    document.body.append(modal);
+
+    const render = () => {
+      head.textContent = shop.free ? "Тебе как владельцу все скины бесплатно" : `На счёте ${shop.balance} очков (копятся за все партии)`;
+      list.textContent = "";
+      for (const name of Object.keys(SKINS)) {
+        const owned = shop.owned.includes(name), price = shop.prices[name] ?? 0;
+        const row = document.createElement("div");
+        row.className = "tt-skin" + (name === skin ? " tt-skin-on" : "");
+        const info = document.createElement("div");
+        info.className = "tt-skin-info";
+        const nm = document.createElement("b");
+        nm.textContent = SKINS[name].name;
+        const sub = document.createElement("span");
+        sub.textContent = (name === "custom" ? "Твоя картинка, " : "") + (owned ? "куплен" : `${price} очков`);
+        info.append(nm, sub);
+        const btn = document.createElement("button");
+        btn.className = "tt-btn tt-small" + (owned ? " tt-secondary" : "");
+        if (!owned) {
+          btn.textContent = "Купить";
+          btn.disabled = shop.balance < price;
+          btn.addEventListener("click", () => buy(name, btn));
+        } else if (name === "custom") {
+          btn.textContent = customImage ? "Выбрать" : "Фото";
+          btn.addEventListener("click", () => {
+            if (customImage && name !== skin) { useSkin(name); render(); return; }
+            pickImage((err) => { msg.textContent = err; useSkin("custom"); render(); });
+          });
+          if (customImage && name === skin) {
+            btn.textContent = "Другое фото";
+          }
+        } else {
+          btn.textContent = name === skin ? "Выбран" : "Выбрать";
+          btn.disabled = name === skin;
+          btn.addEventListener("click", () => { useSkin(name); render(); });
+        }
+        row.append(preview(name), info, btn);
+        list.append(row);
+      }
+    };
+
+    const buy = async (name, btn) => {
+      btn.disabled = true;
+      msg.textContent = "";
+      try {
+        shop = await shopApi("POST", "/buy", { skin: name });
+        if (name === "custom") pickImage((err) => { msg.textContent = err; useSkin("custom"); render(); });
+        else useSkin(name);
+        haptic("success");
+      } catch (e) {
+        msg.textContent = e.message === "not_enough" ? "Не хватает очков." : "Не удалось купить, попробуй ещё раз.";
+      }
+      render();
+    };
+
+    try {
+      shop = await shopApi("GET", "/shop");
+      render();
+    } catch (e) {
+      head.textContent = "Не удалось открыть магазин, попробуй ещё раз.";
+    }
+  }
+
   const CSS = `
   .tt { user-select: none; -webkit-user-select: none; }
   .tt-play { display: flex; gap: 10px; justify-content: center; align-items: flex-start; }
@@ -484,6 +738,16 @@
   .tt-board li::before { content: counter(place) "."; color: var(--hint); min-width: 20px; text-align: left; }
   .tt-board li span { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tt-board li.tt-me { background: rgba(10, 132, 255, 0.3); }
+  .tt-shop-btn { border: none; border-radius: 10px; background: var(--card); color: var(--text); padding: 6px 0; font-size: 20px; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .tt-shop-btn span { font-size: 11px; color: var(--hint); }
+  .tt-shop { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .tt-skin { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--card); text-align: left; }
+  .tt-skin.tt-skin-on { box-shadow: inset 0 0 0 2px var(--accent); }
+  .tt-skin-preview { width: 48px; height: 32px; flex: none; }
+  .tt-skin-info { flex: 1; display: flex; flex-direction: column; font-size: 13px; color: var(--hint); min-width: 0; }
+  .tt-skin-info b { color: var(--text); font-size: 15px; }
+  .tt-sheet .tt-btn.tt-small { padding: 7px 12px; font-size: 14px; width: auto; margin-top: 0; flex: none; }
+  .tt-shop-msg { margin: 8px 0 0; min-height: 0; }
   `;
 
   function build(container) {
@@ -499,6 +763,7 @@
           <div>Счёт<b class="tt-score">0</b></div>
           <div>Линии<b class="tt-lines">0</b></div>
           <div>Рекорд<b class="tt-best">0</b></div>
+          <button class="tt-shop-btn" aria-label="Магазин скинов">🛍️<span>Магазин</span></button>
         </div>
       </div>
       <div class="tt-pad">
@@ -522,7 +787,9 @@
       }
       btn.addEventListener("contextmenu", (e) => e.preventDefault());
     }
+    root.querySelector(".tt-shop-btn").addEventListener("click", openShop);
     document.addEventListener("keydown", onKey);
+    loadCustomImage();
     document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
     window.addEventListener("resize", () => { if (root.offsetParent !== null) fit(); });
     newGame();
