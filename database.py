@@ -903,8 +903,8 @@ def game_leaderboard(conn, telegram_id, limit=10, game="session"):
 
 # --- Магазин скинов игры «Блоки»: очки за все партии копятся на счёте, скины покупаются раз и навсегда ---
 
-BLOCKS_SKINS = {"classic": 0, "neon": 3000, "pixel": 6000, "candy": 10000, "wood": 15000, "gold": 30000,
-                "custom": 100000}
+BLOCKS_SKINS = {"classic": 0, "neon": 10000, "pixel": 20000, "candy": 35000, "wood": 50000, "gold": 75000,
+                "custom": 250000}
 
 
 def _wallet_execute(conn, query, params):

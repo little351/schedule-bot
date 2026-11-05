@@ -18,7 +18,7 @@ def fill(conn):
     add_note(conn, 2, "", "без предмета")
     save_game_score(conn, 1, "Иван", 120)
     save_game_score(conn, 2, "Оля", 3400, game="tetris")
-    add_blocks_points(conn, 2, 5000)
+    add_blocks_points(conn, 2, 12000)
     buy_blocks_skin(conn, 2, "neon")
     set_sync_state(conn, "active_keys", '["a.xls"]')
 

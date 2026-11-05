@@ -65,15 +65,15 @@ def test_blocks_shop_spends_points_from_all_games(tmp_path, monkeypatch):
 
     assert client.get("/api/blocks/shop").status_code == 403
     shop = client.get("/api/blocks/shop", headers=me).json()
-    assert shop["balance"] == 0 and shop["owned"] == ["classic"] and shop["prices"]["custom"] == 100000
+    assert shop["balance"] == 0 and shop["owned"] == ["classic"] and shop["prices"]["custom"] == 250000
     assert buy("neon").status_code == 402
-    play(2000)
-    play(1500)  # копится сумма партий, а не рекорд
+    play(6000)
+    play(5500)  # копится сумма партий, а не рекорд
     client.post("/api/game/score", json={"score": 50000}, headers=me)  # очки прежней игры на счёт не идут
-    assert client.get("/api/blocks/shop", headers=me).json()["balance"] == 3500
+    assert client.get("/api/blocks/shop", headers=me).json()["balance"] == 11500
     r = buy("neon").json()
-    assert r["balance"] == 500 and r["owned"] == ["classic", "neon"]
-    assert buy("neon").json()["balance"] == 500  # повторная покупка не списывает второй раз
+    assert r["balance"] == 1500 and r["owned"] == ["classic", "neon"]
+    assert buy("neon").json()["balance"] == 1500  # повторная покупка не списывает второй раз
     assert buy("pixel").status_code == 402 and buy("rainbow").status_code == 400
     owner = {"X-Init-Data": init_data(99)}
     r = buy("custom", owner).json()  # владельцу всё бесплатно

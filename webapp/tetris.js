@@ -5,6 +5,9 @@
   const COLS = 12, ROWS = 18;
   const COLOR_STEP = 1000;  // каждые столько очков все блоки меняют цвет
   const LINE_POINTS = [0, 100, 300, 500, 800];
+  // Сложность растёт ступенями каждые 25 000 очков до 100 000, дальше не меняется.
+  // Секунды на одну клетку падения: поле (18 клеток) фигура проходит за 14, 12, 10, 8 и 5 с (решение Артёма)
+  const DIFF_STEP = 25000, FALL_SECONDS = [14, 12, 10, 8, 5].map((s) => s / 18);
   const LOCK_DELAY = 0.5, LOCK_RESETS = 15;  // сколько фигура может лежать на опоре, пока её двигают
   const REPEAT_DELAY = 170, REPEAT_EVERY = 55;  // удержание кнопки: пауза перед повтором и шаг повтора, мс
   const tg = window.Telegram?.WebApp;
@@ -170,8 +173,12 @@
     }
   }
 
+  function difficulty() {
+    return Math.min(FALL_SECONDS.length - 1, Math.floor(S.score / DIFF_STEP));
+  }
+
   function fallInterval() {
-    return Math.max(0.08, 0.8 * Math.pow(0.85, level()));
+    return FALL_SECONDS[difficulty()];
   }
 
   function update(dt) {
@@ -509,7 +516,7 @@
   function intro() {
     stop();
     draw();
-    show("Игра «Блоки»", `Собирай полные линии, игра бесконечная и постепенно ускоряется. ` +
+    show("Игра «Блоки»", `Собирай полные линии, игра бесконечная. Каждые 25 000 очков фигуры падают быстрее, после 100 000 скорость больше не растёт. ` +
       `Каждые ${COLOR_STEP} очков блоки меняют цвет.`,
     [["Играть", start], ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]]);
   }
