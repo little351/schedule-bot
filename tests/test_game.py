@@ -34,6 +34,20 @@ def test_game_leaderboard_keeps_best_score_per_player(tmp_path):
     assert anon["best"] is None and anon["top"][0]["score"] == 500
 
 
+
+def test_tetris_has_its_own_leaderboard(tmp_path):
+    conn = init_db(str(tmp_path / "t.db"))
+    app = FastAPI()
+    app.include_router(build_router(conn, TOKEN))
+    client = TestClient(app)
+    headers = {"X-Init-Data": init_data(1)}
+    client.post("/api/game/score", json={"score": 900}, headers=headers)  # прежняя игра
+    r = client.post("/api/game/score?game=tetris", json={"score": 40}, headers=headers).json()
+    assert r["best"] == 40 and [row["score"] for row in r["top"]] == [40]
+    assert client.get("/api/game/top", headers=headers).json()["best"] == 900
+    assert client.get("/api/game/top?game=tetris", headers=headers).json()["best"] == 40
+    assert client.get("/api/game/top?game=chess").status_code == 400
+
 def test_campus_map_is_sent_to_the_signed_user_once_per_pause(tmp_path):
     sent = []
 
