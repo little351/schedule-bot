@@ -48,6 +48,37 @@ def test_tetris_has_its_own_leaderboard(tmp_path):
     assert client.get("/api/game/top?game=tetris", headers=headers).json()["best"] == 40
     assert client.get("/api/game/top?game=chess").status_code == 400
 
+
+def test_blocks_shop_spends_points_from_all_games(tmp_path, monkeypatch):
+    monkeypatch.setenv("OWNER_ID", "99")
+    conn = init_db(str(tmp_path / "s.db"))
+    app = FastAPI()
+    app.include_router(build_router(conn, TOKEN))
+    client = TestClient(app)
+    me = {"X-Init-Data": init_data(1)}
+
+    def play(score, headers=me):
+        client.post("/api/game/score?game=tetris", json={"score": score}, headers=headers)
+
+    def buy(skin, headers=me):
+        return client.post("/api/blocks/buy", json={"skin": skin}, headers=headers)
+
+    assert client.get("/api/blocks/shop").status_code == 403
+    shop = client.get("/api/blocks/shop", headers=me).json()
+    assert shop["balance"] == 0 and shop["owned"] == ["classic"] and shop["prices"]["custom"] == 100000
+    assert buy("neon").status_code == 402
+    play(2000)
+    play(1500)  # копится сумма партий, а не рекорд
+    client.post("/api/game/score", json={"score": 50000}, headers=me)  # очки прежней игры на счёт не идут
+    assert client.get("/api/blocks/shop", headers=me).json()["balance"] == 3500
+    r = buy("neon").json()
+    assert r["balance"] == 500 and r["owned"] == ["classic", "neon"]
+    assert buy("neon").json()["balance"] == 500  # повторная покупка не списывает второй раз
+    assert buy("pixel").status_code == 402 and buy("rainbow").status_code == 400
+    owner = {"X-Init-Data": init_data(99)}
+    r = buy("custom", owner).json()  # владельцу всё бесплатно
+    assert r["free"] and r["balance"] == 0 and "custom" in r["owned"] and len(r["owned"]) == 7
+
 def test_campus_map_is_sent_to_the_signed_user_once_per_pause(tmp_path):
     sent = []
 

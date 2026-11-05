@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import (  # noqa: E402
     GroupRef, add_note, export_backup, game_leaderboard, import_backup, init_db, list_notes, list_users,
-    save_game_score, set_sync_state, set_user_group, get_sync_state,
+    save_game_score, set_sync_state, add_blocks_points, blocks_wallet, buy_blocks_skin, set_user_group, get_sync_state,
 )
 
 
@@ -18,6 +18,8 @@ def fill(conn):
     add_note(conn, 2, "", "без предмета")
     save_game_score(conn, 1, "Иван", 120)
     save_game_score(conn, 2, "Оля", 3400, game="tetris")
+    add_blocks_points(conn, 2, 5000)
+    buy_blocks_skin(conn, 2, "neon")
     set_sync_state(conn, "active_keys", '["a.xls"]')
 
 
@@ -32,14 +34,15 @@ def test_backup_restores_everything_into_empty_db(tmp_path):
 
     target = init_db(str(tmp_path / "b.db"))
     data = bot.parse_backup(raw)
-    assert import_backup(target, data) == {"users": 2, "notes": 2, "game_scores": 1, "tetris_scores": 1, "sync_state": 1}
+    assert import_backup(target, data) == {"users": 2, "notes": 2, "game_scores": 1, "tetris_scores": 1, "blocks_wallet": 1, "sync_state": 1}
     assert export_backup(target) == export_backup(source)
     assert [n["text"] for n in list_notes(target, 1)] == ["реферат"]
     assert game_leaderboard(target, 1)["best"] == 120
     assert game_leaderboard(target, 2, game="tetris")["best"] == 3400
+    assert blocks_wallet(target, 2) == {"balance": 2000, "owned": ["classic", "neon"]}
     # повторное восстановление ничего не дублирует, а более свежие данные в базе не перетираются
     set_user_group(target, 1, GroupRef("49.03.04", 3, "5 группа"))
-    assert import_backup(target, data) == {"users": 0, "notes": 0, "game_scores": 0, "tetris_scores": 0, "sync_state": 0}
+    assert import_backup(target, data) == {"users": 0, "notes": 0, "game_scores": 0, "tetris_scores": 0, "blocks_wallet": 0, "sync_state": 0}
     assert len(list_notes(target, 1)) == 1
     assert [u for u in list_users(target) if u[0] == 1][0][3] == "5 группа"
     # после восстановления новые заметки добавляются как обычно

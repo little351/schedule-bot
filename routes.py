@@ -12,7 +12,7 @@ from database import (
     DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS, WEEKDAY_MAP, GroupRef, get_catalog, get_day_lessons,
     get_groups, get_relative_week_sheet, get_user_group, get_week_schedule_grid, set_user_group,
     touch_user, NOTES_LIMIT, add_note, count_notes, delete_note, get_group_subjects, list_notes, update_note,
-    GAME_TABLES, game_leaderboard, save_game_score,
+    GAME_TABLES, game_leaderboard, save_game_score, BLOCKS_SKINS, add_blocks_points, blocks_wallet, buy_blocks_skin,
 )
 from formatting import trim_trailing_empty
 import lms_sync
@@ -53,6 +53,10 @@ class NoteBody(BaseModel):
 
 class GameScore(BaseModel):
     score: int
+
+
+class SkinBuy(BaseModel):
+    skin: str
 
 
 # Потолок счёта партии: после диплома игра бесконечная, но столько честно не набрать - всё сверху подделка запроса.
@@ -309,6 +313,34 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
         name = ((user.get("first_name") or "").strip() + (f" {last[0]}." if last else "")).strip()
         if body.score > 0:
             save_game_score(conn, user["id"], name[:20] or "Игрок", body.score, game=game)
+            if game == "tetris":
+                add_blocks_points(conn, user["id"], body.score)  # очки партии идут на счёт для магазина скинов
         return game_leaderboard(conn, user["id"], game=game)
+
+    # --- Магазин скинов «Блоков». Владельцу бота (OWNER_ID) всё бесплатно ---
+    def shop_view(telegram_id):
+        wallet = blocks_wallet(conn, telegram_id)
+        owner = str(telegram_id) == os.environ.get("OWNER_ID", "").strip()
+        return {"balance": wallet["balance"], "owned": list(BLOCKS_SKINS) if owner else wallet["owned"],
+                "prices": BLOCKS_SKINS, "free": owner}
+
+    @router.get("/blocks/shop")
+    def blocks_shop(x_init_data: str = Header(default="")):
+        user = validate_init_data(x_init_data or "", bot_token, READ_MAX_AGE_SECONDS)
+        if not user:
+            raise HTTPException(status_code=403, detail="bad_init_data")
+        return shop_view(user["id"])
+
+    @router.post("/blocks/buy")
+    def blocks_buy(body: SkinBuy, x_init_data: str = Header(default="")):
+        user = validate_init_data(x_init_data or "", bot_token)
+        if not user:
+            raise HTTPException(status_code=403, detail="bad_init_data")
+        if body.skin not in BLOCKS_SKINS:
+            raise HTTPException(status_code=400, detail="bad_skin")
+        view = shop_view(user["id"])
+        if body.skin not in view["owned"] and not buy_blocks_skin(conn, user["id"], body.skin):
+            raise HTTPException(status_code=402, detail="not_enough_points")
+        return shop_view(user["id"])
 
     return router

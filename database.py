@@ -98,6 +98,9 @@ if PG_DSN:
         for table in GAME_TABLES.values():
             cur.execute(f"CREATE TABLE IF NOT EXISTS {table} "
                         "(telegram_id BIGINT PRIMARY KEY, name TEXT, best INTEGER NOT NULL, updated_at TEXT)")
+        cur.execute("CREATE TABLE IF NOT EXISTS blocks_wallet (telegram_id BIGINT PRIMARY KEY, "
+                    "earned BIGINT NOT NULL DEFAULT 0, spent BIGINT NOT NULL DEFAULT 0, skins TEXT NOT NULL DEFAULT '', "
+                    "updated_at TEXT)")
 
 
 def storage_name():
@@ -215,6 +218,9 @@ def init_db(path="schedule.db"):
     for table in GAME_TABLES.values():
         conn.execute(f"CREATE TABLE IF NOT EXISTS {table} "
                      "(telegram_id INTEGER PRIMARY KEY, name TEXT, best INTEGER NOT NULL, updated_at TEXT)")
+    conn.execute("CREATE TABLE IF NOT EXISTS blocks_wallet (telegram_id INTEGER PRIMARY KEY, "
+                 "earned INTEGER NOT NULL DEFAULT 0, spent INTEGER NOT NULL DEFAULT 0, skins TEXT NOT NULL DEFAULT '', "
+                 "updated_at TEXT)")
     conn.commit()
     return conn
 
@@ -399,6 +405,7 @@ BACKUP_TABLES = {
     "notes": ["telegram_id", "subject", "text", "due_date", "done", "created_at"],
     "game_scores": ["telegram_id", "name", "best", "updated_at"],
     "tetris_scores": ["telegram_id", "name", "best", "updated_at"],
+    "blocks_wallet": ["telegram_id", "earned", "spent", "skins", "updated_at"],
     "sync_state": ["key", "value"],
 }
 # по каким колонкам запись из копии считается уже существующей (её не трогаем: в базе она свежее)
@@ -407,6 +414,7 @@ BACKUP_KEYS = {
     "notes": ["telegram_id", "created_at", "text"],
     "game_scores": ["telegram_id"],
     "tetris_scores": ["telegram_id"],
+    "blocks_wallet": ["telegram_id"],
     "sync_state": ["key"],
 }
 
@@ -891,3 +899,60 @@ def game_leaderboard(conn, telegram_id, limit=10, game="session"):
             if mine else None
     return {"top": [{"name": name or "Игрок", "score": best, "me": tid == telegram_id} for tid, name, best in top],
             "best": mine[0] if mine else None, "rank": rank}
+
+
+# --- Магазин скинов игры «Блоки»: очки за все партии копятся на счёте, скины покупаются раз и навсегда ---
+
+BLOCKS_SKINS = {"classic": 0, "neon": 3000, "pixel": 6000, "candy": 10000, "wood": 15000, "gold": 30000,
+                "custom": 100000}
+
+
+def _wallet_execute(conn, query, params):
+    """Запрос к кошельку в обеих базах (в тексте «?»); возвращает число изменённых строк."""
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute(query.replace("?", "%s"), params)
+            return cur.rowcount
+    with conn.lock:
+        changed = conn.execute(query, params).rowcount
+        conn.commit()
+    return changed
+
+
+def add_blocks_points(conn, telegram_id, points):
+    """Очки партии зачисляются на счёт игрока (одним запросом вместе с созданием кошелька)."""
+    if points <= 0:
+        return
+    now = now_local().strftime("%Y-%m-%dT%H:%M:%S")
+    _wallet_execute(conn, "INSERT INTO blocks_wallet (telegram_id, earned, spent, skins, updated_at) "
+                          "VALUES (?, ?, 0, '', ?) ON CONFLICT (telegram_id) DO UPDATE SET "
+                          "earned = blocks_wallet.earned + excluded.earned, updated_at = excluded.updated_at",
+                    (telegram_id, points, now))
+
+
+def blocks_wallet(conn, telegram_id):
+    """{"balance": очки на счёте, "owned": [купленные скины]}; бесплатная «Классика» есть у всех."""
+    query = "SELECT earned, spent, skins FROM blocks_wallet WHERE telegram_id = ?"
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute(query.replace("?", "%s"), (telegram_id,))
+            row = cur.fetchone()
+    else:
+        row = conn.execute(query, (telegram_id,)).fetchone()
+    earned, spent, skins = row or (0, 0, "")
+    owned = ["classic"] + [skin for skin in (skins or "").split(",") if skin in BLOCKS_SKINS and skin != "classic"]
+    return {"balance": earned - spent, "owned": owned}
+
+
+def buy_blocks_skin(conn, telegram_id, skin):
+    """Покупка скина: списание и добавление в список одним запросом, только если очков хватает и скина ещё нет.
+    True - куплен (или уже был), False - не хватает очков."""
+    price = BLOCKS_SKINS[skin]
+    if skin in blocks_wallet(conn, telegram_id)["owned"]:
+        return True
+    now = now_local().strftime("%Y-%m-%dT%H:%M:%S")
+    changed = _wallet_execute(
+        conn, "UPDATE blocks_wallet SET spent = spent + ?, skins = skins || ?, updated_at = ? "
+              "WHERE telegram_id = ? AND earned - spent >= ? AND (',' || skins || ',') NOT LIKE ?",
+        (price, "," + skin, now, telegram_id, price, f"%,{skin},%"))
+    return changed > 0
