@@ -18,9 +18,9 @@
     candy: { name: "Конфеты", colors: ["#ff8fab", "#7fd8d4", "#9be8a8", "#f7c873", "#c3a3dc", "#ffadc9"], paint: paintCandy },
     wood: { name: "Дерево", colors: ["#b5793f", "#8b4a2b", "#d2a56d", "#6b4226", "#c68642", "#a0522d"], paint: paintWood },
     gold: { name: "Золото", colors: ["#f5c542", "#c0c0c8", "#e8a598", "#cd7f32", "#e5e4e2", "#ffd700"], paint: paintGold },
-    custom: { name: "Свой скин", colors: [null, "#0a84ff", "#ff9f0a", "#30d158", "#bf5af2", "#ff375f"], paint: paintCustom },
+    custom: { name: "Свой скин", colors: [null], paint: paintCustom },  // своя картинка не перекрашивается
   };
-  const SKIN_KEY = "blocks_skin", IMAGE_KEY = "blocks_custom_image";
+  const SKIN_KEY = "blocks_skin", IMAGE_KEY = "blocks_custom_image", IMAGE_SIZE = 256;
 
   // Фигуры: клетки в рамке N×N, поворот по часовой стрелке вокруг центра рамки
   const SHAPES = {
@@ -36,6 +36,19 @@
   const KICKS = [[0, 0], [-1, 0], [1, 0], [0, -1], [-2, 0], [2, 0]];
 
   let root, canvas, ctx, nextCanvas, nextCtx, over, hud, cell = 24;
+  // холсты рисуются в настоящих пикселях экрана (на телефонах их в 2-3 раза больше, чем CSS-пикселей), иначе всё мыльное
+  const dpr = Math.min(3, Math.max(1, Math.round(window.devicePixelRatio || 1)));
+
+  // холст размером w×h CSS-пикселей с плотностью экрана; рисовать в нём можно в CSS-пикселях
+  function sizeCanvas(c, w, h) {
+    c.width = w * dpr;
+    c.height = h * dpr;
+    c.style.width = w + "px";
+    c.style.height = h + "px";
+    const x = c.getContext("2d");
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return x;
+  }
   let S = null, running = false, rafId = 0, last = 0, best = null;
   let skin = loadSkin(), customImage = null, shop = null;
 
@@ -278,7 +291,7 @@
 
   function block(c, x, y, size, col, alpha = 1, name = skin) {
     c.globalAlpha = alpha;
-    c.drawImage(tile(name, col, size), x, y);
+    c.drawImage(tile(name, col, size * dpr), x, y, size, size);
     c.globalAlpha = 1;
   }
 
@@ -286,7 +299,7 @@
     if (!S || !ctx) return;
     const colors = SKINS[skin].colors[colorIndex()];
     ctx.fillStyle = "#0b0b0f";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, COLS * cell, ROWS * cell);
     ctx.strokeStyle = "rgba(255,255,255,0.05)";
     ctx.lineWidth = 1;
     for (let x = 1; x < COLS; x++) {
@@ -305,7 +318,7 @@
     }
     if (S.flash > 0) {
       ctx.fillStyle = `rgba(255,255,255,${(S.flash / 0.35) * 0.35})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, COLS * cell, ROWS * cell);
     }
     drawNext(colors);
     hud.score.textContent = S.score;
@@ -314,7 +327,7 @@
   }
 
   function drawNext(colors) {
-    const n = nextCanvas.width, size = Math.floor(n / 4);
+    const n = 64, size = Math.floor(n / 4);
     nextCtx.clearRect(0, 0, n, n);
     const cells = SHAPES[S.next];
     const xs = cells.map(([x]) => x), ys = cells.map(([, y]) => y);
@@ -328,8 +341,7 @@
     const width = root.clientWidth || 320;
     const height = (tg?.viewportStableHeight || window.innerHeight) - 260;
     cell = Math.max(12, Math.floor(Math.min((width - 74) / COLS, height / ROWS)));
-    canvas.width = COLS * cell;
-    canvas.height = ROWS * cell;
+    ctx = sizeCanvas(canvas, COLS * cell, ROWS * cell);
     draw();
   }
 
@@ -497,7 +509,7 @@
   function intro() {
     stop();
     draw();
-    show("Блоки", `Собирай полные линии, игра бесконечная и постепенно ускоряется. ` +
+    show("Игра «Блоки»", `Собирай полные линии, игра бесконечная и постепенно ускоряется. ` +
       `Каждые ${COLOR_STEP} очков блоки меняют цвет.`,
     [["Играть", start], ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]]);
   }
@@ -578,7 +590,8 @@
     draw();
   }
 
-  // Своя картинка: квадрат из середины фото, уменьшенный до 96×96, хранится только на этом телефоне
+  // Своя картинка: квадрат из середины фото, уменьшенный до 256×256 (чётко даже на крупной клетке и плотном экране),
+  // хранится только на этом телефоне
   function pickImage(done) {
     const input = document.createElement("input");
     input.type = "file";
@@ -590,10 +603,12 @@
       const img = new Image();
       img.onload = () => {
         const side = Math.min(img.width, img.height), out = document.createElement("canvas");
-        out.width = out.height = 96;
-        out.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 96, 96);
+        out.width = out.height = IMAGE_SIZE;
+        const oc = out.getContext("2d");
+        oc.imageSmoothingQuality = "high";
+        oc.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, IMAGE_SIZE, IMAGE_SIZE);
         URL.revokeObjectURL(url);
-        const data = out.toDataURL("image/jpeg", 0.85);
+        const data = out.toDataURL("image/jpeg", 0.9);
         const small = new Image();
         small.onload = () => {
           customImage = small;
@@ -621,11 +636,9 @@
   }
 
   function preview(name) {
-    const c = document.createElement("canvas"), size = 22, cols = SKINS[name].colors;
-    c.width = size * 3;
-    c.height = size * 2;
+    const c = document.createElement("canvas"), size = 16, cols = SKINS[name].colors;
+    const x = sizeCanvas(c, size * 3, size * 2);
     c.className = "tt-skin-preview";
-    const x = c.getContext("2d");
     [[0, 1], [1, 1], [2, 1], [1, 0]].forEach(([cx, cy], i) => block(x, cx * size, cy * size, size, cols[(i % 2) && cols.length > 1 ? 1 : 0], 1, name));
     return c;
   }
@@ -784,7 +797,7 @@
     canvas = root.querySelector(".tt-view canvas");
     ctx = canvas.getContext("2d");
     nextCanvas = root.querySelector(".tt-next");
-    nextCtx = nextCanvas.getContext("2d");
+    nextCtx = sizeCanvas(nextCanvas, 64, 64);
     over = root.querySelector(".tt-over");
     hud = { score: root.querySelector(".tt-score"), lines: root.querySelector(".tt-lines"),
       best: root.querySelector(".tt-best") };
