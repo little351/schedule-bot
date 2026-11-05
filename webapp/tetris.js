@@ -2,7 +2,7 @@
 // карточки, на скорость открытия расписания не влияет. Всё рисуется кодом, звука нет.
 (() => {
   "use strict";
-  const COLS = 10, ROWS = 20;
+  const COLS = 12, ROWS = 18;
   const COLOR_STEP = 1000;  // каждые столько очков все блоки меняют цвет
   const LINE_POINTS = [0, 100, 300, 500, 800];
   const LOCK_DELAY = 0.5, LOCK_RESETS = 15;  // сколько фигура может лежать на опоре, пока её двигают
@@ -327,7 +327,7 @@
   function fit() {
     const width = root.clientWidth || 320;
     const height = (tg?.viewportStableHeight || window.innerHeight) - 260;
-    cell = Math.max(12, Math.floor(Math.min((width - 80) / COLS, height / ROWS)));
+    cell = Math.max(12, Math.floor(Math.min((width - 74) / COLS, height / ROWS)));
     canvas.width = COLS * cell;
     canvas.height = ROWS * cell;
     draw();
@@ -518,7 +518,15 @@
     if (!running) return;
     ACTIONS[act]();
     if (REPEATS[act]) {
-      const timer = { id: setTimeout(function again() { if (!running) return; ACTIONS[act](); timer.id = setTimeout(again, REPEAT_EVERY); }, REPEAT_DELAY) };
+      // stopped: повтор мог отпустить сам себя (фигура легла и releaseAll), тогда новый шаг не планируем,
+      // иначе осиротевший таймер ронял бы фигуры вечно и с каждым разом быстрее
+      const timer = { stopped: false };
+      const again = () => {
+        if (!running || timer.stopped) return;
+        ACTIONS[act]();
+        if (!timer.stopped) timer.id = setTimeout(again, REPEAT_EVERY);
+      };
+      timer.id = setTimeout(again, REPEAT_DELAY);
       held.set(btn, timer);
     }
   }
@@ -526,7 +534,7 @@
   function release(btn) {
     btn.classList.remove("on");
     const timer = held.get(btn);
-    if (timer) clearTimeout(timer.id);
+    if (timer) { timer.stopped = true; clearTimeout(timer.id); }
     held.delete(btn);
   }
 
@@ -711,7 +719,7 @@
 
   const CSS = `
   .tt { user-select: none; -webkit-user-select: none; }
-  .tt-play { display: flex; gap: 10px; justify-content: center; align-items: flex-start; }
+  .tt-play { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
   .tt-view { position: relative; border-radius: 12px; overflow: hidden; background: #0b0b0f; touch-action: none; line-height: 0; }
   .tt-view canvas { display: block; }
   .tt-side { display: flex; flex-direction: column; gap: 10px; width: 64px; font-size: 12px; color: var(--hint); }
