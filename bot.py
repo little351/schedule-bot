@@ -380,6 +380,7 @@ def _is_owner(update):
 BACKUP_KIND = "schedule-bot-backup"
 BACKUP_INTERVAL_DAYS = 7  # как часто бот сам присылает владельцу резервную копию
 BACKUP_TITLES = {"users": "пользователей", "notes": "заметок", "game_scores": "рекордов игры",
+                 "tetris_scores": "рекордов игры «Блоки»",
                  "sync_state": "настроек подгрузки"}
 
 

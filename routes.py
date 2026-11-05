@@ -12,7 +12,7 @@ from database import (
     DAYS_ORDER, PRACTICE_SLOT, TIME_SLOTS, WEEKDAY_MAP, GroupRef, get_catalog, get_day_lessons,
     get_groups, get_relative_week_sheet, get_user_group, get_week_schedule_grid, set_user_group,
     touch_user, NOTES_LIMIT, add_note, count_notes, delete_note, get_group_subjects, list_notes, update_note,
-    game_leaderboard, save_game_score,
+    GAME_TABLES, game_leaderboard, save_game_score,
 )
 from formatting import trim_trailing_empty
 import lms_sync
@@ -284,14 +284,22 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
             raise HTTPException(status_code=502, detail="send_failed")  # например, бот заблокирован
         return {"ok": True}
 
+    def game_key(game):
+        if game not in GAME_TABLES:
+            raise HTTPException(status_code=400, detail="bad_game")
+        return game
+
+    # ?game=tetris - игра «Блоки», без параметра - прежняя игра «Сессия» (у каждой игры своя таблица рекордов)
     @router.get("/game/top")
-    def game_top(x_init_data: str = Header(default="")):
+    def game_top(game: str = "session", x_init_data: str = Header(default="")):
+        game = game_key(game)
         user = validate_init_data(x_init_data or "", bot_token, READ_MAX_AGE_SECONDS)
-        return game_leaderboard(conn, user["id"] if user else 0)
+        return game_leaderboard(conn, user["id"] if user else 0, game=game)
 
     @router.post("/game/score")
-    def game_score(body: GameScore, x_init_data: str = Header(default="")):
+    def game_score(body: GameScore, game: str = "session", x_init_data: str = Header(default="")):
         """Конец партии мини-игры: запоминаем рекорд и сразу отдаём таблицу лидеров (один запрос на партию)."""
+        game = game_key(game)
         user = validate_init_data(x_init_data or "", bot_token)
         if not user:
             raise HTTPException(status_code=403, detail="bad_init_data")
@@ -300,7 +308,7 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
         last = (user.get("last_name") or "").strip()
         name = ((user.get("first_name") or "").strip() + (f" {last[0]}." if last else "")).strip()
         if body.score > 0:
-            save_game_score(conn, user["id"], name[:20] or "Игрок", body.score)
-        return game_leaderboard(conn, user["id"])
+            save_game_score(conn, user["id"], name[:20] or "Игрок", body.score, game=game)
+        return game_leaderboard(conn, user["id"], game=game)
 
     return router

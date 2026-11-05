@@ -770,7 +770,7 @@
       <span class="menu-icon purple">🎲</span><span class="menu-title">Рандомайзер</span><span class="menu-arrow">›</span>
     </button>
     <button class="menu-card" data-screen="paneGame">
-      <span class="menu-icon blue">🏃</span><span class="menu-title">Игра «Сессия»</span><span class="menu-arrow">›</span>
+      <span class="menu-icon blue">🧱</span><span class="menu-title">Блоки</span><span class="menu-arrow">›</span>
     </button>
     <button class="menu-card" data-screen="paneMap">
       <span class="menu-icon green">🗺️</span><span class="menu-title">Карта вуза</span><span class="menu-arrow">›</span>
@@ -855,7 +855,7 @@
   </div>
 
   <div id="paneGame" class="other-screen" style="display:none;">
-    <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Игра «Сессия»</h1></div>
+    <div class="screen-head"><button class="back-btn" aria-label="Назад">‹</button><h1>Блоки</h1></div>
     <div id="gameRoot"></div>
   </div>
 </div>
@@ -1356,16 +1356,16 @@ for (const back of document.querySelectorAll(".back-btn")) {
   });
 }
 
-// --- Игра «Сессия»: код в game.js грузится только при первом открытии карточки ---
+// --- Игра «Блоки»: код в tetris.js грузится только при первом открытии карточки ---
 let gameScript = null;
 function openGame() {
   const root = document.getElementById("gameRoot");
-  if (window.SessionGame) return window.SessionGame.open(root);
+  if (window.TetrisGame) return window.TetrisGame.open(root);
   if (gameScript) return;
   root.textContent = "Загружаю игру...";
   gameScript = document.createElement("script");
-  gameScript.src = "game.js?v=6";
-  gameScript.onload = () => { root.textContent = ""; window.SessionGame.open(root); };
+  gameScript.src = "tetris.js?v=1";
+  gameScript.onload = () => { root.textContent = ""; window.TetrisGame.open(root); };
   gameScript.onerror = () => { gameScript.remove(); gameScript = null; root.textContent = "Не удалось загрузить игру, попробуй ещё раз."; };
   document.head.appendChild(gameScript);
 }
