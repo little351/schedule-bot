@@ -30,7 +30,7 @@ SYNCED_PARSED_COLUMNS = [("parsed", "BYTEA"), ("parsed_version", "TEXT")]
 
 PG_DSN = os.environ.get("DATABASE_URL")
 # рекорды мини-игр: у каждой игры своя таблица (рекорды прежней игры «Сессия» остаются в game_scores)
-GAME_TABLES = {"session": "game_scores", "tetris": "tetris_scores"}
+GAME_TABLES = {"session": "game_scores", "tetris": "tetris_scores", "tetris_hard": "tetris_hard_scores"}
 pg_conn = None
 
 
@@ -405,6 +405,7 @@ BACKUP_TABLES = {
     "notes": ["telegram_id", "subject", "text", "due_date", "done", "created_at"],
     "game_scores": ["telegram_id", "name", "best", "updated_at"],
     "tetris_scores": ["telegram_id", "name", "best", "updated_at"],
+    "tetris_hard_scores": ["telegram_id", "name", "best", "updated_at"],
     "blocks_wallet": ["telegram_id", "earned", "spent", "skins", "updated_at"],
     "sync_state": ["key", "value"],
 }
@@ -414,6 +415,7 @@ BACKUP_KEYS = {
     "notes": ["telegram_id", "created_at", "text"],
     "game_scores": ["telegram_id"],
     "tetris_scores": ["telegram_id"],
+    "tetris_hard_scores": ["telegram_id"],
     "blocks_wallet": ["telegram_id"],
     "sync_state": ["key"],
 }

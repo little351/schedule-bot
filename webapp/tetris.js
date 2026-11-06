@@ -8,6 +8,11 @@
   // Сложность растёт ступенями каждые 25 000 очков до 100 000, дальше не меняется.
   // Секунды на одну клетку падения: поле (18 клеток) фигура проходит за 14, 12, 10, 8 и 5 с (решение Артёма)
   const DIFF_STEP = 25000, FALL_SECONDS = [14, 12, 10, 8, 5].map((s) => s / 18);
+  // Сложный режим: сразу 5 с на поле, дальше каждые 25 000 очков на 10% быстрее, но не быстрее 1,5 с (решение Артёма).
+  // У режимов разные таблицы рекордов, очки обоих идут на один счёт магазина
+  const HARD_START = 5, HARD_FACTOR = 0.9, HARD_MIN = 1.5;
+  const MODES = { normal: { name: "Обычный", game: "tetris" }, hard: { name: "Сложный", game: "tetris_hard" } };
+  const MODE_KEY = "blocks_mode";
   const LOCK_DELAY = 0.5, LOCK_RESETS = 15;  // сколько фигура может лежать на опоре, пока её двигают
   const REPEAT_DELAY = 170, REPEAT_EVERY = 55;  // удержание кнопки: пауза перед повтором и шаг повтора, мс
   const tg = window.Telegram?.WebApp;
@@ -54,6 +59,7 @@
   }
   let S = null, running = false, rafId = 0, last = 0, best = null;
   let skin = loadSkin(), customImage = null, shop = null;
+  let mode = MODES[storageGet(MODE_KEY)] ? storageGet(MODE_KEY) : "normal";
 
   function rotated(cells, size, times) {
     let out = cells;
@@ -178,6 +184,9 @@
   }
 
   function fallInterval() {
+    if (mode === "hard") {
+      return Math.max(HARD_MIN, HARD_START * HARD_FACTOR ** Math.floor(S.score / DIFF_STEP)) / ROWS;
+    }
     return FALL_SECONDS[difficulty()];
   }
 
@@ -386,6 +395,7 @@
 
   function start() {
     newGame();
+    hud.mode.textContent = MODES[mode].name;
     shownColor = 0;
     resume();
   }
@@ -430,12 +440,12 @@
     note.textContent = "Сохраняю результат...";
     lastBoard = null;
     show("Игра окончена", `Счёт: ${score}, линий: ${S.lines}.`,
-      [["Ещё раз", start], ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]], note);
+      [["Ещё раз", start], ["Режим", intro, true], ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]], note);
     sendScore(score, note);
   }
 
   async function api(method, path, body) {
-    const res = await fetch("/api/game" + path + "?game=tetris", {
+    const res = await fetch("/api/game" + path + "?game=" + MODES[mode].game, {
       method,
       headers: { "Content-Type": "application/json", "X-Init-Data": tg?.initData || "" },
       body: body ? JSON.stringify(body) : undefined,
@@ -466,7 +476,7 @@
     sheet.className = "tt-sheet";
     const title = document.createElement("div");
     title.className = "tt-title";
-    title.textContent = "Таблица лидеров";
+    title.textContent = `Таблица лидеров · ${MODES[mode].name}`;
     const body = document.createElement("div");
     body.className = "tt-board";
     body.textContent = "Загружаю...";
@@ -516,9 +526,20 @@
   function intro() {
     stop();
     draw();
-    show("Игра «Блоки»", `Собирай полные линии, игра бесконечная. Каждые 25 000 очков фигуры падают быстрее, после 100 000 скорость больше не растёт. ` +
-      `Каждые ${COLOR_STEP} очков блоки меняют цвет.`,
-    [["Играть", start], ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]]);
+    show("Игра «Блоки»", `Собирай полные линии, игра бесконечная. Обычный: каждые 25 000 очков фигуры падают быстрее, после 100 000 скорость не растёт. ` +
+      `Сложный: сразу быстро и дальше всё быстрее, рекорды отдельно. Каждые ${COLOR_STEP} очков блоки меняют цвет.`,
+    [["Обычный", () => startMode("normal")], ["Сложный", () => startMode("hard")],
+      ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]]);
+  }
+
+  function startMode(m) {
+    if (m !== mode) {
+      mode = m;
+      best = null;  // рекорд и таблица у каждого режима свои
+      lastBoard = null;
+      storageSet(MODE_KEY, m);
+    }
+    start();
   }
 
   // --- Управление: кнопки под полем (удержание повторяет ход) и клавиатура ---
@@ -744,6 +765,7 @@
   .tt-view canvas { display: block; }
   .tt-side { display: flex; flex-direction: column; gap: 10px; width: 64px; font-size: 12px; color: var(--hint); }
   .tt-side b { display: block; color: var(--text); font-size: 17px; margin-top: 2px; }
+  .tt-side b.tt-mode { font-size: 13px; }
   .tt-next { width: 64px; height: 64px; background: var(--card); border-radius: 10px; display: block; }
   .tt-over { position: absolute; inset: 0; background: rgba(0,0,0,0.72); display: flex; align-items: center; justify-content: center; padding: 10px; line-height: normal; }
   .tt-box { text-align: center; max-width: 300px; color: #fff; }
@@ -791,6 +813,7 @@
           <div>Счёт<b class="tt-score">0</b></div>
           <div>Линии<b class="tt-lines">0</b></div>
           <div>Рекорд<b class="tt-best">0</b></div>
+          <div>Режим<b class="tt-mode"></b></div>
           <button class="tt-shop-btn" aria-label="Магазин скинов">🛍️<span>Магазин</span></button>
         </div>
       </div>
@@ -807,7 +830,8 @@
     nextCtx = sizeCanvas(nextCanvas, 64, 64);
     over = root.querySelector(".tt-over");
     hud = { score: root.querySelector(".tt-score"), lines: root.querySelector(".tt-lines"),
-      best: root.querySelector(".tt-best") };
+      best: root.querySelector(".tt-best"), mode: root.querySelector(".tt-mode") };
+    hud.mode.textContent = MODES[mode].name;
     for (const btn of root.querySelectorAll(".tt-arrow")) {
       btn.addEventListener("pointerdown", (e) => { e.preventDefault(); press(btn); });
       for (const ev of ["pointerup", "pointercancel", "pointerleave"]) {
@@ -837,6 +861,9 @@
       step: (dt) => { if (running) { update(dt); if (running) draw(); } return running; },
       act: (name) => ACTIONS[name](),
       start,
+      startMode,
+      mode: () => mode,
+      fallInterval: () => fallInterval(),
     },
   };
 })();

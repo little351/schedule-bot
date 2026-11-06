@@ -104,3 +104,16 @@ def test_campus_map_is_sent_to_the_signed_user_once_per_pause(tmp_path):
     app3 = FastAPI()
     app3.include_router(build_router(conn, TOKEN))
     assert TestClient(app3).post("/api/campus-map", headers={"X-Init-Data": init_data(8)}).status_code == 503
+
+
+def test_blocks_hard_mode_has_own_leaderboard_and_shares_wallet(tmp_path):
+    conn = init_db(str(tmp_path / "h.db"))
+    app = FastAPI()
+    app.include_router(build_router(conn, TOKEN))
+    client = TestClient(app)
+    headers = {"X-Init-Data": init_data(1)}
+    client.post("/api/game/score?game=tetris", json={"score": 7000}, headers=headers)
+    r = client.post("/api/game/score?game=tetris_hard", json={"score": 300}, headers=headers).json()
+    assert r["best"] == 300 and [row["score"] for row in r["top"]] == [300]
+    assert client.get("/api/game/top?game=tetris", headers=headers).json()["best"] == 7000
+    assert client.get("/api/blocks/shop", headers=headers).json()["balance"] == 7300

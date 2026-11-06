@@ -1364,7 +1364,7 @@ function openGame() {
   if (gameScript) return;
   root.textContent = "Загружаю игру...";
   gameScript = document.createElement("script");
-  gameScript.src = "tetris.js?v=5";
+  gameScript.src = "tetris.js?v=6";
   gameScript.onload = () => { root.textContent = ""; window.TetrisGame.open(root); };
   gameScript.onerror = () => { gameScript.remove(); gameScript = null; root.textContent = "Не удалось загрузить игру, попробуй ещё раз."; };
   document.head.appendChild(gameScript);
