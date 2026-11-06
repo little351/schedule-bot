@@ -293,7 +293,7 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
             raise HTTPException(status_code=400, detail="bad_game")
         return game
 
-    # ?game=tetris - игра «Блоки», без параметра - прежняя игра «Сессия» (у каждой игры своя таблица рекордов)
+    # ?game=tetris - игра «Блоки» (tetris_hard - её сложный режим), без параметра - прежняя игра «Сессия» (у каждой игры своя таблица рекордов)
     @router.get("/game/top")
     def game_top(game: str = "session", x_init_data: str = Header(default="")):
         game = game_key(game)
@@ -313,7 +313,7 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
         name = ((user.get("first_name") or "").strip() + (f" {last[0]}." if last else "")).strip()
         if body.score > 0:
             save_game_score(conn, user["id"], name[:20] or "Игрок", body.score, game=game)
-            if game == "tetris":
+            if game in ("tetris", "tetris_hard"):
                 add_blocks_points(conn, user["id"], body.score)  # очки партии идут на счёт для магазина скинов
         return game_leaderboard(conn, user["id"], game=game)
 
