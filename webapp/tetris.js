@@ -13,6 +13,9 @@
   const HARD_START = 5, HARD_FACTOR = 0.9, HARD_MIN = 1.5;
   const MODES = { normal: { name: "Обычный", game: "tetris" }, hard: { name: "Сложный", game: "tetris_hard" } };
   const MODE_KEY = "blocks_mode";
+  // Счёт, который не дошёл до сервера (нет связи, устаревшая подпись Telegram), и партия, оставленная на паузе:
+  // хранятся на телефоне и отправляются при следующем открытии игры, чтобы очки не пропадали
+  const UNSAVED_KEY = "blocks_unsaved", RUN_KEY = "blocks_run", UNSAVED_MAX = 20;
   const LOCK_DELAY = 0.5, LOCK_RESETS = 15;  // сколько фигура может лежать на опоре, пока её двигают
   const REPEAT_DELAY = 170, REPEAT_EVERY = 55;  // удержание кнопки: пауза перед повтором и шаг повтора, мс
   const tg = window.Telegram?.WebApp;
@@ -373,6 +376,7 @@
   }
 
   function resume() {
+    storageSet(RUN_KEY, "");  // партия снова идёт: на паузе её больше нет
     over.style.display = "none";
     running = true;
     last = 0;
@@ -390,7 +394,10 @@
   function pause() {
     if (!running) return;
     stop();
-    show("Пауза", "Игра остановлена.", [["Продолжить", resume]]);
+    // если мини-апп закроют на паузе, счёт этой партии отправится при следующем открытии игры
+    if (S.score > 0) storageSet(RUN_KEY, JSON.stringify({ game: MODES[mode].game, score: S.score }));
+    show("Пауза", "Игра остановлена. Если закрыть приложение, счёт сохранится при следующем открытии игры.",
+      [["Продолжить", resume], ["Закончить и сохранить", gameOver, true]]);
   }
 
   function start() {
@@ -432,6 +439,7 @@
 
   function gameOver() {
     stop();
+    storageSet(RUN_KEY, "");
     draw();
     haptic("heavy");
     const score = S.score;
@@ -441,27 +449,65 @@
     lastBoard = null;
     show("Игра окончена", `Счёт: ${score}, линий: ${S.lines}.`,
       [["Ещё раз", start], ["Режим", intro, true], ["Таблица лидеров", openBoard, true], ["Магазин", openShop, true]], note);
-    sendScore(score, note);
+    sendScore(MODES[mode].game, score, note);
   }
 
-  async function api(method, path, body) {
-    const res = await fetch("/api/game" + path + "?game=" + MODES[mode].game, {
+  async function api(method, path, body, game = MODES[mode].game) {
+    const res = await fetch("/api/game" + path + "?game=" + game, {
       method,
       headers: { "Content-Type": "application/json", "X-Init-Data": tg?.initData || "" },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok) throw new Error(String(res.status));
+    if (!res.ok) { const err = new Error(String(res.status)); err.status = res.status; throw err; }
     return res.json();
   }
 
-  async function sendScore(score, note) {
+  async function sendScore(game, score, note) {
     try {
-      lastBoard = await api("POST", "/score", { score });
-      best = lastBoard.best;
-      note.textContent = myPlace(lastBoard);
-      draw();
+      const data = await api("POST", "/score", { score }, game);
+      if (game === MODES[mode].game) {
+        lastBoard = data;
+        best = data.best;
+        draw();
+      }
+      note.textContent = myPlace(data);
     } catch (e) {
-      note.textContent = "Не удалось сохранить результат.";
+      if (e.status === 400) { note.textContent = "Не удалось сохранить результат."; return; }
+      keepUnsaved({ game, score });
+      note.textContent = "Сервер не ответил. Результат сохранён на телефоне и отправится при следующем открытии игры.";
+    }
+  }
+
+  function readUnsaved() {
+    try {
+      const list = JSON.parse(storageGet(UNSAVED_KEY) || "[]");
+      const games = Object.values(MODES).map((m) => m.game);
+      return Array.isArray(list) ? list.filter((r) => r && games.includes(r.game) && r.score > 0) : [];
+    } catch (e) { return []; }
+  }
+
+  function keepUnsaved(run) {
+    storageSet(UNSAVED_KEY, JSON.stringify(readUnsaved().concat([run]).slice(-UNSAVED_MAX)));
+  }
+
+  // При открытии игры: партия, брошенная на паузе в прошлый раз, и всё неотправленное уходят на сервер по одному
+  async function flushUnsaved() {
+    try {
+      const run = JSON.parse(storageGet(RUN_KEY) || "null");
+      if (run && run.score > 0) keepUnsaved(run);
+    } catch (e) { /* испорченная запись */ }
+    storageSet(RUN_KEY, "");
+    let list = readUnsaved();
+    while (list.length) {
+      const run = list[0];
+      try {
+        const data = await api("POST", "/score", { score: run.score }, run.game);
+        if (run.game === MODES[mode].game) { best = data.best; lastBoard = null; if (!running) draw(); }
+      } catch (e) {
+        if (e.status !== 400) return;  // сервер спит или подпись старая: попробуем в следующий раз
+      }
+      list = readUnsaved().slice(1);
+      storageSet(UNSAVED_KEY, JSON.stringify(list));
     }
   }
 
@@ -842,6 +888,7 @@
     root.querySelector(".tt-shop-btn").addEventListener("click", openShop);
     document.addEventListener("keydown", onKey);
     loadCustomImage();
+    flushUnsaved();
     document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
     window.addEventListener("resize", () => { if (root.offsetParent !== null) fit(); });
     newGame();
