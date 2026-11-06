@@ -59,8 +59,9 @@ class SkinBuy(BaseModel):
     skin: str
 
 
-# Потолок счёта партии: после диплома игра бесконечная, но столько честно не набрать - всё сверху подделка запроса.
-GAME_SCORE_MAX = 1_000_000
+# Потолок счёта партии. «Блоки» бесконечные и очки за линию растут, поэтому потолок высокий, а счёт выше него
+# не отклоняется, а срезается до потолка: честный долгий рекорд не должен пропадать целиком.
+GAME_SCORE_MAX = 100_000_000
 
 
 class NotePatch(BaseModel):
@@ -304,11 +305,14 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
     def game_score(body: GameScore, game: str = "session", x_init_data: str = Header(default="")):
         """Конец партии мини-игры: запоминаем рекорд и сразу отдаём таблицу лидеров (один запрос на партию)."""
         game = game_key(game)
-        user = validate_init_data(x_init_data or "", bot_token)
+        # подпись Telegram действует 7 дней, как у расписания: мини-апп с бесконечной игрой держат открытым подолгу,
+        # а неотправленный счёт игра повторяет при следующем открытии уже со свежей подписью
+        user = validate_init_data(x_init_data or "", bot_token, READ_MAX_AGE_SECONDS)
         if not user:
             raise HTTPException(status_code=403, detail="bad_init_data")
-        if not 0 <= body.score <= GAME_SCORE_MAX:
+        if body.score < 0:
             raise HTTPException(status_code=400, detail="bad_score")
+        body.score = min(body.score, GAME_SCORE_MAX)
         last = (user.get("last_name") or "").strip()
         name = ((user.get("first_name") or "").strip() + (f" {last[0]}." if last else "")).strip()
         if body.score > 0:

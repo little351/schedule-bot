@@ -22,7 +22,7 @@ def test_game_leaderboard_keeps_best_score_per_player(tmp_path):
         return client.post("/api/game/score", json={"score": score}, headers={"X-Init-Data": init_data(user_id)})
 
     assert client.post("/api/game/score", json={"score": 10}).status_code == 403
-    assert post(1, -5).status_code == 400 and post(1, 10**9).status_code == 400
+    assert post(1, -5).status_code == 400
     assert post(1, 300).json() == {"top": [{"name": "Т", "score": 300, "me": True}], "best": 300, "rank": 1}
     post(2, 500)
     r = post(1, 100).json()  # худшая партия рекорд не портит
@@ -117,3 +117,20 @@ def test_blocks_hard_mode_has_own_leaderboard_and_shares_wallet(tmp_path):
     assert r["best"] == 300 and [row["score"] for row in r["top"]] == [300]
     assert client.get("/api/game/top?game=tetris", headers=headers).json()["best"] == 7000
     assert client.get("/api/blocks/shop", headers=headers).json()["balance"] == 7300
+
+
+def test_blocks_long_game_score_is_not_lost(tmp_path):
+    """Мини-апп открыт двое суток: счёт всё равно принимается; огромный счёт срезается до потолка, а не отклоняется."""
+    from routes import GAME_SCORE_MAX
+    conn = init_db(str(tmp_path / "l.db"))
+    app = FastAPI()
+    app.include_router(build_router(conn, TOKEN))
+    client = TestClient(app)
+    old = {"X-Init-Data": init_data(1, age=2 * 24 * 3600)}
+    r = client.post("/api/game/score?game=tetris", json={"score": 300000}, headers=old)
+    assert r.status_code == 200 and r.json()["best"] == 300000
+    assert client.get("/api/blocks/shop", headers=old).json()["balance"] == 300000
+    huge = client.post("/api/game/score?game=tetris", json={"score": 10**12}, headers=old).json()
+    assert huge["best"] == GAME_SCORE_MAX
+    stale = {"X-Init-Data": init_data(1, age=8 * 24 * 3600)}
+    assert client.post("/api/game/score?game=tetris", json={"score": 5}, headers=stale).status_code == 403
