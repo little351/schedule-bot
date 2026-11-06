@@ -239,7 +239,8 @@ async def on_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await answer_query(query)
     action = (query.data or "").split(":", 1)[-1]
     # обработчики команд читают update.message и update.effective_user: подставляем сообщение с кнопкой и нажавшего
-    shim = SimpleNamespace(message=query.message, effective_user=query.from_user, callback_query=query)
+    shim = SimpleNamespace(message=query.message, effective_user=query.from_user,
+                           effective_chat=getattr(query.message, "chat", None), callback_query=query)
     if action == "week":
         await week(shim, context)
     elif action == "nweek":
@@ -714,7 +715,8 @@ async def _send_week(update, group, week_sheet, not_found_msg):
 
 def open_app_markup(update):
     """Кнопка «Открыть в приложении» под расписанием. Кнопки Mini App Telegram разрешает только в личке."""
-    if update.effective_chat is None or update.effective_chat.type != "private":
+    chat = getattr(update, "effective_chat", None) or getattr(getattr(update, "message", None), "chat", None)
+    if chat is None or chat.type != "private":
         return None
     return InlineKeyboardMarkup([[InlineKeyboardButton("📱 Открыть в приложении", web_app=WebAppInfo(url=WEBAPP_URL))]])
 

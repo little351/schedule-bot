@@ -226,3 +226,28 @@ def test_week_reply_has_open_in_app_button_only_in_private_chat():
     button = markup.inline_keyboard[0][0]
     assert button.text == "📱 Открыть в приложении" and button.web_app.url == bot.WEBAPP_URL
     assert bot.open_app_markup(SimpleNamespace(effective_chat=SimpleNamespace(type="group"))) is None
+
+
+def test_week_button_under_group_works(monkeypatch):
+    """Кнопка «эта неделя» под выбранной группой: on_action подставляет свой update, расписание с кнопкой мини-аппа приходит."""
+    import asyncio
+    from types import SimpleNamespace
+    monkeypatch.setenv("BOT_TOKEN", "123:abc")
+    import bot
+    sent = []
+
+    async def reply_text(text, **kw):
+        sent.append((text, kw))
+
+    async def answer(*a, **kw):
+        pass
+
+    message = SimpleNamespace(chat=SimpleNamespace(type="private"), reply_text=reply_text)
+    query = SimpleNamespace(data="a:week", message=message, from_user=SimpleNamespace(id=5), answer=answer)
+    group = SimpleNamespace(title="1 группа")
+    monkeypatch.setattr(bot, "get_user_group", lambda conn, uid: group)
+    monkeypatch.setattr(bot, "get_current_week_sheet", lambda conn, g: "sheet")
+    monkeypatch.setattr(bot, "get_week_schedule_grid", lambda conn, g, w: {})
+    monkeypatch.setattr(bot, "format_week_text", lambda title, w, grid: "текст")
+    asyncio.run(bot.on_action(SimpleNamespace(callback_query=query), SimpleNamespace(user_data={})))
+    assert sent and sent[0][1]["reply_markup"].inline_keyboard[0][0].text == "📱 Открыть в приложении"
