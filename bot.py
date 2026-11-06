@@ -9,7 +9,7 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError, TimedOut
-from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, MenuButtonWebApp, WebAppInfo
 from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, MessageHandler, TypeHandler, ContextTypes, filters
 )
@@ -709,7 +709,14 @@ async def _send_week(update, group, week_sheet, not_found_msg):
         return
     grid = get_week_schedule_grid(conn, group, week_sheet)
     text = with_donation_note(format_week_text(group.title, week_sheet, grid))
-    await update.message.reply_text(text, parse_mode="MarkdownV2")
+    await update.message.reply_text(text, parse_mode="MarkdownV2", reply_markup=open_app_markup(update))
+
+
+def open_app_markup(update):
+    """Кнопка «Открыть в приложении» под расписанием. Кнопки Mini App Telegram разрешает только в личке."""
+    if update.effective_chat is None or update.effective_chat.type != "private":
+        return None
+    return InlineKeyboardMarkup([[InlineKeyboardButton("📱 Открыть в приложении", web_app=WebAppInfo(url=WEBAPP_URL))]])
 
 
 async def week(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -879,6 +886,12 @@ async def post_init(application):
         BotCommand("nweek", "Расписание на следующую неделю"),
         BotCommand("weekdate", "Расписание на неделю по дате"),
     ])
+    # кнопка слева от поля ввода: вместо списка команд открывает мини-апп; команды по-прежнему видны по «/»
+    try:
+        await application.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(text="Расписание", web_app=WebAppInfo(url=WEBAPP_URL)))
+    except TelegramError as e:
+        logging.warning("Не удалось поставить кнопку меню: %s", e)
 
 
 ERROR_TEXT = "Что-то пошло не так. Попробуй ещё раз чуть позже."

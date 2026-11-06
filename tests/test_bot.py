@@ -188,3 +188,41 @@ def test_late_button_press_still_works():
         pass
     else:
         raise AssertionError("другие ошибки answer() не должны глотаться")
+
+
+def test_menu_button_opens_mini_app_and_commands_stay(monkeypatch):
+    """Кнопка «Меню» заменена на «Расписание» (мини-апп); список команд для «/» остался прежним."""
+    import asyncio
+    from types import SimpleNamespace
+    from telegram import MenuButtonWebApp
+    from telegram.error import NetworkError
+    monkeypatch.setenv("BOT_TOKEN", "123:abc")
+    import bot
+    calls = {}
+
+    class FakeBot:
+        async def set_my_commands(self, commands):
+            calls["commands"] = [c.command for c in commands]
+
+        async def set_chat_menu_button(self, menu_button=None, chat_id=None):
+            calls["menu"] = menu_button
+            if calls.get("fail"):
+                raise NetworkError("нет сети")
+
+    app = SimpleNamespace(bot=FakeBot())
+    asyncio.run(bot.post_init(app))
+    assert calls["commands"] == ["start", "app", "group", "week", "nweek", "weekdate"]
+    assert isinstance(calls["menu"], MenuButtonWebApp)
+    assert calls["menu"].text == "Расписание" and calls["menu"].web_app.url == bot.WEBAPP_URL
+    calls["fail"] = True
+    asyncio.run(bot.post_init(app))  # сбой Telegram не мешает запуску бота
+
+
+def test_week_reply_has_open_in_app_button_only_in_private_chat():
+    from types import SimpleNamespace
+    os.environ.setdefault("BOT_TOKEN", "123:abc")
+    import bot
+    markup = bot.open_app_markup(SimpleNamespace(effective_chat=SimpleNamespace(type="private")))
+    button = markup.inline_keyboard[0][0]
+    assert button.text == "📱 Открыть в приложении" and button.web_app.url == bot.WEBAPP_URL
+    assert bot.open_app_markup(SimpleNamespace(effective_chat=SimpleNamespace(type="group"))) is None
