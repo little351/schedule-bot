@@ -16,6 +16,7 @@
   // Счёт, который не дошёл до сервера (нет связи, устаревшая подпись Telegram), и партия, оставленная на паузе:
   // хранятся на телефоне и отправляются при следующем открытии игры, чтобы очки не пропадали
   const UNSAVED_KEY = "blocks_unsaved", RUN_KEY = "blocks_run", UNSAVED_MAX = 20;
+  const FIELD_BG = "#1f2533";
   const LOCK_DELAY = 0.5, LOCK_RESETS = 15;  // сколько фигура может лежать на опоре, пока её двигают
   const REPEAT_DELAY = 170, REPEAT_EVERY = 55;  // удержание кнопки: пауза перед повтором и шаг повтора, мс
   const tg = window.Telegram?.WebApp;
@@ -317,9 +318,10 @@
   function draw() {
     if (!S || !ctx) return;
     const colors = SKINS[skin].colors[colorIndex()];
-    ctx.fillStyle = "#0b0b0f";
+    // поле светлее чёрного фона приложения, чтобы были видны его края (просьба Артёма)
+    ctx.fillStyle = FIELD_BG;
     ctx.fillRect(0, 0, COLS * cell, ROWS * cell);
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
     ctx.lineWidth = 1;
     for (let x = 1; x < COLS; x++) {
       ctx.beginPath(); ctx.moveTo(x * cell + 0.5, 0); ctx.lineTo(x * cell + 0.5, ROWS * cell); ctx.stroke();
@@ -807,7 +809,7 @@
   const CSS = `
   .tt { user-select: none; -webkit-user-select: none; }
   .tt-play { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
-  .tt-view { position: relative; border-radius: 12px; overflow: hidden; background: #0b0b0f; touch-action: none; line-height: 0; }
+  .tt-view { position: relative; border-radius: 12px; overflow: hidden; background: #1f2533; box-shadow: 0 0 0 2px #59627a; touch-action: none; line-height: 0; }
   .tt-view canvas { display: block; }
   .tt-side { display: flex; flex-direction: column; gap: 10px; width: 64px; font-size: 12px; color: var(--hint); }
   .tt-side b { display: block; color: var(--text); font-size: 17px; margin-top: 2px; }
