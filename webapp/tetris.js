@@ -104,7 +104,9 @@
   }
 
   function cellsOf(p) {
-    return rotated(SHAPES[p.type], SIZE[p.type], p.rot).map(([x, y]) => [p.x + x, p.y + y]);
+    // квадрат при повороте не меняется: в рамке 4×4 он бы сдвигался по кругу
+    const rot = p.type === "O" ? 0 : p.rot;
+    return rotated(SHAPES[p.type], SIZE[p.type], rot).map(([x, y]) => [p.x + x, p.y + y]);
   }
 
   function fits(p) {
