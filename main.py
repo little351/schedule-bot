@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
 
-from bot import build_application, post_init, conn, load_schedules, lms_scheduler, backup_scheduler, send_campus_map, TOKEN
+from bot import build_application, post_init, conn, load_schedules, auto_scheduler, run_due_jobs, send_campus_map, TOKEN
 from routes import build_router
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
@@ -31,10 +31,9 @@ async def lifespan(app):
     await application.initialize()
     await post_init(application)
     await application.bot.set_webhook(url=f"{PUBLIC_URL}{WEBHOOK_PATH}", secret_token=TELEGRAM_SECRET_TOKEN)
-    # автоподгрузка расписания с сайта вуза: работает, только если заданы LMS_LOGIN и LMS_PASSWORD
-    tasks = [asyncio.create_task(lms_scheduler(application)),
-             # еженедельная резервная копия владельцу в Telegram (нужен OWNER_ID)
-             asyncio.create_task(backup_scheduler(application))]
+    # автозадачи, пока сервер не спит: еженедельная копия владельцу (нужен OWNER_ID) и подгрузка расписания
+    # с сайта вуза (нужны LMS_LOGIN и LMS_PASSWORD); раз в сутки их же будит /cron из GitHub Actions
+    tasks = [asyncio.create_task(auto_scheduler(application))]
     yield
     for task in tasks:
         task.cancel()
@@ -59,6 +58,25 @@ async def telegram_webhook(request: Request):
     data = await request.json()
     update = Update.de_json(data, application.bot)
     await application.process_update(update)
+    return {"ok": True}
+
+
+# Раз в сутки GitHub Actions (.github/workflows/daily-jobs.yml) будит сервер и запускает автозадачи:
+# бесплатный Render спит без запросов, и таймер внутри процесса тогда не идёт. Секрет передаётся заголовком
+# (не в адресе, чтобы не попадал в логи); без CRON_SECRET адрес не работает вовсе.
+CRON_SECRET = os.environ.get("CRON_SECRET", "").strip()
+_cron_tasks = set()
+
+
+@app.post("/cron")
+async def cron(request: Request):
+    received = request.headers.get("X-Cron-Secret", "")
+    if not CRON_SECRET or not hmac.compare_digest(received, CRON_SECRET):
+        raise HTTPException(status_code=404)
+    # отвечаем сразу, задачи идут в фоне: после запроса Render ещё 15 минут не усыпляет сервер
+    task = asyncio.create_task(run_due_jobs(application.bot, "вызов из GitHub"))
+    _cron_tasks.add(task)
+    task.add_done_callback(_cron_tasks.discard)
     return {"ok": True}
 
 

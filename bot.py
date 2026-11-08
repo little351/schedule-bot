@@ -412,25 +412,6 @@ async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_document(document=io.BytesIO(data), filename=name, caption=caption)
 
 
-async def backup_scheduler(application):
-    """Раз в BACKUP_INTERVAL_DAYS дней присылает владельцу резервную копию: она лежит в Telegram,
-    вне базы и вне Render, и переживёт и потерю базы, и её остановку."""
-    if not OWNER_ID.isdigit():
-        return
-    await asyncio.sleep(120)  # Render будит сервис ненадолго: не тянем со стартом
-    while True:
-        try:
-            last = get_sync_state(conn, "backup_sent_at")
-            if not last or datetime.now(timezone.utc) - datetime.fromisoformat(last) >= timedelta(days=BACKUP_INTERVAL_DAYS):
-                name, data, caption = make_backup(conn)
-                await application.bot.send_document(chat_id=int(OWNER_ID), document=io.BytesIO(data),
-                                                    filename=name, caption="Еженедельная " + caption[0].lower() + caption[1:])
-                set_sync_state(conn, "backup_sent_at", datetime.now(timezone.utc).isoformat(timespec="seconds"))
-        except Exception:
-            logger.exception("автоматическая резервная копия: ошибка")
-        await asyncio.sleep(3600)
-
-
 async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await backfill_profiles(context.bot)
     rows = list_users(conn)
@@ -548,34 +529,170 @@ async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.application.create_task(run())
 
 
-async def lms_scheduler(application):
-    """Фоновая подгрузка: проверяет раз в полчаса, пора ли, и запускает по расписанию.
-    Первая проверка через полторы минуты после старта: бесплатный Render засыпает через 15 минут без запросов,
-    и пропущенный за время сна запуск должен успеть пройти, пока сервис разбужен студентами.
-    Если сервис уснёт посреди подгрузки, время запуска не записывается и она повторится при следующем пробуждении.
-    О сбое сообщает владельцу, повторно об одном и том же не чаще раза в LMS_FAIL_REPEAT_DAYS."""
-    await asyncio.sleep(90)
+# --- Автозадачи: резервная копия и подгрузка расписания ---
+# Запускаются из одного места двумя путями: таймером, пока сервер не спит, и раз в сутки вызовом /cron
+# из GitHub Actions (.github/workflows/daily-jobs.yml), который будит бесплатный Render. Копия идёт первой:
+# если подгрузка уронит процесс, копия к этому времени уже отправлена.
+PROCESS_STARTED = datetime.now(timezone.utc)
+JOBS_EVERY = 1800  # таймер проверяет, не пора ли, раз в полчаса
+STALE_SYNC_HOURS = 30  # подгрузки нет дольше: владелец получает предупреждение
+STALE_BACKUP_DAYS = BACKUP_INTERVAL_DAYS + 1
+INTERRUPTED_RETRY_HOURS = 6  # оборванную подгрузку повторяем не раньше, чтобы не попасть в круг
+ALERT_REPEAT_HOURS = 24  # одно и то же предупреждение владельцу не чаще
+_jobs_lock = asyncio.Lock()
+job_status = {"checked_at": None, "source": None, "error": None}  # для /health, живёт до перезапуска
+
+
+def _utc(value):
+    try:
+        return datetime.fromisoformat(value) if value else None
+    except ValueError:
+        return None
+
+
+async def _alert_owner(bot, key, text):
+    """Предупреждение владельцу; одно и то же (по key) не чаще раза в ALERT_REPEAT_HOURS часов,
+    время хранится в базе, потому что сервер часто перезапускается."""
+    if not OWNER_ID.isdigit():
+        return
+    now = datetime.now(timezone.utc)
+    last = _utc(get_sync_state(conn, "alert_" + key))
+    if last and now - last < timedelta(hours=ALERT_REPEAT_HOURS):
+        return
+    set_sync_state(conn, "alert_" + key, now.isoformat(timespec="seconds"))
+    for part in _chunks(lms_sync.scrub(text)):
+        await bot.send_message(chat_id=int(OWNER_ID), text=part)
+
+
+async def backup_if_due(bot):
+    """Раз в BACKUP_INTERVAL_DAYS дней присылает владельцу резервную копию: она лежит в Telegram,
+    вне базы и вне Render, и переживёт и потерю базы, и её остановку."""
+    if not OWNER_ID.isdigit():
+        return
+    last = _utc(get_sync_state(conn, "backup_sent_at"))
+    if last and datetime.now(timezone.utc) - last < timedelta(days=BACKUP_INTERVAL_DAYS):
+        return
+    name, data, caption = make_backup(conn)
+    await bot.send_document(chat_id=int(OWNER_ID), document=io.BytesIO(data), filename=name,
+                            caption="Еженедельная " + caption[0].lower() + caption[1:])
+    set_sync_state(conn, "backup_sent_at", datetime.now(timezone.utc).isoformat(timespec="seconds"))
+
+
+def sync_ready():
+    """Плановая подгрузка возможна: включена, логин и пароль заданы, и владелец уже запускал /sync
+    (плановые запуски начинаются после первого ручного, так видно, что всё работает)."""
+    return (lms_sync.sync_enabled() and not lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR))
+            and bool(get_sync_state(conn, "last_run")))
+
+
+async def lms_if_due(bot):
+    """Плановая подгрузка. Перед запуском ставится отметка «начата»: если процесс погибнет посередине
+    (память, засыпание, выкладка), следующий запуск это увидит, сообщит владельцу и повторит не сразу.
+    О проблемах подгрузки сообщает владельцу, об одной и той же не чаще раза в LMS_FAIL_REPEAT_DAYS."""
+    if not sync_ready() or not lms_sync.is_due(conn, schedule_dir=SCHEDULE_DIR):
+        return
+    now = datetime.now(timezone.utc)
+    started, last_run = _utc(get_sync_state(conn, "lms_started_at")), _utc(get_sync_state(conn, "last_run"))
+    if started and (not last_run or started > last_run):
+        if now - started < timedelta(hours=INTERRUPTED_RETRY_HOURS):
+            return
+        await _alert_owner(bot, "sync_interrupted",
+                           f"Плановая подгрузка расписания, начатая {lms_sync._moscow_time(started.isoformat())}, "
+                           "не дошла до конца: скорее всего, сервер перезапустился посередине или ему не хватило памяти. "
+                           "Запускаю ещё раз. Подробности в Render → Events и Logs.")
+    set_sync_state(conn, "lms_started_at", now.isoformat(timespec="seconds"))
+    report = await run_lms_sync()
+    if report.problems and OWNER_ID.isdigit():
+        signature = report.signature()
+        last = get_sync_state(conn, "notified_signature")
+        last_at = get_sync_state(conn, "notified_at")
+        stale = not last_at or (lms_sync._now() - datetime.fromisoformat(last_at)).days >= LMS_FAIL_REPEAT_DAYS
+        if signature != last or stale:
+            set_sync_state(conn, "notified_signature", signature)
+            set_sync_state(conn, "notified_at", lms_sync._now().isoformat(timespec="seconds"))
+            for part in _chunks("Подгрузка расписания с сайта: есть проблемы.\n\n" + report.text()):
+                await bot.send_message(chat_id=int(OWNER_ID), text=part)
+    elif not report.problems:
+        set_sync_state(conn, "notified_signature", "")
+
+
+async def warn_if_stale(bot):
+    """Если автозадачи давно не срабатывали, владелец узнаёт об этом, а не замечает сам через неделю."""
+    now = datetime.now(timezone.utc)
+    last_run = _utc(get_sync_state(conn, "last_run"))
+    if last_run and sync_ready() and now - last_run > timedelta(hours=STALE_SYNC_HOURS):
+        await _alert_owner(bot, "sync_stale", f"Подгрузки расписания не было с {lms_sync._moscow_time(last_run.isoformat())}. "
+                                              "Что происходит, видно в /health.")
+    last_backup = _utc(get_sync_state(conn, "backup_sent_at"))
+    if OWNER_ID.isdigit() and last_backup and now - last_backup > timedelta(days=STALE_BACKUP_DAYS):
+        await _alert_owner(bot, "backup_stale", f"Автоматической резервной копии не было с "
+                                                f"{lms_sync._moscow_time(last_backup.isoformat())}. Что происходит, видно в /health.")
+
+
+async def run_due_jobs(bot, source):
+    """Выполнить всё, чему пора: копия, подгрузка, проверка давности. Одновременно идёт только один прогон."""
+    if _jobs_lock.locked():
+        return False
+    async with _jobs_lock:
+        job_status.update(checked_at=datetime.now(timezone.utc), source=source)
+        for name, job in (("резервная копия", backup_if_due), ("подгрузка расписания", lms_if_due),
+                          ("проверка автозадач", warn_if_stale)):
+            try:
+                await job(bot)
+            except Exception as e:
+                logger.exception("автозадача «%s»: ошибка", name)
+                job_status["error"] = f"{name}: {type(e).__name__}: {e}"[:300]
+                try:
+                    await _alert_owner(bot, "error_" + job.__name__,
+                                       f"Автозадача «{name}» упала с ошибкой {type(e).__name__}: {e}"[:500])
+                except Exception:
+                    logger.exception("не удалось сообщить владельцу об ошибке автозадачи")
+    return True
+
+
+async def auto_scheduler(application):
+    """Таймер автозадач, пока сервер не спит. Первая проверка через минуту после старта:
+    бесплатный Render засыпает через 15 минут без запросов, и пропущенное за сон должно успеть пройти."""
+    await asyncio.sleep(60)
     while True:
-        try:
-            # плановые запуски начинаются после первого ручного /sync владельца: так видно, что всё работает
-            if lms_sync.sync_enabled() and get_sync_state(conn, "last_run") and lms_sync.is_due(conn, schedule_dir=SCHEDULE_DIR) \
-                    and not lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR)):
-                report = await run_lms_sync()
-                if report.problems and OWNER_ID.isdigit():
-                    signature = report.signature()
-                    last = get_sync_state(conn, "notified_signature")
-                    last_at = get_sync_state(conn, "notified_at")
-                    stale = not last_at or (lms_sync._now() - datetime.fromisoformat(last_at)).days >= LMS_FAIL_REPEAT_DAYS
-                    if signature != last or stale:
-                        set_sync_state(conn, "notified_signature", signature)
-                        set_sync_state(conn, "notified_at", lms_sync._now().isoformat(timespec="seconds"))
-                        for part in _chunks("Подгрузка расписания с сайта: есть проблемы.\n\n" + report.text()):
-                            await application.bot.send_message(chat_id=int(OWNER_ID), text=part)
-                elif not report.problems:
-                    set_sync_state(conn, "notified_signature", "")
-        except Exception:
-            logger.exception("плановая подгрузка расписания: ошибка")
-        await asyncio.sleep(1800)
+        await run_due_jobs(application.bot, "таймер")
+        await asyncio.sleep(JOBS_EVERY)
+
+
+def format_health(now=None):
+    """Текст /health: когда что запускалось, без обращения к сайту вуза."""
+    now = now or datetime.now(timezone.utc)
+    msk = lambda moment: lms_sync._moscow_time(moment.isoformat()) if moment else "никогда"
+    minutes = int((now - PROCESS_STARTED).total_seconds() // 60)
+    lines = [f"Сервер запущен: {msk(PROCESS_STARTED)} ({minutes} мин назад), память {lms_sync.memory_mb() or '?'} МБ"]
+    checked = job_status["checked_at"]
+    lines.append(f"Проверка автозадач: {msk(checked)}" + (f" ({job_status['source']})" if checked else " с момента запуска"))
+    lines.append("Вызов из GitHub раз в сутки: " + ("настроен (CRON_SECRET задан)" if os.environ.get("CRON_SECRET")
+                                                    else "не настроен: нет CRON_SECRET в Render"))
+    lines.append("")
+    if not lms_sync.sync_enabled():
+        state = "выключена (LMS_SYNC_ENABLED)"
+    elif lms_sync.missing_settings(lms_sync.load_sources(SCHEDULE_DIR)):
+        state = "не настроена: нет LMS_LOGIN или LMS_PASSWORD"
+    elif not get_sync_state(conn, "last_run"):
+        state = "ждёт первого ручного /sync"
+    else:
+        state = "включена"
+    last_run, started = _utc(get_sync_state(conn, "last_run")), _utc(get_sync_state(conn, "lms_started_at"))
+    ok = get_sync_state(conn, "last_ok")
+    lines.append(f"Подгрузка: {state}")
+    lines.append(f"Последняя: {msk(last_run)}" + ("" if not last_run else (", без проблем" if ok == "1" else ", с проблемами")))
+    if started and (not last_run or started > last_run):
+        lines.append(f"Начата и не закончена: {msk(started)}")
+    lines.append(f"Резервная копия: {msk(_utc(get_sync_state(conn, 'backup_sent_at')))}"
+                 + ("" if OWNER_ID.isdigit() else " (нет OWNER_ID, не отправляется)"))
+    if job_status["error"]:
+        lines += ["", "Последняя ошибка автозадач: " + lms_sync.scrub(job_status["error"])]
+    return "\n".join(lines)
+
+
+async def health_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(format_health())
 
 
 # --- рассылка (только владелец) ---
@@ -967,7 +1084,8 @@ def build_application():
         # всем остальным команды владельца не отвечают вовсе: они нигде не публикуются
         owner = filters.User(user_id=int(OWNER_ID)) & new_message
         for command, callback in [("users", users_command), ("stats", stats_command), ("lms_check", lms_check_command),
-                                  ("backup", backup_command), ("sync", sync_command), ("broadcast", broadcast_command)]:
+                                  ("backup", backup_command), ("sync", sync_command), ("broadcast", broadcast_command),
+                                  ("health", health_command)]:
             application.add_handler(CommandHandler(command, callback, filters=owner))
         application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
     application.add_handler(MessageHandler(filters.Document.ALL & new_message, handle_document))
