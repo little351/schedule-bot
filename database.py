@@ -101,6 +101,11 @@ if PG_DSN:
         cur.execute("CREATE TABLE IF NOT EXISTS blocks_wallet (telegram_id BIGINT PRIMARY KEY, "
                     "earned BIGINT NOT NULL DEFAULT 0, spent BIGINT NOT NULL DEFAULT 0, skins TEXT NOT NULL DEFAULT '', "
                     "updated_at TEXT)")
+        # статистика действий (stats.py): счётчики по дням и отметки «кто был в этот день»
+        cur.execute("CREATE TABLE IF NOT EXISTS stats_daily (day TEXT NOT NULL, metric TEXT NOT NULL, "
+                    "value BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (day, metric))")
+        cur.execute("CREATE TABLE IF NOT EXISTS stats_seen (day TEXT NOT NULL, telegram_id BIGINT NOT NULL, "
+                    "kinds INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, telegram_id))")
 
 
 def storage_name():
@@ -221,6 +226,10 @@ def init_db(path="schedule.db"):
     conn.execute("CREATE TABLE IF NOT EXISTS blocks_wallet (telegram_id INTEGER PRIMARY KEY, "
                  "earned INTEGER NOT NULL DEFAULT 0, spent INTEGER NOT NULL DEFAULT 0, skins TEXT NOT NULL DEFAULT '', "
                  "updated_at TEXT)")
+    conn.execute("CREATE TABLE IF NOT EXISTS stats_daily (day TEXT NOT NULL, metric TEXT NOT NULL, "
+                 "value INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, metric))")
+    conn.execute("CREATE TABLE IF NOT EXISTS stats_seen (day TEXT NOT NULL, telegram_id INTEGER NOT NULL, "
+                 "kinds INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, telegram_id))")
     conn.commit()
     return conn
 
@@ -958,3 +967,86 @@ def buy_blocks_skin(conn, telegram_id, skin):
               "WHERE telegram_id = ? AND earned - spent >= ? AND (',' || skins || ',') NOT LIKE ?",
         (price, "," + skin, now, telegram_id, price, f"%,{skin},%"))
     return changed > 0
+
+
+# --- Статистика действий (stats.py). Запись пачкой раз в 10 минут, чтение только по /stats ---
+
+STATS_DAILY_UPSERT = ("INSERT INTO stats_daily (day, metric, value) VALUES {values} ON CONFLICT (day, metric) "
+                      "DO UPDATE SET value = stats_daily.value + excluded.value")
+STATS_SEEN_UPSERT = ("INSERT INTO stats_seen (day, telegram_id, kinds) VALUES {values} ON CONFLICT (day, telegram_id) "
+                     "DO UPDATE SET kinds = stats_seen.kinds | excluded.kinds")
+
+
+def _stats_rows(conn, query, params=()):
+    """Запрос к таблицам статистики в обеих базах (в тексте «?»), строки целиком."""
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute(query.replace("?", "%s"), params)
+            return cur.fetchall() if cur.description else []
+    with conn.lock:
+        rows = conn.execute(query, params).fetchall()
+        conn.commit()
+    return rows
+
+
+def stats_write(conn, daily, seen):
+    """daily: [(день, счётчик, прибавка)], seen: [(день, telegram_id, kinds)]. Один запрос на таблицу."""
+    if PG_DSN:
+        from psycopg2.extras import execute_values
+        with pg_cursor() as cur:
+            if daily:
+                execute_values(cur, STATS_DAILY_UPSERT.format(values="%s"), daily, page_size=1000)
+            if seen:
+                execute_values(cur, STATS_SEEN_UPSERT.format(values="%s"), seen, page_size=1000)
+        return
+    with conn.lock:
+        if daily:
+            conn.executemany(STATS_DAILY_UPSERT.format(values="(?, ?, ?)"), daily)
+        if seen:
+            conn.executemany(STATS_SEEN_UPSERT.format(values="(?, ?, ?)"), seen)
+        conn.commit()
+
+
+def stats_read(conn, start, today, week0, week1, month):
+    """Готовые числа для отчёта: суммы счётчиков с start, люди по дням, уникальные за период, 7 и 30 дней,
+    игроки, возвращаемость (были с week0 по week1, вернулись с week1). Дни - строки ГГГГ-ММ-ДД."""
+    since = min(start, month, week0)
+    totals = dict(_stats_rows(conn, "SELECT metric, SUM(value) FROM stats_daily WHERE day >= ? AND day <= ? "
+                              "GROUP BY metric", (start, today)))
+    by_day = {row[0]: tuple(int(v or 0) for v in row[1:]) for row in _stats_rows(
+        conn, "SELECT day, COUNT(*), SUM(CASE WHEN (kinds & 1) <> 0 THEN 1 ELSE 0 END), "
+              "SUM(CASE WHEN (kinds & 2) <> 0 THEN 1 ELSE 0 END), SUM(CASE WHEN (kinds & 4) <> 0 THEN 1 ELSE 0 END) "
+              "FROM stats_seen WHERE day >= ? AND day <= ? GROUP BY day", (start, today))}
+    uniq = _stats_rows(
+        conn, "SELECT COUNT(DISTINCT CASE WHEN day >= ? THEN telegram_id END), "
+              "COUNT(DISTINCT CASE WHEN day >= ? THEN telegram_id END), "
+              "COUNT(DISTINCT CASE WHEN day >= ? THEN telegram_id END), "
+              "COUNT(DISTINCT CASE WHEN day >= ? AND (kinds & 4) <> 0 THEN telegram_id END) "
+              "FROM stats_seen WHERE day >= ? AND day <= ?", (start, week1, month, start, since, today))[0]
+    retention = _stats_rows(
+        conn, "SELECT COUNT(*), SUM(CASE WHEN EXISTS (SELECT 1 FROM stats_seen b WHERE b.telegram_id = a.telegram_id "
+              "AND b.day >= ? AND b.day <= ?) THEN 1 ELSE 0 END) FROM (SELECT DISTINCT telegram_id FROM stats_seen "
+              "WHERE day >= ? AND day < ?) a", (week1, today, week0, week1))[0]
+    first = _stats_rows(conn, "SELECT MIN(day) FROM stats_seen")[0][0]
+    first_daily = _stats_rows(conn, "SELECT MIN(day) FROM stats_daily")[0][0]
+    return {"totals": {m: int(v or 0) for m, v in totals.items()}, "by_day": by_day,
+            "uniq_period": int(uniq[0] or 0), "uniq_7": int(uniq[1] or 0), "uniq_30": int(uniq[2] or 0),
+            "players": int(uniq[3] or 0), "retention": (int(retention[0] or 0), int(retention[1] or 0)),
+            "first_day": min(filter(None, [first, first_daily]), default=None)}
+
+
+def stats_daily_rows(conn, start):
+    """Все счётчики по дням с start (для CSV)."""
+    return [(d, m, int(v)) for d, m, v in _stats_rows(
+        conn, "SELECT day, metric, value FROM stats_daily WHERE day >= ? ORDER BY day", (start,))]
+
+
+def stats_compact(conn, before):
+    """Строки «кто был в этот день» старше before сворачиваются в дневные итоги uniq.* и удаляются."""
+    for metric, condition in (("uniq.all", "1 = 1"), ("uniq.bot", "(kinds & 1) <> 0"),
+                              ("uniq.app", "(kinds & 2) <> 0"), ("uniq.game", "(kinds & 4) <> 0")):
+        _stats_rows(conn, f"INSERT INTO stats_daily (day, metric, value) SELECT day, '{metric}', COUNT(*) "
+                          f"FROM stats_seen WHERE day < ? AND {condition} GROUP BY day "
+                          "ON CONFLICT (day, metric) DO UPDATE SET value = excluded.value", (before,))
+    _stats_rows(conn, "DELETE FROM stats_seen WHERE day < ?", (before,))
+

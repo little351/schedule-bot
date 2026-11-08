@@ -9,7 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
 
-from bot import build_application, post_init, conn, load_schedules, auto_scheduler, run_due_jobs, send_campus_map, TOKEN
+from bot import (build_application, post_init, conn, load_schedules, auto_scheduler, run_due_jobs, send_campus_map, TOKEN,
+                 stats_flusher, stats_flush_now)
 from routes import build_router
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
@@ -33,10 +34,12 @@ async def lifespan(app):
     await application.bot.set_webhook(url=f"{PUBLIC_URL}{WEBHOOK_PATH}", secret_token=TELEGRAM_SECRET_TOKEN)
     # автозадачи, пока сервер не спит: еженедельная копия владельцу (нужен OWNER_ID) и подгрузка расписания
     # с сайта вуза (нужны LMS_LOGIN и LMS_PASSWORD); раз в сутки их же будит /cron из GitHub Actions
-    tasks = [asyncio.create_task(auto_scheduler(application))]
+    # статистика действий копится в памяти и раз в 10 минут уходит в базу
+    tasks = [asyncio.create_task(auto_scheduler(application)), asyncio.create_task(stats_flusher())]
     yield
     for task in tasks:
         task.cancel()
+    await stats_flush_now()  # Render останавливает сервер (сон, деплой): несохранённые счётчики не теряются
     await application.shutdown()
 
 

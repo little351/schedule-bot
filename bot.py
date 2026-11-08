@@ -15,6 +15,7 @@ from telegram.ext import (
 )
 
 import lms_sync
+import stats
 from parser import parse_file
 from schedule_parsers import upload_dir
 from schedule_parsers.common import load_config
@@ -23,12 +24,19 @@ from database import (
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
     get_week_schedule_grid, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
     touch_user, list_users, user_stats, get_program_name, restore_users, users_without_profile, set_user_profile,
-    get_sync_state, set_sync_state, export_backup, import_backup
+    get_sync_state, set_sync_state, export_backup, import_backup, stats_daily_rows, stats_compact
 )
 from formatting import format_week_text, with_donation_note
 
 TOKEN = os.environ.get("BOT_TOKEN") or ""
 WEBAPP_URL = os.environ.get("WEBAPP_URL") or os.environ.get("PUBLIC_URL") or "https://breeding-salvation-splashing.ngrok-free.dev"
+
+
+def app_url(src):
+    """Адрес мини-аппа с меткой, откуда его открыли (для статистики входов: ?src=menu и т.д.)."""
+    return f"{WEBAPP_URL}{'&' if '?' in WEBAPP_URL else '?'}src={src}"
+
+
 # все таблицы (.xlsx и .xls) из этой папки загружаются как расписание; формат файла определяется
 # по структуре, направление, курс и группы берутся из заголовков листов (см. schedule_parsers)
 SCHEDULE_DIR = "data"
@@ -104,7 +112,7 @@ DONE_TEXT = "Готово, запомнил: {title}.\nВыбери, что по
 def actions_markup():
     """Кнопки под выбранной группой: то же, что команды /app, /week, /nweek, /weekdate, /group."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📱 Мини-приложение", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton("📱 Мини-приложение", web_app=WebAppInfo(url=app_url("pick")))],
         [InlineKeyboardButton("Неделя", callback_data="a:week"), InlineKeyboardButton("След. неделя", callback_data="a:nweek")],
         [InlineKeyboardButton("По дате", callback_data="a:date"), InlineKeyboardButton("Сменить группу", callback_data="a:group")],
     ])
@@ -188,6 +196,7 @@ def picker_screen(step="course", course=None, program=None, level=None):
 
 
 async def group_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    stats.count("pick.start")
     text, markup = picker_screen("level")
     await update.message.reply_text(text, reply_markup=markup)
 
@@ -214,6 +223,7 @@ async def on_pick(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("Такой группы нет в расписании. Попробуй /group ещё раз.")
             return
         set_user_group(conn, query.from_user.id, group)
+        stats.count("pick.done")
         await query.edit_message_text(DONE_TEXT.format(title=group.title), reply_markup=actions_markup())
         return
 
@@ -252,11 +262,41 @@ async def on_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Напиши дату, например 05.10 или 05.10.2026. Покажу неделю, в которую она попадает.")
 
 
+STATS_COMMANDS = {"start", "week", "nweek", "weekdate", "app", "group"}
+STATS_BUTTONS = {"a:week": "btn.week", "a:nweek": "btn.nweek", "a:date": "btn.date", "a:group": "btn.group"}
+
+
+def count_action(update):
+    """Счётчики статистики по обращению к боту: команда, кнопка или текст. Только память, без базы.
+    Блокировка бота и прочие служебные обновления действием не считаются."""
+    message, query = update.message, update.callback_query
+    if message is None and query is None:
+        return
+    stats.seen(update.effective_user.id, stats.SEEN_BOT)
+    if query is not None:
+        if query.data in STATS_BUTTONS:
+            stats.count(STATS_BUTTONS[query.data])
+        return
+    text = (message.text or "").strip()
+    if text.startswith("/"):
+        command = text[1:].split(maxsplit=1)[0].split("@", 1)[0].lower() if len(text) > 1 else ""
+        if command in STATS_COMMANDS:
+            stats.count("cmd." + command)
+    elif text:
+        stats.count("msg.text")
+    elif message.document:
+        stats.count("msg.document")
+
+
 async def track_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Срабатывает на каждое обращение, ничего не отвечает и не мешает остальным обработчикам."""
     user = update.effective_user
     if not user or user.is_bot:
         return
+    try:
+        count_action(update)
+    except Exception:
+        logger.exception("статистика: не удалось посчитать обращение")
     try:
         touch_user(conn, user.id, user.username, user.full_name)
     except Exception:
@@ -447,10 +487,50 @@ def format_stats(stats, program_name=lambda code: code):
     return "\n".join(lines)
 
 
+STATS_MAX_DAYS = 180
+
+
+async def stats_flush_now():
+    """Записать накопленные счётчики в базу (из потока: запрос к базе не должен держать бота)."""
+    try:
+        await asyncio.to_thread(stats.flush, conn)
+    except Exception:
+        logger.exception("статистика: не удалось записать счётчики, попробую в следующий раз")
+
+
+async def stats_flusher():
+    """Раз в 10 минут счётчики уходят в базу одним запросом на таблицу (пустые - вовсе без запроса)."""
+    while True:
+        await asyncio.sleep(stats.FLUSH_EVERY)
+        await stats_flush_now()
+
+
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    stats = user_stats(list_users(conn))
+    """/stats - сводка действий за 7 дней и пользователи по курсам; /stats 30 - за 30 дней;
+    /stats csv - файл по дням для Excel (за 30 дней или за указанное число дней)."""
+    args = [a.lower() for a in (context.args or [])]
+    as_csv = "csv" in args
+    days = next((int(a) for a in args if a.isdigit()), 30 if as_csv else 7)
+    days = max(1, min(days, STATS_MAX_DAYS))
+    await stats_flush_now()  # чтобы в отчёт попало и то, что ещё не записано
+    if as_csv:
+        start = (now_local().date() - timedelta(days=days - 1)).isoformat()
+        rows = await asyncio.to_thread(database_stats_rows, start)
+        data = await asyncio.to_thread(stats.report_data, conn, days)
+        await update.message.reply_document(document=io.BytesIO(stats.format_csv(rows, data["by_day"]).encode("utf-8")),
+                                            filename=f"stats-{start}-{now_local():%Y-%m-%d}.csv",
+                                            caption=f"Статистика по дням за {days} дн.")
+        return
+    data = await asyncio.to_thread(stats.report_data, conn, days)
+    for part in _chunks(stats.format_report(data)):
+        await update.message.reply_text(part)
+    users = user_stats(list_users(conn))
     await update.message.reply_text(f"Хранилище пользователей: {storage_name()}\n\n"
-                                    + format_stats(stats, lambda code: get_program_name(conn, code)))
+                                    + format_stats(users, lambda code: get_program_name(conn, code)))
+
+
+def database_stats_rows(start):
+    return stats_daily_rows(conn, start)
 
 
 async def lms_check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -629,6 +709,34 @@ async def warn_if_stale(bot):
                                                 f"{lms_sync._moscow_time(last_backup.isoformat())}. Что происходит, видно в /health.")
 
 
+_weekly_done_for = None  # понедельник, за который сводка уже отправлена (чтобы не читать базу каждые полчаса)
+
+
+async def weekly_stats_if_due(bot):
+    """Раз в неделю, начиная с утра понедельника, владелец получает сводку за прошлую неделю (пн-вс).
+    Заодно строки «кто был в этот день» старше полугода сворачиваются в дневные итоги."""
+    global _weekly_done_for
+    if not OWNER_ID.isdigit():
+        return
+    now = now_local()
+    monday = now.date() - timedelta(days=now.weekday())
+    if _weekly_done_for == monday.isoformat():
+        return
+    if (get_sync_state(conn, "stats_weekly_sent") or "") >= monday.isoformat():
+        _weekly_done_for = monday.isoformat()
+        return
+    await stats_flush_now()
+    sunday = datetime.combine(monday - timedelta(days=1), datetime.min.time())
+    data = await asyncio.to_thread(stats.report_data, conn, 7, sunday)
+    if data["by_day"] or data["totals"]:
+        text = stats.format_report(data, title=f"📊 Сводка за неделю {data['start']:%d.%m}–{data['today']:%d.%m}")
+        for part in _chunks(text):
+            await bot.send_message(chat_id=int(OWNER_ID), text=part)
+    await asyncio.to_thread(stats_compact, conn, (now.date() - timedelta(days=stats.KEEP_SEEN_DAYS)).isoformat())
+    set_sync_state(conn, "stats_weekly_sent", monday.isoformat())
+    _weekly_done_for = monday.isoformat()
+
+
 async def run_due_jobs(bot, source):
     """Выполнить всё, чему пора: копия, подгрузка, проверка давности. Одновременно идёт только один прогон."""
     if _jobs_lock.locked():
@@ -636,7 +744,7 @@ async def run_due_jobs(bot, source):
     async with _jobs_lock:
         job_status.update(checked_at=datetime.now(timezone.utc), source=source)
         for name, job in (("резервная копия", backup_if_due), ("подгрузка расписания", lms_if_due),
-                          ("проверка автозадач", warn_if_stale)):
+                          ("проверка автозадач", warn_if_stale), ("сводка статистики", weekly_stats_if_due)):
             try:
                 await job(bot)
             except Exception as e:
@@ -810,6 +918,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if len(matches) == 1:
         set_user_group(conn, telegram_id, matches[0])
+        stats.count("pick.done")
         await update.message.reply_text(DONE_TEXT.format(title=matches[0].title), reply_markup=actions_markup())
     elif matches:
         await update.message.reply_text(
@@ -836,7 +945,7 @@ def open_app_markup(update):
     chat = getattr(update, "effective_chat", None) or getattr(getattr(update, "message", None), "chat", None)
     if chat is None or chat.type != "private":
         return None
-    return InlineKeyboardMarkup([[InlineKeyboardButton("📱 Открыть в приложении", web_app=WebAppInfo(url=WEBAPP_URL))]])
+    return InlineKeyboardMarkup([[InlineKeyboardButton("📱 Открыть в приложении", web_app=WebAppInfo(url=app_url("week")))]])
 
 
 async def week(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -903,7 +1012,7 @@ async def weekdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def app_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Открыть расписание", web_app=WebAppInfo(url=WEBAPP_URL))]
+        [InlineKeyboardButton("Открыть расписание", web_app=WebAppInfo(url=app_url("app")))]
     ])
     await update.message.reply_text(
         "Нажми, чтобы открыть расписание:\n\n"
@@ -1009,7 +1118,7 @@ async def post_init(application):
     # кнопка слева от поля ввода: вместо списка команд открывает мини-апп; команды по-прежнему видны по «/»
     try:
         await application.bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(text="Расписание", web_app=WebAppInfo(url=WEBAPP_URL)))
+            menu_button=MenuButtonWebApp(text="Расписание", web_app=WebAppInfo(url=app_url("menu"))))
     except TelegramError as e:
         logging.warning("Не удалось поставить кнопку меню: %s", e)
 
@@ -1043,6 +1152,7 @@ async def on_error(update, context: ContextTypes.DEFAULT_TYPE):
         return  # экран и так показывает нужное: отвечать и сообщать нечего
     message = getattr(update, "effective_message", None)
     if message and message.chat.type == "private":
+        stats.count("bot.error")
         try:
             await message.reply_text(ERROR_TEXT)
         except Exception:
