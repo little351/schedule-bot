@@ -1,0 +1,32 @@
+# Раз в сутки будит бота на Render и запускает автозадачи: еженедельную резервную копию владельцу
+# и подгрузку расписания с сайта вуза. Бесплатный Render засыпает без запросов, и таймер внутри
+# бота тогда не идёт; этот вызов не держит сервер включённым, это один запрос в сутки.
+# Нужны секреты репозитория (Settings -> Secrets and variables -> Actions):
+#   BOT_URL     - адрес бота на Render, как PUBLIC_URL, например https://имя.onrender.com
+#   CRON_SECRET - любая длинная случайная строка, та же, что в Render -> Environment -> CRON_SECRET
+# Без секретов workflow ничего не делает и не краснеет. Запустить вручную: Actions -> daily-jobs -> Run workflow.
+name: daily-jobs
+
+on:
+  schedule:
+    - cron: "0 4 * * *"  # 07:00 по Москве
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Разбудить бота и запустить автозадачи
+        env:
+          BOT_URL: ${{ secrets.BOT_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$BOT_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Секреты BOT_URL и CRON_SECRET не заданы, пропускаю"; exit 0
+          fi
+          # сервер может спать: первый запрос его будит, это бывает до минуты и дольше
+          curl -fsS -X POST --max-time 180 --retry 4 --retry-delay 30 --retry-all-errors \
+            -H "X-Cron-Secret: $CRON_SECRET" "${BOT_URL%/}/cron"
