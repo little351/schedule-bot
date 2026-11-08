@@ -291,21 +291,38 @@
     background: #34c759;
   }
 
-  /* --- «О проекте» (шуточный экран внизу «Важного») --- */
-  .about-hero { text-align: center; padding: 8px 0 4px; }
-  .about-flags { font-size: 40px; letter-spacing: 6px; }
-  .about-badge {
-    display: inline-block; margin-top: 10px; padding: 6px 12px; border-radius: 999px;
-    background: rgba(10, 132, 255, 0.18); color: var(--accent); font-size: 14px; font-weight: 600;
+  /* --- «О проекте» внизу «Важного» --- */
+  .about-hero {
+    text-align: center; padding: 24px 16px 20px;
+    background: linear-gradient(160deg, rgba(10, 132, 255, 0.22), rgba(175, 82, 222, 0.16)) , var(--card);
   }
-  .info-card p.about-main { font-size: 26px; font-weight: 800; line-height: 1.25; margin: 0; color: var(--text); }
-  .about-role { font-size: 14px; color: var(--hint); margin-top: 4px; }
-  .info-card p.about-person { font-size: 13px; line-height: 1.45; margin: 0 0 8px; color: var(--text); }
-  .info-card p.about-person:last-child { margin-bottom: 0; }
-  .about-person b { font-weight: 600; }
-  .about-person span { color: var(--hint); }
-  .info-card.about-story p + p { margin-top: 10px; }
-  .about-foot { text-align: center; font-size: 12px; color: var(--hint); margin: 4px 0 12px; }
+  .about-logo {
+    width: 72px; height: 72px; margin: 0 auto 12px; border-radius: 22px; font-size: 38px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #0a84ff, #af52de); box-shadow: 0 8px 24px rgba(10, 132, 255, 0.35);
+  }
+  .about-hero h2 { font-size: 22px; margin: 0 0 6px; }
+  .info-card.about-hero p { color: var(--text); opacity: 0.8; }
+  .about-badge {
+    display: inline-block; margin-top: 14px; padding: 6px 12px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1); font-size: 13px; font-weight: 600;
+  }
+  .about-section { font-size: 13px; font-weight: 600; color: var(--hint); text-transform: uppercase; letter-spacing: 0.6px; margin: 22px 4px 8px; }
+  .about-feature { display: flex; gap: 12px; align-items: flex-start; }
+  .about-feature + .about-feature { margin-top: 14px; }
+  .about-feature-icon { flex: none; width: 36px; height: 36px; border-radius: 10px; background: var(--card-pressed); display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .about-feature b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .info-card .about-feature p { font-size: 13px; line-height: 1.4; }
+  .about-person { display: flex; gap: 12px; align-items: center; }
+  .about-person + .about-person { margin-top: 14px; }
+  .about-avatar { flex: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #fff; background: #48484a; }
+  .about-person b { display: block; font-size: 15px; }
+  .info-card .about-person p { font-size: 13px; line-height: 1.4; }
+  .about-founder { text-align: center; padding: 22px 16px; }
+  .about-founder .about-avatar { width: 76px; height: 76px; font-size: 26px; margin: 0 auto 12px; background: linear-gradient(135deg, #ff9f0a, #ff375f); }
+  .about-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: rgba(255, 159, 10, 0.18); color: #ff9f0a; font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+  .about-founder-name { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+  .about-foot { text-align: center; font-size: 13px; color: var(--hint); margin: 6px 0 14px; }
 
   /* --- Вкладка "Другое" --- */
   .status.cache-note { padding: 4px 0 10px; font-size: 13px; }
@@ -777,28 +794,40 @@
   </button>
  </div>
 
- <!-- Шуточный экран, текст от Артёма -->
+ <!-- Экран «О проекте» -->
  <div id="aboutPane" style="display:none;">
   <div class="screen-head"><button class="back-btn about-back" aria-label="Назад">‹</button><h1>О проекте</h1></div>
+
   <div class="info-card about-hero">
-    <div class="about-flags">🇷🇺🤝🇺🇸</div>
-    <div class="about-badge">Теперь мы интернациональный проект</div>
+    <div class="about-logo">📅</div>
+    <h2>Расписание всегда под рукой</h2>
+    <p>Бот и мини-приложение, которые помогают студентам не теряться в парах, переносах и дедлайнах.</p>
+    <div class="about-badge">🌍 Международный проект</div>
   </div>
-  <div class="info-card about-story">
-    <h2>Как всё началось</h2>
-    <p>Однажды Пётр посмотрел на расписание вуза и спросил: «А почему им так неудобно пользоваться?» Артём ответил «щас сделаю» и на месяц забыл, что такое сон.</p>
-    <p>Так появился этот бот. Расписание любой группы в пару касаний, заметки и дедлайны, преподаватели, карта вуза и игра «Блоки» на случай очень скучной пары. Сейчас им пользуется больше тысячи студентов, а ведь всё начиналось с одного вопроса.</p>
-    <p>А потом пришёл Март из США, и проект внезапно стал международным. Дальше по плану мировое господство. Ну или хотя бы расписание заочки.</p>
+
+  <div class="about-section">Что умеет</div>
+  <div class="info-card">
+    <div class="about-feature"><div class="about-feature-icon">📆</div><div><b>Расписание группы</b><p>На сегодня, на неделю или на любую дату. Дни листаются свайпом.</p></div></div>
+    <div class="about-feature"><div class="about-feature-icon">🔄</div><div><b>Свежие данные</b><p>Расписание само подтягивается с сайта вуза, а изменения в твоей группе отмечаются.</p></div></div>
+    <div class="about-feature"><div class="about-feature-icon">📝</div><div><b>Заметки и дедлайны</b><p>Домашние задания и сроки рядом с предметами.</p></div></div>
+    <div class="about-feature"><div class="about-feature-icon">👩‍🏫</div><div><b>Преподаватели</b><p>Кафедры, телефоны и почта в одном поиске.</p></div></div>
+    <div class="about-feature"><div class="about-feature-icon">🗺️</div><div><b>Карта вуза</b><p>Чтобы не искать нужный корпус перед парой.</p></div></div>
+    <div class="about-feature"><div class="about-feature-icon">🎮</div><div><b>Игра «Блоки»</b><p>Для перемен, с таблицей рекордов и скинами.</p></div></div>
+  </div>
+
+  <div class="about-section">Команда</div>
+  <div class="info-card about-founder">
+    <div class="about-avatar">КА</div>
+    <div class="about-tag">Основатель</div>
+    <div class="about-founder-name">Капцов Артём</div>
+    <p>Студент первого курса. Создал проект с нуля и продолжает его развивать.</p>
   </div>
   <div class="info-card">
-    <p class="about-main">Капцов Артём</p>
-    <div class="about-role">ученик первого курса</div>
+    <div class="about-person"><div class="about-avatar">GM</div><div><b>Golden Mart 🇺🇸</b><p>Гражданин США. Благодаря ему проект живёт и развивается.</p></div></div>
+    <div class="about-person"><div class="about-avatar">БП</div><div><b>Блинников Пётр</b><p>Участник проекта.</p></div></div>
   </div>
-  <div class="info-card">
-    <p class="about-person"><b>Гольден Март</b> <span>– гражданин США и тот, кто позволил проекту развиваться</span></p>
-    <p class="about-person"><b>Блинников Пётр</b> <span>– автор идеи</span></p>
-  </div>
-  <div class="about-foot">Сделано с любовью и без выходных ✌️</div>
+
+  <div class="about-foot">Спасибо, что ты с нами 💙</div>
  </div>
 </div>
 
