@@ -291,6 +291,17 @@
     background: #34c759;
   }
 
+  /* --- «Авторы» внизу «Важного» --- */
+  .about-person { display: flex; gap: 12px; align-items: center; }
+  .about-person + .about-person { margin-top: 14px; }
+  .about-avatar { flex: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #fff; background: #48484a; }
+  .about-person b { display: block; font-size: 15px; }
+  .info-card .about-person p { font-size: 13px; line-height: 1.4; }
+  .about-founder { text-align: center; padding: 22px 16px; }
+  .about-founder .about-avatar { width: 76px; height: 76px; font-size: 26px; margin: 0 auto 12px; background: linear-gradient(135deg, #ff9f0a, #ff375f); }
+  .about-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: rgba(255, 159, 10, 0.18); color: #ff9f0a; font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+  .about-founder-name { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+
   /* --- Вкладка "Другое" --- */
   .status.cache-note { padding: 4px 0 10px; font-size: 13px; }
   .changes-banner {
@@ -734,6 +745,7 @@
 </div>
 
 <div id="importantTab" style="display:none;">
+ <div id="importantMain">
   <h1>Важное</h1>
 
   <div class="info-card">
@@ -752,6 +764,28 @@
       <button class="copy-btn" id="copyBtn">Скопировать</button>
     </div>
   </div>
+
+  <button class="menu-card" id="aboutOpen">
+    <span class="menu-icon blue">👥</span>
+    <span class="menu-title">Авторы</span>
+    <span class="menu-arrow">›</span>
+  </button>
+ </div>
+
+ <!-- Экран «Авторы» -->
+ <div id="aboutPane" style="display:none;">
+  <div class="screen-head"><button class="back-btn about-back" aria-label="Назад">‹</button><h1>Авторы</h1></div>
+  <div class="info-card about-founder">
+    <div class="about-avatar">КА</div>
+    <div class="about-tag">Основатель</div>
+    <div class="about-founder-name">Капцов Артём</div>
+    <p>Студент первого курса</p>
+  </div>
+  <div class="info-card">
+    <div class="about-person"><div class="about-avatar">ГМ</div><div><b>Гольден Март 🇺🇸</b><p>Гражданин США. Благодаря ему проект живёт и развивается.</p></div></div>
+    <div class="about-person"><div class="about-avatar">БП</div><div><b>Блинников Пётр</b><p>Автор идеи</p></div></div>
+  </div>
+ </div>
 </div>
 
 <div id="otherTab" style="display:none;">
@@ -1329,6 +1363,16 @@ for (const tab of tabs) {
   tab.btn.addEventListener("click", () => showTab(tab));
 }
 
+// --- «Авторы» внизу «Важного»: свой экран с кнопкой «назад» ---
+function showAbout(open) {
+  document.getElementById("importantMain").style.display = open ? "none" : "";
+  document.getElementById("aboutPane").style.display = open ? "" : "none";
+  window.scrollTo(0, 0);
+}
+document.getElementById("aboutOpen").addEventListener("click", () => showAbout(true));
+document.querySelector(".about-back").addEventListener("click", () => showAbout(false));
+tabs[1].btn.addEventListener("click", () => showAbout(false));
+
 // --- Раздел «Другое»: список пунктов и отдельные экраны с кнопкой «назад» ---
 const otherMenu = document.getElementById("otherMenu");
 const otherScreens = [...document.querySelectorAll(".other-screen")];
@@ -1337,7 +1381,7 @@ function showOther(id) {
   for (const sc of otherScreens) sc.style.display = sc.id === id ? "" : "none";
   window.scrollTo(0, 0);
 }
-for (const card of document.querySelectorAll(".menu-card")) {
+for (const card of document.querySelectorAll(".menu-card[data-screen]")) {
   card.addEventListener("click", () => {
     showOther(card.dataset.screen);
     if (card.dataset.screen === "paneNotes" && !notesLoaded) loadNotes();
@@ -1349,7 +1393,7 @@ function openGroupScreen() {
   showTab(tabs[2]);
   showOther("paneGroup");
 }
-for (const back of document.querySelectorAll(".back-btn")) {
+for (const back of document.querySelectorAll(".back-btn:not(.about-back)")) {
   back.addEventListener("click", () => {
     showOther(back.dataset.back || null);
     if (back.dataset.back === "paneTeachers") window.scrollTo(0, teachersScroll);
