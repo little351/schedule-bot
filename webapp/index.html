@@ -291,6 +291,21 @@
     background: #34c759;
   }
 
+  /* --- «О проекте» (шуточный экран внизу «Важного») --- */
+  .about-hero { text-align: center; padding: 8px 0 4px; }
+  .about-flags { font-size: 40px; letter-spacing: 6px; }
+  .about-badge {
+    display: inline-block; margin-top: 10px; padding: 6px 12px; border-radius: 999px;
+    background: rgba(10, 132, 255, 0.18); color: var(--accent); font-size: 14px; font-weight: 600;
+  }
+  .info-card p.about-main { font-size: 26px; font-weight: 800; line-height: 1.25; margin: 0; color: var(--text); }
+  .about-role { font-size: 14px; color: var(--hint); margin-top: 4px; }
+  .info-card p.about-person { font-size: 13px; line-height: 1.45; margin: 0 0 8px; color: var(--text); }
+  .info-card p.about-person:last-child { margin-bottom: 0; }
+  .about-person b { font-weight: 600; }
+  .about-person span { color: var(--hint); }
+  .about-foot { text-align: center; font-size: 12px; color: var(--hint); margin: 4px 0 12px; }
+
   /* --- Вкладка "Другое" --- */
   .status.cache-note { padding: 4px 0 10px; font-size: 13px; }
   .changes-banner {
@@ -734,6 +749,7 @@
 </div>
 
 <div id="importantTab" style="display:none;">
+ <div id="importantMain">
   <h1>Важное</h1>
 
   <div class="info-card">
@@ -752,6 +768,31 @@
       <button class="copy-btn" id="copyBtn">Скопировать</button>
     </div>
   </div>
+
+  <button class="menu-card" id="aboutOpen">
+    <span class="menu-icon blue">🌍</span>
+    <span class="menu-title">О проекте</span>
+    <span class="menu-arrow">›</span>
+  </button>
+ </div>
+
+ <!-- Шуточный экран, текст от Артёма -->
+ <div id="aboutPane" style="display:none;">
+  <div class="screen-head"><button class="back-btn about-back" aria-label="Назад">‹</button><h1>О проекте</h1></div>
+  <div class="info-card about-hero">
+    <div class="about-flags">🇷🇺🤝🇺🇸</div>
+    <div class="about-badge">Теперь мы интернациональный проект</div>
+  </div>
+  <div class="info-card">
+    <p class="about-main">Капцов Артём</p>
+    <div class="about-role">ученик первого курса</div>
+  </div>
+  <div class="info-card">
+    <p class="about-person"><b>Гольден Март</b> <span>– гражданин США и тот, кто позволил проекту развиваться</span></p>
+    <p class="about-person"><b>Блинников Пётр</b> <span>– автор идеи</span></p>
+  </div>
+  <div class="about-foot">Сделано с любовью и без выходных ✌️</div>
+ </div>
 </div>
 
 <div id="otherTab" style="display:none;">
@@ -1329,6 +1370,16 @@ for (const tab of tabs) {
   tab.btn.addEventListener("click", () => showTab(tab));
 }
 
+// --- «О проекте» внизу «Важного»: свой экран с кнопкой «назад» ---
+function showAbout(open) {
+  document.getElementById("importantMain").style.display = open ? "none" : "";
+  document.getElementById("aboutPane").style.display = open ? "" : "none";
+  window.scrollTo(0, 0);
+}
+document.getElementById("aboutOpen").addEventListener("click", () => showAbout(true));
+document.querySelector(".about-back").addEventListener("click", () => showAbout(false));
+tabs[1].btn.addEventListener("click", () => showAbout(false));
+
 // --- Раздел «Другое»: список пунктов и отдельные экраны с кнопкой «назад» ---
 const otherMenu = document.getElementById("otherMenu");
 const otherScreens = [...document.querySelectorAll(".other-screen")];
@@ -1337,7 +1388,7 @@ function showOther(id) {
   for (const sc of otherScreens) sc.style.display = sc.id === id ? "" : "none";
   window.scrollTo(0, 0);
 }
-for (const card of document.querySelectorAll(".menu-card")) {
+for (const card of document.querySelectorAll(".menu-card[data-screen]")) {
   card.addEventListener("click", () => {
     showOther(card.dataset.screen);
     if (card.dataset.screen === "paneNotes" && !notesLoaded) loadNotes();
@@ -1349,7 +1400,7 @@ function openGroupScreen() {
   showTab(tabs[2]);
   showOther("paneGroup");
 }
-for (const back of document.querySelectorAll(".back-btn")) {
+for (const back of document.querySelectorAll(".back-btn:not(.about-back)")) {
   back.addEventListener("click", () => {
     showOther(back.dataset.back || null);
     if (back.dataset.back === "paneTeachers") window.scrollTo(0, teachersScroll);
