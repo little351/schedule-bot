@@ -213,7 +213,7 @@ def test_menu_button_opens_mini_app_and_commands_stay(monkeypatch):
     asyncio.run(bot.post_init(app))
     assert calls["commands"] == ["start", "app", "group", "week", "nweek", "weekdate"]
     assert isinstance(calls["menu"], MenuButtonWebApp)
-    assert calls["menu"].text == "Расписание" and calls["menu"].web_app.url == bot.WEBAPP_URL
+    assert calls["menu"].text == "Расписание" and calls["menu"].web_app.url == bot.WEBAPP_URL + "?src=menu"
     calls["fail"] = True
     asyncio.run(bot.post_init(app))  # сбой Telegram не мешает запуску бота
 
@@ -224,7 +224,7 @@ def test_week_reply_has_open_in_app_button_only_in_private_chat():
     import bot
     markup = bot.open_app_markup(SimpleNamespace(effective_chat=SimpleNamespace(type="private")))
     button = markup.inline_keyboard[0][0]
-    assert button.text == "📱 Открыть в приложении" and button.web_app.url == bot.WEBAPP_URL
+    assert button.text == "📱 Открыть в приложении" and button.web_app.url == bot.WEBAPP_URL + "?src=week"
     assert bot.open_app_markup(SimpleNamespace(effective_chat=SimpleNamespace(type="group"))) is None
 
 

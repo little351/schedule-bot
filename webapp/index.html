@@ -943,6 +943,29 @@ const telegramId = tg.initDataUnsafe?.user?.id;
 // сервер узнаёт пользователя по подписанным данным Telegram, а не по id из запроса
 const authHeaders = { "X-Init-Data": tg.initData || "" };
 
+// --- Статистика: только счётчики нажатий (без текстов), пачкой раз в 30 секунд и при сворачивании ---
+const trackQueue = {};
+function track(name) {
+  if (!tg.initData) return;
+  trackQueue[name] = (trackQueue[name] || 0) + 1;
+}
+function flushTrack() {
+  const names = Object.keys(trackQueue);
+  if (!names.length) return;
+  const events = {};
+  for (const name of names) { events[name] = trackQueue[name]; delete trackQueue[name]; }
+  try {
+    fetch("/api/track", {
+      method: "POST",
+      keepalive: true,  // отправка успевает уйти, даже если мини-апп закрывают
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ init_data: tg.initData, events }),
+    }).catch(() => {});
+  } catch (err) {}
+}
+setInterval(flushTrack, 30000);
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushTrack(); });
+
 const DAY_ABBR = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const MONTH_ABBR = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 let selectedDate = new Date();
@@ -973,6 +996,7 @@ function renderTodayButton() {
 
 document.getElementById("todayBtn").addEventListener("click", () => {
   if (fmtISO(selectedDate) === fmtISO(startOfToday())) return;
+  track("day.today");
   selectedDate = startOfToday();
   renderDateStrip();
   loadDay();
@@ -988,6 +1012,7 @@ function renderDateStrip() {
     btn.className = "date-pill" + (offset === 0 ? " selected" : "");
     btn.innerHTML = `<span class="num">${d.getDate()}</span>${MONTH_ABBR[d.getMonth()]}`;
     btn.addEventListener("click", () => {
+      if (offset !== 0) track("day.swipe");
       selectedDate = d;
       selectedDate.setHours(0, 0, 0, 0);
       renderDateStrip();
@@ -1303,6 +1328,7 @@ async function loadDay() {
 }
 
 function shiftDay(n) {
+  track("day.swipe");
   selectedDate = addDays(selectedDate, n);
   renderDateStrip();
   loadDay();
@@ -1359,8 +1385,9 @@ function showTab(tab) {
     t.btn.classList.toggle("active", t === tab);
   }
 }
+const TAB_STATS = ["tab.schedule", "tab.important", "tab.other"];
 for (const tab of tabs) {
-  tab.btn.addEventListener("click", () => showTab(tab));
+  tab.btn.addEventListener("click", () => { track(TAB_STATS[tabs.indexOf(tab)]); showTab(tab); });
 }
 
 // --- «Авторы» внизу «Важного»: свой экран с кнопкой «назад» ---
@@ -1369,7 +1396,7 @@ function showAbout(open) {
   document.getElementById("aboutPane").style.display = open ? "" : "none";
   window.scrollTo(0, 0);
 }
-document.getElementById("aboutOpen").addEventListener("click", () => showAbout(true));
+document.getElementById("aboutOpen").addEventListener("click", () => { track("about.open"); showAbout(true); });
 document.querySelector(".about-back").addEventListener("click", () => showAbout(false));
 tabs[1].btn.addEventListener("click", () => showAbout(false));
 
@@ -1383,6 +1410,10 @@ function showOther(id) {
 }
 for (const card of document.querySelectorAll(".menu-card[data-screen]")) {
   card.addEventListener("click", () => {
+    const statName = { paneGroup: "group", paneNotes: "notes", paneTeachers: "teachers", paneRandom: "random",
+                       paneGame: "game", paneMap: "map" }[card.dataset.screen];
+    if (statName) track("other." + statName);
+    if (card.dataset.screen === "paneTeachers") teacherSearchCounted = false;
     showOther(card.dataset.screen);
     if (card.dataset.screen === "paneNotes" && !notesLoaded) loadNotes();
     if (card.dataset.screen === "paneTeachers" && !teachersLoaded) loadTeachers();
@@ -1555,6 +1586,7 @@ function openTeacher(t, dept) {
     btn.appendChild(head);
     btn.appendChild(el("div", "tp-value", value));
     btn.addEventListener("click", async () => {
+      track("teachers.copy");
       await copyText(value);
       mark.textContent = "скопировано";
       setTimeout(() => { mark.textContent = ""; }, 1500);
@@ -1593,6 +1625,7 @@ function openTeacher(t, dept) {
   const row = el("div", "tp-actions");
   const all = el("button", "secondary", "Скопировать всё");
   all.addEventListener("click", async () => {
+    track("teachers.copy");
     await copyText(lines.join("\n"));
     all.textContent = "Скопировано";
     setTimeout(() => { all.textContent = "Скопировать всё"; }, 1500);
@@ -1624,6 +1657,10 @@ async function loadTeachers() {
   }
   renderTeachers();
 }
+let teacherSearchCounted = false;  // поиск считается один раз за заход в «Преподавателей», сам запрос не отправляется
+teacherSearch.addEventListener("input", () => {
+  if (!teacherSearchCounted && teacherSearch.value.trim()) { teacherSearchCounted = true; track("teachers.search"); }
+});
 teacherSearch.addEventListener("input", renderTeachers);
 
 // --- Заметки и дедлайны по предметам (хранятся на сервере по id пользователя) ---
@@ -1902,6 +1939,7 @@ renderRand();
 // --- Копирование номера для перевода по СБП ---
 const PHONE_NUMBER = "89995567597";
 async function copyPhone() {
+  track("donate.copy");
   try {
     await navigator.clipboard.writeText(PHONE_NUMBER);
   } catch (err) {
@@ -1937,7 +1975,11 @@ if (tg.initData) {
   fetch("/api/visit", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ init_data: tg.initData }),
+    body: JSON.stringify({
+      init_data: tg.initData,
+      src: new URLSearchParams(location.search).get("src") || "",  // какая кнопка открыла мини-апп
+      platform: tg.platform || "",
+    }),
   }).catch(() => {});
 }
 
