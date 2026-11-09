@@ -100,6 +100,8 @@
     S.fall = 0;
     S.lockTimer = 0;
     S.lockResets = 0;
+    S.lowest = S.piece.y;  // самая низкая строка, до которой фигура уже доходила
+    S.landed = false;  // фигура уже касалась опоры на этой высоте
     if (!fits(S.piece)) gameOver();
   }
 
@@ -124,10 +126,16 @@
     for (const [kx, ky] of kicks) {
       const moved = { ...p, x: p.x + dx + kx, y: p.y + dy + ky, rot: (p.rot + drot + 4) % 4 };
       if (fits(moved)) {
-        const wasGrounded = grounded();
         S.piece = moved;
-        // фигуру на опоре можно ещё подвинуть: таймер фиксации начинается заново, но не бесконечно
-        if (dy === 0 && wasGrounded && S.lockResets < LOCK_RESETS) {
+        if (moved.y > S.lowest) {
+          // опустилась ниже, чем была: снова можно двигать её на опоре
+          S.lowest = moved.y;
+          S.lockResets = 0;
+          S.landed = false;
+          S.lockTimer = 0;
+        } else if (dy === 0 && S.landed) {
+          // фигуру, коснувшуюся опоры, можно ещё подвинуть или повернуть, но не больше LOCK_RESETS раз:
+          // раньше поворот приподнимал её над опорой, таймер сбрасывался, и она не ложилась никогда
           S.lockTimer = 0;
           S.lockResets++;
         }
@@ -200,8 +208,10 @@
   function update(dt) {
     if (S.flash > 0) S.flash = Math.max(0, S.flash - dt);
     if (grounded()) {
+      S.landed = true;
       S.lockTimer += dt;
-      if (S.lockTimer >= LOCK_DELAY) lock();
+      // ходы на опоре кончились: фигура ложится сразу, как только снова на неё встанет
+      if (S.lockTimer >= LOCK_DELAY || S.lockResets >= LOCK_RESETS) lock();
       return;
     }
     S.lockTimer = 0;
