@@ -156,6 +156,7 @@
       if (y < 0) { gameOver(); return; }
       S.board[y][x] = 1;
     }
+    S.boardVer = (S.boardVer || 0) + 1;  // поле изменилось: его надо перерисовать
     const full = S.board.filter((row) => row.every(Boolean)).length;
     if (full) {
       S.board = S.board.filter((row) => !row.every(Boolean));
@@ -317,20 +318,48 @@
     c.globalAlpha = 1;
   }
 
+  // Фон поля с сеткой рисуется один раз на размер клетки и потом только копируется
+  let bg = null, bgCell = 0;
+  function background() {
+    if (bg && bgCell === cell) return bg;
+    bg = document.createElement("canvas");
+    bgCell = cell;
+    const c = sizeCanvas(bg, COLS * cell, ROWS * cell);
+    // поле светлее чёрного фона приложения, чтобы были видны его края (просьба Артёма)
+    c.fillStyle = FIELD_BG;
+    c.fillRect(0, 0, COLS * cell, ROWS * cell);
+    c.strokeStyle = "rgba(255,255,255,0.08)";
+    c.lineWidth = 1;
+    c.beginPath();
+    for (let x = 1; x < COLS; x++) { c.moveTo(x * cell + 0.5, 0); c.lineTo(x * cell + 0.5, ROWS * cell); }
+    for (let y = 1; y < ROWS; y++) { c.moveTo(0, y * cell + 0.5); c.lineTo(COLS * cell, y * cell + 0.5); }
+    c.stroke();
+    return bg;
+  }
+
+  // Что видно на экране. Цикл игры перерисовывает поле, только если это изменилось: фигура сдвигается
+  // несколько раз в секунду, а кадров 60, и перерисовка каждого кадра грела слабые телефоны
+  let drawnState = null, drawnKey = "";
+  function viewKey() {
+    const p = S.piece;
+    return `${p ? `${p.type}${p.rot},${p.x},${p.y}` : ""}|${S.boardVer || 0}|${S.flash}|${S.score}|${S.next}|${best}`;
+  }
+  function drawIfChanged() {
+    if (S !== drawnState || viewKey() !== drawnKey) draw();
+  }
+
+  let hudText = ["", "", ""], nextKey = "";
+  function setHud(i, el, value) {
+    const text = String(value);
+    if (hudText[i] !== text) { hudText[i] = text; el.textContent = text; }
+  }
+
   function draw() {
     if (!S || !ctx) return;
+    drawnState = S;
+    drawnKey = viewKey();
     const colors = SKINS[skin].colors[colorIndex()];
-    // поле светлее чёрного фона приложения, чтобы были видны его края (просьба Артёма)
-    ctx.fillStyle = FIELD_BG;
-    ctx.fillRect(0, 0, COLS * cell, ROWS * cell);
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
-    ctx.lineWidth = 1;
-    for (let x = 1; x < COLS; x++) {
-      ctx.beginPath(); ctx.moveTo(x * cell + 0.5, 0); ctx.lineTo(x * cell + 0.5, ROWS * cell); ctx.stroke();
-    }
-    for (let y = 1; y < ROWS; y++) {
-      ctx.beginPath(); ctx.moveTo(0, y * cell + 0.5); ctx.lineTo(COLS * cell, y * cell + 0.5); ctx.stroke();
-    }
+    ctx.drawImage(background(), 0, 0, COLS * cell, ROWS * cell);
     S.board.forEach((row, y) => row.forEach((v, x) => { if (v) block(ctx, x * cell, y * cell, cell, colors); }));
     if (S.piece) {
       // тень: куда упадёт фигура
@@ -343,10 +372,11 @@
       ctx.fillStyle = `rgba(255,255,255,${(S.flash / 0.35) * 0.35})`;
       ctx.fillRect(0, 0, COLS * cell, ROWS * cell);
     }
-    drawNext(colors);
-    hud.score.textContent = S.score;
-    hud.lines.textContent = S.lines;
-    hud.best.textContent = best != null ? Math.max(best, S.score) : S.score;
+    const key = `${S.next}|${skin}|${colors}|${tiles.size}`;
+    if (key !== nextKey) { nextKey = key; drawNext(colors); }
+    setHud(0, hud.score, S.score);
+    setHud(1, hud.lines, S.lines);
+    setHud(2, hud.best, best != null ? Math.max(best, S.score) : S.score);
   }
 
   function drawNext(colors) {
@@ -375,7 +405,7 @@
     const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0;
     last = ts;
     update(dt);
-    if (running) draw();
+    if (running) drawIfChanged();
     if (running) rafId = requestAnimationFrame(loop);
   }
 
