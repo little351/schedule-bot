@@ -14,6 +14,7 @@ from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, MessageHandler, TypeHandler, ContextTypes, filters
 )
 
+import attendance
 import lms_sync
 import stats
 from parser import parse_file
@@ -24,7 +25,8 @@ from database import (
     get_current_week_sheet, get_relative_week_sheet, get_week_sheet_for_date,
     get_week_schedule_grid, now_local, get_groups, get_catalog, find_groups, GroupRef, storage_name,
     touch_user, list_users, user_stats, get_program_name, restore_users, users_without_profile, set_user_profile,
-    get_sync_state, set_sync_state, export_backup, import_backup, stats_daily_rows, stats_compact
+    get_sync_state, set_sync_state, export_backup, import_backup, stats_daily_rows, stats_compact,
+    get_day_lessons, TIME_SLOTS, PRACTICE_SLOT
 )
 from formatting import format_week_text, with_donation_note
 
@@ -552,6 +554,201 @@ async def lms_check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.application.create_task(run())
 
 
+# --- отметка посещаемости на сайте вуза (только владелец): /mark ---
+# Страницы посещаемости владельца (mod/attendance/view.php?id=…) хранятся в sync_state, читаются только по /mark.
+MARK_PAGES_KEY = "attendance_pages"
+MARK_CONFIRM_MINUTES = 15  # сколько действует вопрос «Отметиться?»
+MARK_WINDOW_BEFORE = 15  # за сколько минут до начала пара считается текущей
+
+
+def mark_pages():
+    try:
+        pages = json.loads(get_sync_state(conn, MARK_PAGES_KEY) or "[]")
+    except ValueError:
+        return []
+    return [p for p in pages if isinstance(p, str)]
+
+
+def describe_lesson(lessons, now):
+    """Текст о паре, идущей в момент now (за MARK_WINDOW_BEFORE минут до начала уже считается), или о ближайшей."""
+    minutes = now.hour * 60 + now.minute
+    upcoming = practice = None
+    for lesson in lessons:
+        if lesson["time_start"] == PRACTICE_SLOT:
+            practice = lesson["subject"]
+            continue
+        (h1, m1), (h2, m2) = (map(int, lesson[k].split(":")) for k in ("time_start", "time_end"))
+        slot = f"{lesson['time_start']}-{lesson['time_end']}".replace(":", ".")
+        number = f"{TIME_SLOTS.index(slot) + 1} пара, " if slot in TIME_SLOTS else ""
+        title = f"{number}{lesson['time_start']}–{lesson['time_end']}: «{lesson['subject']}»"
+        if h1 * 60 + m1 - MARK_WINDOW_BEFORE <= minutes <= h2 * 60 + m2:
+            return f"Сейчас {title}."
+        if upcoming is None and minutes < h1 * 60 + m1:
+            upcoming = title
+    if practice:
+        return f"Сегодня практика: «{practice}»."
+    return "Сейчас по расписанию пары нет" + (f", следующая: {upcoming}." if upcoming else ".")
+
+
+def current_lesson(now=None):
+    """Текст о текущей паре владельца по расписанию его группы в боте."""
+    now = now or now_local()
+    group = get_user_group(conn, int(OWNER_ID)) if OWNER_ID.isdigit() else None
+    if not group:
+        return "Группа у вас в боте не выбрана, текущую пару не знаю."
+    _, lessons = get_day_lessons(conn, group, now.date())
+    return describe_lesson(lessons, now)
+
+
+def _lms_client():
+    login, password = lms_sync.credentials()
+    base = (lms_sync.load_sources(SCHEDULE_DIR).get("base_url") or os.environ.get("LMS_BASE_URL")
+            or "https://lms.sportedu.ru")
+    client = lms_sync.MoodleClient(base, login, password)
+    try:
+        client.login()
+    except Exception:
+        client.close()
+        raise
+    return client
+
+
+def _find_open_marks(pages):
+    client = _lms_client()
+    try:
+        return attendance.find_open(client, pages)
+    finally:
+        client.close()
+
+
+def _do_mark(page, sessid, password=None):
+    client = _lms_client()
+    try:
+        return attendance.mark(client, page, sessid, password)
+    finally:
+        client.close()
+
+
+async def mark_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/mark - отметиться на текущей паре; /mark add <ссылка>, /mark del <номер>, /mark list - страницы отметки."""
+    args = context.args or []
+    pages = mark_pages()
+    if args and args[0].lower() in ("add", "del", "list"):
+        action = args[0].lower()
+        if action == "add":
+            added = [p for p in (attendance.page_path(a) for a in args[1:]) if p and p not in pages]
+            if not added:
+                await update.message.reply_text("Пришлите ссылку вида https://lms.sportedu.ru/mod/attendance/view.php?id=505662 "
+                                                "после /mark add (можно несколько через пробел).")
+                return
+            pages += added
+            set_sync_state(conn, MARK_PAGES_KEY, json.dumps(pages))
+        elif action == "del":
+            numbers = {int(a) for a in args[1:] if a.isdigit()}
+            pages = [p for i, p in enumerate(pages, 1) if i not in numbers]
+            set_sync_state(conn, MARK_PAGES_KEY, json.dumps(pages))
+        lines = [f"{i}. {lms_sync.load_sources(SCHEDULE_DIR).get('base_url', 'https://lms.sportedu.ru')}{p}"
+                 for i, p in enumerate(pages, 1)]
+        await update.message.reply_text("Страницы отметки:\n" + "\n".join(lines) if lines else
+                                        "Страниц отметки пока нет. Добавьте: /mark add <ссылка>")
+        return
+    if not pages:
+        await update.message.reply_text("Сначала добавьте страницы отметки по предметам: /mark add <ссылка> "
+                                        "(ссылки вида …/mod/attendance/view.php?id=…)")
+        return
+    login, password = lms_sync.credentials()
+    if not login or not password:
+        await update.message.reply_text("Нет LMS_LOGIN или LMS_PASSWORD в Render, на сайт вуза войти нельзя.")
+        return
+    lesson_text = current_lesson()
+    await update.message.reply_text(f"{lesson_text}\nИщу открытую отметку на {len(pages)} стр. сайта вуза...")
+
+    async def run():
+        # в фоне, как /sync: вебхук должен ответить Telegram сразу
+        try:
+            found, problems = await asyncio.to_thread(_find_open_marks, pages)
+        except lms_sync.SyncError as e:
+            await update.message.reply_text(f"Не удалось зайти на сайт вуза: {lms_sync.scrub(e)}")
+            return
+        except Exception as e:
+            logger.exception("/mark: ошибка")
+            await update.message.reply_text(f"Ошибка при поиске отметки: {lms_sync.scrub(type(e).__name__)}")
+            return
+        extra = ("\n\nНе открылись: " + "; ".join(lms_sync.scrub(p) for p in problems)) if problems else ""
+        if not found:
+            await update.message.reply_text("Открытой отметки сейчас нет ни на одной странице. Обычно её открывает "
+                                            "преподаватель во время пары." + extra)
+            return
+        pending = context.bot_data.setdefault("mark_pending", {})
+        for item in found:
+            token = secrets.token_hex(4)
+            pending[token] = dict(item, at=datetime.now(timezone.utc))
+            markup = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Да", callback_data=f"mk:y:{token}"),
+                                            InlineKeyboardButton("❌ Нет", callback_data=f"mk:n:{token}")]])
+            await update.message.reply_text(f"Открыта отметка: «{item['title'] or item['page']}».\n"
+                                            f"Отметить вас как присутствующего?" + extra, reply_markup=markup)
+            extra = ""
+
+    context.application.create_task(run())
+
+
+def _mark_take(context, token):
+    item = context.bot_data.get("mark_pending", {}).pop(token, None)
+    if item and datetime.now(timezone.utc) - item["at"] > timedelta(minutes=MARK_CONFIRM_MINUTES):
+        return None
+    return item
+
+
+async def _mark_run(bot, chat_id, context, item, password=None):
+    try:
+        result, detail = await asyncio.to_thread(_do_mark, item["page"], item["sessid"], password)
+    except lms_sync.SyncError as e:
+        result, detail = "error", str(e)
+    except Exception as e:
+        logger.exception("/mark: ошибка отметки")
+        result, detail = "error", type(e).__name__
+    title = item["title"] or item["page"]
+    if result == "ok":
+        text = f"✅ Отмечено: «{title}», статус «{detail}»."
+    elif result == "password":
+        token = secrets.token_hex(4)
+        context.bot_data.setdefault("mark_pending", {})[token] = dict(item, at=datetime.now(timezone.utc))
+        context.bot_data["mark_password"] = token
+        text = f"Для отметки на «{title}» нужен пароль от преподавателя. Пришлите его следующим сообщением."
+    else:
+        text = f"❌ Не получилось отметиться на «{title}»: {lms_sync.scrub(detail)}"
+    await bot.send_message(chat_id=chat_id, text=text)
+
+
+async def mark_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await answer_query(query)
+    if not _is_owner(update):
+        return
+    _, answer, token = (query.data.split(":") + ["", ""])[:3]
+    item = _mark_take(context, token)
+    if not item:
+        await query.edit_message_text("Вопрос устарел. Запустите /mark ещё раз.")
+        return
+    if answer != "y":
+        await query.edit_message_text(f"Не отмечаюсь на «{item['title'] or item['page']}».")
+        return
+    await query.edit_message_text(f"Отмечаюсь на «{item['title'] or item['page']}»...")
+    context.application.create_task(_mark_run(context.bot, query.message.chat.id, context, item))
+
+
+async def mark_password_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Сообщение владельца после вопроса о пароле: это пароль от преподавателя. True - сообщение обработано."""
+    token = context.bot_data.pop("mark_password", None)
+    item = _mark_take(context, token) if token else None
+    if not item:
+        return False
+    await update.message.reply_text("Отправляю отметку с паролем...")
+    context.application.create_task(_mark_run(context.bot, update.message.chat.id, context, item,
+                                              update.message.text.strip()))
+    return True
+
+
 LMS_FAIL_REPEAT_DAYS = 3  # об одной и той же неполадке подгрузки напоминаем не чаще
 
 
@@ -892,6 +1089,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     telegram_id = update.effective_user.id
 
+    # пароль от преподавателя для отметки посещаемости (/mark)
+    if _is_owner(update) and context.bot_data.get("mark_password") and await mark_password_reply(update, context):
+        return
+
     # после кнопки «По дате» следующее сообщение с датой показывает неделю
     if context.user_data.pop("await_date", False) and parse_input_date(text):
         context.args = [text]
@@ -1195,9 +1396,10 @@ def build_application():
         owner = filters.User(user_id=int(OWNER_ID)) & new_message
         for command, callback in [("users", users_command), ("stats", stats_command), ("lms_check", lms_check_command),
                                   ("backup", backup_command), ("sync", sync_command), ("broadcast", broadcast_command),
-                                  ("health", health_command)]:
+                                  ("health", health_command), ("mark", mark_command)]:
             application.add_handler(CommandHandler(command, callback, filters=owner))
         application.add_handler(CallbackQueryHandler(broadcast_button, pattern=r"^bc:"))
+        application.add_handler(CallbackQueryHandler(mark_button, pattern=r"^mk:"))
     application.add_handler(MessageHandler(filters.Document.ALL & new_message, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & new_message, handle_message))
     application.add_error_handler(on_error)
