@@ -107,6 +107,8 @@ SOURCES = [("menu", "кнопка «Расписание»"), ("week", "под �
            ("app", "/app"), ("other", "прочее")]
 COMMANDS = ["start", "week", "nweek", "weekdate", "app", "group"]
 BUTTONS = [("btn.week", "неделя"), ("btn.nweek", "след. неделя"), ("btn.date", "по дате"), ("btn.group", "сменить группу")]
+KEYBOARD = [("kb.week", "эта неделя"), ("kb.nweek", "следующая"), ("kb.date", "по дате"), ("kb.group", "группа"),
+            ("kb.app", "приложение")]
 TABS = [("tab.schedule", "Расписание"), ("tab.important", "Важное"), ("tab.other", "Другое")]
 OTHER = [("other.group", "Моя группа"), ("other.notes", "заметки"), ("other.teachers", "преподаватели"),
          ("other.random", "рандомайзер"), ("other.game", "«Блоки»"), ("other.map", "карта")]
@@ -170,6 +172,7 @@ def format_report(data, title=None):
     lines.append("Бот")
     lines.append("  " + " · ".join(f"/{c} {_n(t.get('cmd.' + c, 0))}" for c in COMMANDS))
     lines.append("  Кнопки: " + _join(BUTTONS, t))
+    lines.append("  Клавиатура внизу: " + _join(KEYBOARD, t))
     started, done = t.get("pick.start", 0), t.get("pick.done", 0)
     lines.append(f"  Выбор группы: начат {_n(started)}, выбрана группа {_n(done)}")
     lines.append(f"  Ошибки «Что-то пошло не так»: {_n(t.get('bot.error', 0))}")

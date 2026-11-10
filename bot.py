@@ -9,7 +9,8 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter, TelegramError, TimedOut
-from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, MenuButtonWebApp, WebAppInfo
+from telegram import (Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, MenuButtonWebApp, WebAppInfo,
+                      ReplyKeyboardMarkup)
 from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, MessageHandler, TypeHandler, ContextTypes, filters
 )
@@ -100,7 +101,7 @@ START_TEXT = (
     "1. Выбери курс, направление и группу кнопками ниже (для магистрантов сначала «Магистратура»). Сменить их можно в любой момент: /group "
     "(или просто напиши номер группы).\n"
     "2. /app — открыть расписание в мини-приложении.\n"
-    "3. Расписание прямо в чате: /week — эта неделя, "
+    "3. Расписание прямо в чате: кнопки внизу или команды /week — эта неделя, "
     "/nweek — следующая, /weekdate 05.10 — неделя по дате.\n\n"
     "⚠️ Бот неофициальный: расписание берётся с сайта вуза и может измениться или содержать "
     "неточности, поэтому сверяйся с официальным. Бот работает на бесплатном хостинге: после простоя "
@@ -109,6 +110,42 @@ START_TEXT = (
 )
 
 DONE_TEXT = "Готово, запомнил: {title}.\nВыбери, что показать:"
+
+
+# --- постоянная клавиатура под полем ввода: те же команды без «/» ---
+# Нажатие отправляет в чат текст кнопки, handle_message узнаёт его по KEYBOARD_ACTIONS.
+# «Приложение» - обычная текстовая кнопка, а не web_app: мини-апп с кнопки клавиатуры Telegram может открыть
+# без подписанных данных пользователя (initData), и API мини-аппа его бы не пустил.
+KB_WEEK, KB_NWEEK, KB_DATE, KB_GROUP, KB_APP = "📅 Эта неделя", "➡️ Следующая", "🗓 По дате", "👥 Группа", "📱 Приложение"
+KB_STATS, KB_MARK, KB_HEALTH = "📊 Статистика", "✅ Отметиться", "🩺 Состояние"
+KEYBOARD_ACTIONS = {KB_WEEK: "week", KB_NWEEK: "nweek", KB_DATE: "date", KB_GROUP: "group", KB_APP: "app"}
+OWNER_KEYBOARD_ACTIONS = {KB_STATS: "stats", KB_MARK: "mark", KB_HEALTH: "health"}
+DATE_PROMPT = "Напиши дату, например 05.10 или 05.10.2026. Покажу неделю, в которую она попадает."
+
+
+def main_keyboard(owner=False):
+    rows = [[KB_WEEK, KB_NWEEK], [KB_DATE, KB_GROUP, KB_APP]]
+    if owner:
+        rows.append([KB_STATS, KB_MARK, KB_HEALTH])
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, is_persistent=True,
+                               input_field_placeholder="Номер группы или кнопка ниже")
+
+
+def keyboard_for(update):
+    """Клавиатура для ответа этому пользователю; не в личке (группы, каналы) её не показываем."""
+    chat = getattr(update, "effective_chat", None) or getattr(getattr(update, "message", None), "chat", None)
+    if chat is None or chat.type != "private":
+        return None
+    return main_keyboard(owner=_is_owner(update))
+
+
+def keyboard_action(update, text):
+    """Действие по тексту кнопки клавиатуры или None, если это не кнопка (номер группы, дата и т.п.)."""
+    if text in KEYBOARD_ACTIONS:
+        return KEYBOARD_ACTIONS[text]
+    if text in OWNER_KEYBOARD_ACTIONS and _is_owner(update):
+        return OWNER_KEYBOARD_ACTIONS[text]
+    return None
 
 
 def actions_markup():
@@ -261,11 +298,12 @@ async def on_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await group_command(shim, context)
     elif action == "date":
         context.user_data["await_date"] = True
-        await query.message.reply_text("Напиши дату, например 05.10 или 05.10.2026. Покажу неделю, в которую она попадает.")
+        await query.message.reply_text(DATE_PROMPT)
 
 
 STATS_COMMANDS = {"start", "week", "nweek", "weekdate", "app", "group"}
 STATS_BUTTONS = {"a:week": "btn.week", "a:nweek": "btn.nweek", "a:date": "btn.date", "a:group": "btn.group"}
+STATS_KEYBOARD = {"week", "nweek", "date", "group", "app"}
 
 
 def count_action(update):
@@ -284,6 +322,8 @@ def count_action(update):
         command = text[1:].split(maxsplit=1)[0].split("@", 1)[0].lower() if len(text) > 1 else ""
         if command in STATS_COMMANDS:
             stats.count("cmd." + command)
+    elif text in KEYBOARD_ACTIONS and KEYBOARD_ACTIONS[text] in STATS_KEYBOARD:
+        stats.count("kb." + KEYBOARD_ACTIONS[text])
     elif text:
         stats.count("msg.text")
     elif message.document:
@@ -1008,12 +1048,14 @@ BROADCAST_MAX_LEN = 4000
 
 async def deliver_broadcast(bot, chat_ids, text, pause=BROADCAST_PAUSE, sleep=asyncio.sleep):
     """Отправляет text всем chat_ids по одному, с паузой. Возвращает (отправлено, не доставлено).
-    Заблокировавшие бота и удалённые аккаунты пропускаются, на лимиты Telegram отвечаем ожиданием."""
+    Заблокировавшие бота и удалённые аккаунты пропускаются, на лимиты Telegram отвечаем ожиданием.
+    С рассылкой приходит и постоянная клавиатура: так её получат и те, кто давно не нажимал /start."""
     sent = failed = 0
     for chat_id in chat_ids:
         for attempt in range(3):
             try:
-                await bot.send_message(chat_id=chat_id, text=text)
+                owner = OWNER_ID.isdigit() and str(chat_id) == OWNER_ID
+                await bot.send_message(chat_id=chat_id, text=text, reply_markup=main_keyboard(owner))
                 sent += 1
                 break
             except RetryAfter as e:
@@ -1082,13 +1124,20 @@ async def broadcast_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(START_TEXT)
+    await update.message.reply_text(START_TEXT, reply_markup=keyboard_for(update))
     await group_command(update, context)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     telegram_id = update.effective_user.id
+
+    # кнопка постоянной клавиатуры: то же, что команда (раньше всего: текст кнопки не пароль и не дата)
+    action = keyboard_action(update, text)
+    if action:
+        context.user_data.pop("await_date", None)
+        await run_keyboard_action(update, context, action)
+        return
 
     # пароль от преподавателя для отметки посещаемости (/mark)
     if _is_owner(update) and context.bot_data.get("mark_password") and await mark_password_reply(update, context):
@@ -1129,8 +1178,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await update.message.reply_text(
-            "Не понял. Выбери группу через /group или используй /week, /nweek, /weekdate, /app"
+            "Не понял. Нажми кнопку внизу или напиши номер группы. Команды тоже работают: /group, /week, /nweek, "
+            "/weekdate, /app", reply_markup=keyboard_for(update)
         )
+
+
+async def run_keyboard_action(update, context, action):
+    context.args = []
+    if action == "week":
+        await week(update, context)
+    elif action == "nweek":
+        await nweek(update, context)
+    elif action == "date":
+        context.user_data["await_date"] = True
+        await update.message.reply_text(DATE_PROMPT)
+    elif action == "group":
+        await group_command(update, context)
+    elif action == "app":
+        await app_command(update, context)
+    elif action == "stats":
+        await stats_command(update, context)
+    elif action == "mark":
+        await mark_command(update, context)
+    elif action == "health":
+        await health_command(update, context)
 
 
 async def _send_week(update, group, week_sheet, not_found_msg):

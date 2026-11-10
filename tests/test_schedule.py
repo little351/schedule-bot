@@ -374,18 +374,20 @@ def test_rooms_are_resolved_in_loaded_schedule(records):
     assert subject and "пн - " not in subject[0] and "пт - " not in subject[0]
 
 
-def test_broadcast_delivery_skips_blocked_and_waits_on_rate_limit():
+def test_broadcast_delivery_skips_blocked_and_waits_on_rate_limit(monkeypatch):
     import asyncio
     os.environ.setdefault("BOT_TOKEN", "123:abc")
     import bot
+    monkeypatch.setattr(bot, "OWNER_ID", "5")
     from telegram.error import Forbidden, NetworkError, RetryAfter
 
     class FakeBot:
         def __init__(self):
-            self.sent, self.calls = [], collections_counter()
+            self.sent, self.calls, self.markups = [], collections_counter(), []
 
-        async def send_message(self, chat_id, text):
+        async def send_message(self, chat_id, text, reply_markup=None):
             self.calls[chat_id] += 1
+            self.markups.append((chat_id, reply_markup))
             if chat_id == 2:
                 raise Forbidden("Forbidden: bot was blocked by the user")
             if chat_id == 3 and self.calls[3] == 1:
@@ -409,6 +411,11 @@ def test_broadcast_delivery_skips_blocked_and_waits_on_rate_limit():
     assert [c for c, _ in fake.sent] == [1, 3, 5]
     assert 6 in slept  # на RetryAfter(5) ждали 5+1 секунд
     assert fake.calls[4] == 3 and fake.calls[2] == 1
+    # с рассылкой приходит постоянная клавиатура (без кнопок владельца у обычных пользователей)
+    kb = dict(fake.markups)[1]
+    labels = [b.text for row in kb.keyboard for b in row]
+    assert bot.KB_WEEK in labels and bot.KB_STATS not in labels and kb.is_persistent
+    assert bot.KB_STATS in [b.text for row in dict(fake.markups)[5].keyboard for b in row]  # владельцу - свой ряд
 
 
 def test_broadcast_needs_confirmation_and_is_sent_once(tmp_path, monkeypatch):
@@ -455,7 +462,7 @@ def test_broadcast_needs_confirmation_and_is_sent_once(tmp_path, monkeypatch):
     class Bot:
         sent = []
 
-        async def send_message(self, chat_id, text):
+        async def send_message(self, chat_id, text, **kw):
             self.sent.append((chat_id, text))
 
     context = type("C", (), {"bot_data": {}, "bot": Bot(), "application": App(), "args": []})()
