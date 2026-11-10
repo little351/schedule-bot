@@ -253,3 +253,16 @@ def test_no_open_mark_is_reported(owner):
     o.context.args = []
     run(o, o.bot.mark_command(o.update, o.context))
     assert "Открытой отметки сейчас нет" in o.sent[-1][0]
+
+
+def test_current_lesson_reads_owner_schedule(owner):
+    """Ошибка 10.11: /mark падал с TypeError (datetime против date) при поиске недели в расписании."""
+    from database import GroupRef, save_schedule, set_user_group
+    o = owner
+    rec = {"program": "49.03.04", "program_name": "Спорт", "course": 1, "week_sheet": "09.11", "group": "1 группа",
+           "day": "Вторник", "date": datetime(2026, 11, 10), "time": "10.40-12.10", "subject": "Футбол"}
+    save_schedule(o.bot.conn, [rec])
+    set_user_group(o.bot.conn, 42, GroupRef("49.03.04", 1, "1 группа"))
+    now = o.bot.LOCAL_TZ.localize(datetime(2026, 11, 10, 11, 0)) if hasattr(o.bot.LOCAL_TZ, "localize") \
+        else datetime(2026, 11, 10, 11, 0, tzinfo=o.bot.LOCAL_TZ)
+    assert o.bot.current_lesson(now) == "Сейчас 2 пара, 10:40–12:10: «Футбол»."

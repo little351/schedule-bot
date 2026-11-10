@@ -596,7 +596,8 @@ def current_lesson(now=None):
     group = get_user_group(conn, int(OWNER_ID)) if OWNER_ID.isdigit() else None
     if not group:
         return "Группа у вас в боте не выбрана, текущую пару не знаю."
-    _, lessons = get_day_lessons(conn, group, now.date())
+    # недели в базе хранятся как datetime без часового пояса, поэтому и день передаём так же (как мини-апп)
+    _, lessons = get_day_lessons(conn, group, datetime(now.year, now.month, now.day))
     return describe_lesson(lessons, now)
 
 
