@@ -197,6 +197,8 @@ def init_db(path="schedule.db"):
     """)
     conn.execute("CREATE TABLE IF NOT EXISTS programs (code TEXT PRIMARY KEY, name TEXT)")
     _add_missing_columns(conn, "lessons", [("program", "TEXT"), ("course", "INTEGER")])
+    # каждый запрос расписания ищет занятия одной группы: без индекса перебираются все ~20 тыс. строк
+    conn.execute("CREATE INDEX IF NOT EXISTS lessons_group ON lessons (program, course, group_name, week_sheet)")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,

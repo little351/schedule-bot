@@ -6,12 +6,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 from telegram import Update
 
 from bot import (build_application, post_init, conn, load_schedules, auto_scheduler, run_due_jobs, send_campus_map, TOKEN,
                  stats_flusher, stats_flush_now)
-from routes import build_router
+from routes import add_common_middleware, build_router
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "hook")
@@ -45,12 +44,7 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+add_common_middleware(app)
 
 
 @app.post(WEBHOOK_PATH)

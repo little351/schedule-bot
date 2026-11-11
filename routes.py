@@ -6,7 +6,9 @@ import time
 from datetime import datetime
 from typing import Dict, Optional
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 
 from database import (
@@ -25,6 +27,17 @@ logger = logging.getLogger(__name__)
 TEACHERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "teachers.json")
 CAMPUS_MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "campus_map.png")
 CAMPUS_MAP_PAUSE = 10  # секунд между повторными схемами одному пользователю: случайные двойные нажатия не шлют дубли
+
+
+GZIP_MIN_SIZE = 1000  # меньше этого сжатие почти ничего не даёт (ответ вебхука, короткие ответы API)
+
+
+def add_common_middleware(app: FastAPI):
+    """Общие настройки сервера для main.py и api.py: CORS и сжатие ответов. index.html мини-аппа
+    в gzip весит в 3–4 раза меньше (75 -> 20 КБ), поэтому быстрее открывается на мобильном интернете.
+    Сжимается только то, что браузер просит (Accept-Encoding: gzip); картинки не сжимаются."""
+    app.add_middleware(GZipMiddleware, minimum_size=GZIP_MIN_SIZE, compresslevel=6)
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 def load_teachers(path=TEACHERS_FILE):
