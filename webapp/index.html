@@ -14,6 +14,8 @@
     --hint: #8e8e93;
     --accent: #0a84ff;
     --border: #2c2c2e;
+    --weekend: #e8706a;       /* выходные: приглушённый красный, как в календаре */
+    --weekend-hint: #9a5753;
   }
   * { box-sizing: border-box; }
   body {
@@ -85,6 +87,13 @@
     font-weight: 700;
     color: var(--text);
   }
+  /* понедельник - начало недели: число крупнее, подложка чуть светлее */
+  .date-pill.monday { background: var(--card-pressed); }
+  .date-pill.monday .num { font-size: 19px; }
+  /* суббота и воскресенье: число и месяц приглушённо-красные */
+  .date-pill.weekend { color: var(--weekend-hint); }
+  .date-pill.weekend .num { color: var(--weekend); }
+  .today-btn.weekend { color: var(--weekend); }
   .date-pill.selected {
     background: var(--accent);
     transform: scale(1.12);  /* выбранная дата чуть крупнее соседних */
@@ -991,7 +1000,9 @@ function startOfToday() {
 }
 
 function renderTodayButton() {
-  document.getElementById("todayBtn").textContent = DAY_ABBR[(selectedDate.getDay() + 6) % 7];
+  const btn = document.getElementById("todayBtn");
+  btn.textContent = DAY_ABBR[(selectedDate.getDay() + 6) % 7];
+  btn.classList.toggle("weekend", selectedDate.getDay() === 0 || selectedDate.getDay() === 6);
 }
 
 document.getElementById("todayBtn").addEventListener("click", () => {
@@ -1009,7 +1020,9 @@ function renderDateStrip() {
   for (let offset = -2; offset <= 2; offset++) {
     const d = addDays(selectedDate, offset);
     const btn = document.createElement("button");
-    btn.className = "date-pill" + (offset === 0 ? " selected" : "");
+    const wd = d.getDay();  // 0 - воскресенье, 1 - понедельник
+    btn.className = "date-pill" + (offset === 0 ? " selected" : "") + (wd === 1 ? " monday" : "")
+      + (wd === 0 || wd === 6 ? " weekend" : "");
     btn.innerHTML = `<span class="num">${d.getDate()}</span>${MONTH_ABBR[d.getMonth()]}`;
     btn.addEventListener("click", () => {
       if (offset !== 0) track("day.swipe");
