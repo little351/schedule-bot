@@ -14,8 +14,7 @@
     --hint: #8e8e93;
     --accent: #0a84ff;
     --border: #2c2c2e;
-    --weekend: #e8706a;       /* выходные: приглушённый красный, как в календаре */
-    --weekend-hint: #9a5753;
+    --weekend: #c98d89;       /* число выходного: еле заметный красноватый, как в календаре */
   }
   * { box-sizing: border-box; }
   body {
@@ -87,11 +86,9 @@
     font-weight: 700;
     color: var(--text);
   }
-  /* понедельник - начало недели: число крупнее, подложка чуть светлее */
-  .date-pill.monday { background: var(--card-pressed); }
-  .date-pill.monday .num { font-size: 19px; }
-  /* суббота и воскресенье: число и месяц приглушённо-красные */
-  .date-pill.weekend { color: var(--weekend-hint); }
+  /* понедельник - начало недели: вся плашка чуть крупнее соседних (выбранная всё равно крупнее), подложка светлее */
+  .date-pill.monday { background: var(--card-pressed); transform: scale(1.07); }
+  /* суббота и воскресенье: красноватое только число, месяц как у остальных */
   .date-pill.weekend .num { color: var(--weekend); }
   .today-btn.weekend { color: var(--weekend); }
   .date-pill.selected {
