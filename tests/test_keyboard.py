@@ -106,18 +106,6 @@ def test_group_number_text_still_works(b, monkeypatch):
     assert saved == [group] and sent[-1][0].startswith("Готово")
 
 
-def test_keyboard_presses_are_counted(b, monkeypatch):
-    bot, _ = b
-    counted = []
-    monkeypatch.setattr(bot.stats, "count", lambda m, n=1: counted.append(m))
-    monkeypatch.setattr(bot.stats, "seen", lambda *a: None)
-    update, _, _ = make(7, bot.KB_NWEEK)
-    update.callback_query = None
-    update.message.document = None
-    bot.count_action(update)
-    assert counted == ["kb.nweek"]
-
-
 def test_owner_button_is_not_taken_as_teacher_password(b):
     bot, calls = b
     update, context, _ = make(42, bot.KB_STATS)

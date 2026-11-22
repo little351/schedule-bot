@@ -9,7 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from telegram import Update
 
 from bot import (build_application, post_init, conn, load_schedules, auto_scheduler, run_due_jobs, send_campus_map, TOKEN,
-                 stats_flusher, stats_flush_now)
+                 users_flusher, users_flush_now)
+from database import warm_cache
 from routes import add_common_middleware, build_router
 
 PUBLIC_URL = os.environ["PUBLIC_URL"].rstrip("/")
@@ -27,18 +28,21 @@ async def lifespan(app):
     # при каждом старте перезаливаем расписание из data/ (.xlsx и .xls, включая подпапки data/1k ... data/5k): файлы - источник истины,
     # так новый файл подхватывается простым перезапуском (таблица users не трогается)
     load_schedules()
+    # группы пользователей и состояние автозадач - в память одним заходом в базу; дальше /week, кнопки
+    # и мини-апп к базе не обращаются, и она спит (Neon считает время работы)
+    warm_cache(conn)
 
     await application.initialize()
     await post_init(application)
     await application.bot.set_webhook(url=f"{PUBLIC_URL}{WEBHOOK_PATH}", secret_token=TELEGRAM_SECRET_TOKEN)
     # автозадачи, пока сервер не спит: еженедельная копия владельцу (нужен OWNER_ID) и подгрузка расписания
     # с сайта вуза (нужны LMS_LOGIN и LMS_PASSWORD); раз в сутки их же будит /cron из GitHub Actions
-    # статистика действий копится в памяти и раз в 10 минут уходит в базу
-    tasks = [asyncio.create_task(auto_scheduler(application)), asyncio.create_task(stats_flusher())]
+    # время обращений пользователей копится в памяти и раз в час уходит в базу одной пачкой
+    tasks = [asyncio.create_task(auto_scheduler(application)), asyncio.create_task(users_flusher())]
     yield
     for task in tasks:
         task.cancel()
-    await stats_flush_now()  # Render останавливает сервер (сон, деплой): несохранённые счётчики не теряются
+    await users_flush_now()  # Render останавливает сервер (сон, деплой): накопленное не теряется
     await application.shutdown()
 
 
