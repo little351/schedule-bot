@@ -949,28 +949,8 @@ const telegramId = tg.initDataUnsafe?.user?.id;
 // сервер узнаёт пользователя по подписанным данным Telegram, а не по id из запроса
 const authHeaders = { "X-Init-Data": tg.initData || "" };
 
-// --- Статистика: только счётчики нажатий (без текстов), пачкой раз в 30 секунд и при сворачивании ---
-const trackQueue = {};
-function track(name) {
-  if (!tg.initData) return;
-  trackQueue[name] = (trackQueue[name] || 0) + 1;
-}
-function flushTrack() {
-  const names = Object.keys(trackQueue);
-  if (!names.length) return;
-  const events = {};
-  for (const name of names) { events[name] = trackQueue[name]; delete trackQueue[name]; }
-  try {
-    fetch("/api/track", {
-      method: "POST",
-      keepalive: true,  // отправка успевает уйти, даже если мини-апп закрывают
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ init_data: tg.initData, events }),
-    }).catch(() => {});
-  } catch (err) {}
-}
-setInterval(flushTrack, 30000);
-document.addEventListener("visibilitychange", () => { if (document.hidden) flushTrack(); });
+// статистика нажатий убрана (экономия базы); вызовы track() оставлены пустыми, чтобы не трогать обработчики
+function track(name) {}
 
 const DAY_ABBR = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const MONTH_ABBR = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];

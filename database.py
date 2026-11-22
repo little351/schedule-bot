@@ -1,7 +1,9 @@
+import logging
 import os
 import re
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import NamedTuple
@@ -31,81 +33,123 @@ SYNCED_PARSED_COLUMNS = [("parsed", "BYTEA"), ("parsed_version", "TEXT")]
 PG_DSN = os.environ.get("DATABASE_URL")
 # рекорды мини-игр: у каждой игры своя таблица (рекорды прежней игры «Сессия» остаются в game_scores)
 GAME_TABLES = {"session": "game_scores", "tetris": "tetris_scores", "tetris_hard": "tetris_hard_scores"}
-pg_conn = None
+logger = logging.getLogger(__name__)
+_pg_local = threading.local()  # соединение, открытое pg_session() в этом потоке
+_pg_schema_ready = False
+_pg_schema_lock = threading.Lock()
+PG_CONNECT_TIMEOUT = 10
 
 
-def _pg_connect():
-    """(Пере)подключение к Postgres. Бесплатные облачные базы (Neon и др.) закрывают простаивающие
-    соединения, поэтому живое соединение проверяется перед запросом и при необходимости открывается заново."""
-    global pg_conn
+# Neon считает время работы базы (CU-часы), пока к ней обращаются; через ~5 минут тишины она засыпает.
+# Поэтому соединение не держится открытым: оно открывается на запрос (или на пачку запросов в pg_session)
+# и сразу закрывается, без пингов и keepalive. Частые чтения берутся из памяти, частые записи копятся (см. ниже).
+def _pg_open():
     import psycopg2
-    pg_conn = psycopg2.connect(PG_DSN, keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=3)
-    pg_conn.autocommit = True
-    return pg_conn
+    connection = psycopg2.connect(PG_DSN, connect_timeout=PG_CONNECT_TIMEOUT)
+    connection.autocommit = True
+    return connection
+
+
+@contextmanager
+def pg_session():
+    """Одно соединение на несколько запросов подряд (резервная копия, восстановление, сброс записей).
+    Вложенные pg_cursor() в этом потоке идут через него; закрывается в конце блока."""
+    if getattr(_pg_local, "conn", None) is not None:
+        yield
+        return
+    _ensure_pg_schema()
+    _pg_local.conn = _pg_open()
+    try:
+        yield
+    finally:
+        connection, _pg_local.conn = _pg_local.conn, None
+        connection.close()
 
 
 @contextmanager
 def pg_cursor():
-    import psycopg2
-    for attempt in (1, 2):
+    shared = getattr(_pg_local, "conn", None)
+    if shared is not None:
+        cur = shared.cursor()
         try:
-            if pg_conn is None or pg_conn.closed:
-                _pg_connect()
-            cur = pg_conn.cursor()
-            cur.execute("SELECT 1")  # соединение могло быть закрыто сервером, пока бот простаивал
-            break
-        except (psycopg2.OperationalError, psycopg2.InterfaceError):
-            if attempt == 2:
-                raise
-            _pg_connect()
+            yield cur
+        finally:
+            cur.close()
+        return
+    _ensure_pg_schema()
+    connection = _pg_open()
     try:
-        yield cur
+        cur = connection.cursor()
+        try:
+            yield cur
+        finally:
+            cur.close()
     finally:
-        cur.close()
+        connection.close()
+
+
+def _ensure_pg_schema():
+    """Таблицы создаются один раз за процесс. Если база недоступна при старте, бот всё равно запускается
+    (расписание у него своё), а создание таблиц повторится при первом обращении к базе."""
+    global _pg_schema_ready
+    if _pg_schema_ready:
+        return
+    with _pg_schema_lock:
+        if _pg_schema_ready:
+            return
+        connection = _pg_open()
+        try:
+            cur = connection.cursor()
+            _create_pg_schema(cur)
+            cur.close()
+        finally:
+            connection.close()
+        _pg_schema_ready = True
+
+
+def _create_pg_schema(cur):
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            telegram_id BIGINT PRIMARY KEY,
+            group_name TEXT
+        )
+    """)
+    # учёт пользователей: колонки добавляются к уже существующей таблице без потери данных
+    for column, column_type in USER_EXTRA_COLUMNS:
+        cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} {column_type}")
+    # у пользователей с направлением курс по умолчанию первый
+    cur.execute("UPDATE users SET course = 1 WHERE program IS NOT NULL AND course IS NULL")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS synced_files (
+            key TEXT PRIMARY KEY, file_name TEXT, content BYTEA, sha256 TEXT,
+            fetched_at TEXT, group_counts TEXT, records INTEGER
+        )
+    """)
+    # готовое расписание файла (сжатый JSON): при старте читается оно, а не сам файл, чтобы не тратить трафик базы
+    for column, column_type in SYNCED_PARSED_COLUMNS:
+        cur.execute(f"ALTER TABLE synced_files ADD COLUMN IF NOT EXISTS {column} {column_type}")
+    cur.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS notes (
+            id BIGSERIAL PRIMARY KEY, telegram_id BIGINT NOT NULL, subject TEXT, text TEXT,
+            due_date TEXT, done INTEGER NOT NULL DEFAULT 0, created_at TEXT
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS notes_user ON notes (telegram_id)")
+    for table in GAME_TABLES.values():
+        cur.execute(f"CREATE TABLE IF NOT EXISTS {table} "
+                    "(telegram_id BIGINT PRIMARY KEY, name TEXT, best INTEGER NOT NULL, updated_at TEXT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS blocks_wallet (telegram_id BIGINT PRIMARY KEY, "
+                "earned BIGINT NOT NULL DEFAULT 0, spent BIGINT NOT NULL DEFAULT 0, skins TEXT NOT NULL DEFAULT '', "
+                "updated_at TEXT)")
+    # таблицы статистики действий (stats_daily, stats_seen) больше не создаются и не трогаются; старые данные в базе остаются
 
 
 if PG_DSN:
-    _pg_connect()
-    with pg_cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                telegram_id BIGINT PRIMARY KEY,
-                group_name TEXT
-            )
-        """)
-        # учёт пользователей: колонки добавляются к уже существующей таблице без потери данных
-        for column, column_type in USER_EXTRA_COLUMNS:
-            cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} {column_type}")
-        # у пользователей с направлением курс по умолчанию первый
-        cur.execute("UPDATE users SET course = 1 WHERE program IS NOT NULL AND course IS NULL")
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS synced_files (
-                key TEXT PRIMARY KEY, file_name TEXT, content BYTEA, sha256 TEXT,
-                fetched_at TEXT, group_counts TEXT, records INTEGER
-            )
-        """)
-        # готовое расписание файла (сжатый JSON): при старте читается оно, а не сам файл, чтобы не тратить трафик базы
-        for column, column_type in SYNCED_PARSED_COLUMNS:
-            cur.execute(f"ALTER TABLE synced_files ADD COLUMN IF NOT EXISTS {column} {column_type}")
-        cur.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS notes (
-                id BIGSERIAL PRIMARY KEY, telegram_id BIGINT NOT NULL, subject TEXT, text TEXT,
-                due_date TEXT, done INTEGER NOT NULL DEFAULT 0, created_at TEXT
-            )
-        """)
-        cur.execute("CREATE INDEX IF NOT EXISTS notes_user ON notes (telegram_id)")
-        for table in GAME_TABLES.values():
-            cur.execute(f"CREATE TABLE IF NOT EXISTS {table} "
-                        "(telegram_id BIGINT PRIMARY KEY, name TEXT, best INTEGER NOT NULL, updated_at TEXT)")
-        cur.execute("CREATE TABLE IF NOT EXISTS blocks_wallet (telegram_id BIGINT PRIMARY KEY, "
-                    "earned BIGINT NOT NULL DEFAULT 0, spent BIGINT NOT NULL DEFAULT 0, skins TEXT NOT NULL DEFAULT '', "
-                    "updated_at TEXT)")
-        # статистика действий (stats.py): счётчики по дням и отметки «кто был в этот день»
-        cur.execute("CREATE TABLE IF NOT EXISTS stats_daily (day TEXT NOT NULL, metric TEXT NOT NULL, "
-                    "value BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (day, metric))")
-        cur.execute("CREATE TABLE IF NOT EXISTS stats_seen (day TEXT NOT NULL, telegram_id BIGINT NOT NULL, "
-                    "kinds INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, telegram_id))")
+    try:
+        _ensure_pg_schema()
+    except Exception:
+        logger.exception("база недоступна при старте: бот работает, таблицы проверятся при первом обращении")
 
 
 def storage_name():
@@ -228,10 +272,6 @@ def init_db(path="schedule.db"):
     conn.execute("CREATE TABLE IF NOT EXISTS blocks_wallet (telegram_id INTEGER PRIMARY KEY, "
                  "earned INTEGER NOT NULL DEFAULT 0, spent INTEGER NOT NULL DEFAULT 0, skins TEXT NOT NULL DEFAULT '', "
                  "updated_at TEXT)")
-    conn.execute("CREATE TABLE IF NOT EXISTS stats_daily (day TEXT NOT NULL, metric TEXT NOT NULL, "
-                 "value INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, metric))")
-    conn.execute("CREATE TABLE IF NOT EXISTS stats_seen (day TEXT NOT NULL, telegram_id INTEGER NOT NULL, "
-                 "kinds INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, telegram_id))")
     conn.commit()
     return conn
 
@@ -263,7 +303,99 @@ def _replace_schedule(conn, records):
     conn.commit()
 
 
-def set_user_group(conn, telegram_id, group: GroupRef):
+# --- Память вместо частых обращений к базе ---
+# Группы всех пользователей и sync_state читаются из базы один раз (при старте или первом обращении) и дальше
+# берутся из памяти: /week, кнопки и мини-апп к базе не обращаются. Время последнего обращения (touch_user)
+# копится в памяти и уходит в базу одной пачкой раз в USERS_FLUSH_EVERY и при остановке сервера (flush_users).
+# Смена группы пишется в базу сразу (это редко), а если база недоступна, ждёт в памяти до следующего сброса.
+USERS_FLUSH_EVERY = 3600  # секунд между сбросами накопленного в базу
+CACHE_RETRY_SECONDS = 60  # не чаще так повторять загрузку в память, если база недоступна
+
+
+class _LegacyGroup(NamedTuple):
+    """Группа, выбранная до появления направлений: известно только название."""
+    name: str
+
+
+class _MemoryState:
+    def __init__(self):
+        self.lock = threading.RLock()
+        self.groups = {}  # telegram_id -> GroupRef | _LegacyGroup | None
+        self.groups_loaded = False
+        self.groups_tried = 0.0
+        self.sync = None  # key -> value, None: ещё не загружено
+        self.touches = {}  # telegram_id -> (username, first_name, first_seen, last_seen)
+        self.group_writes = {}  # telegram_id -> GroupRef: не записалось в базу, повторить при сбросе
+
+
+_memory_guard = threading.Lock()
+
+
+def _memory(conn):
+    """Память привязана к соединению conn: у каждого init_db (и у каждого теста) своя."""
+    state = getattr(conn, "_memory", None)
+    if state is None:
+        with _memory_guard:
+            state = getattr(conn, "_memory", None)
+            if state is None:
+                state = _MemoryState()
+                conn._memory = state
+    return state
+
+
+def _user_group_rows(conn):
+    query = "SELECT telegram_id, group_name, program, course FROM users"
+    if PG_DSN:
+        with pg_cursor() as cur:
+            cur.execute(query)
+            return cur.fetchall()
+    return conn.execute(query).fetchall()
+
+
+def _group_from_row(name, program, course):
+    if not name:
+        return None
+    if program and course:
+        return GroupRef(program, int(course), name)
+    return _LegacyGroup(name)
+
+
+def load_user_groups(conn):
+    """Группы всех пользователей в память одним запросом. Ошибка базы пробрасывается."""
+    state = _memory(conn)
+    rows = _user_group_rows(conn)
+    with state.lock:
+        loaded = {row[0]: _group_from_row(*row[1:]) for row in rows}
+        loaded.update(state.group_writes)  # то, что ещё не дошло до базы, свежее
+        state.groups = loaded
+        state.groups_loaded = True
+    return len(loaded)
+
+
+def warm_cache(conn):
+    """При старте: группы пользователей и sync_state в память за одно соединение. База недоступна - не страшно,
+    загрузка повторится при первом обращении, а расписание бот показывает из своих файлов."""
+    try:
+        with (pg_session() if PG_DSN else _nothing()):
+            load_user_groups(conn)
+            _load_sync_state(conn)
+    except Exception:
+        logger.exception("не удалось загрузить пользователей и состояние в память, повторю при обращении")
+
+
+@contextmanager
+def _nothing():
+    yield
+
+
+def forget_cache(conn):
+    """После восстановления из копии данные в базе поменялись в обход памяти: перечитать при обращении."""
+    state = _memory(conn)
+    with state.lock:
+        state.groups, state.groups_loaded, state.groups_tried, state.sync = {}, False, 0.0, None
+
+
+def _write_user_group(conn, telegram_id, group):
     if PG_DSN:
         with pg_cursor() as cur:
             cur.execute(
@@ -282,29 +414,59 @@ def set_user_group(conn, telegram_id, group: GroupRef):
     conn.commit()
 
 
+def set_user_group(conn, telegram_id, group: GroupRef):
+    """Группа сразу в памяти и в базе. База недоступна - пользователь этого не замечает, запись повторится
+    при следующем сбросе (flush_users)."""
+    state = _memory(conn)
+    with state.lock:
+        state.groups[telegram_id] = group
+        state.group_writes.pop(telegram_id, None)
+    try:
+        _write_user_group(conn, telegram_id, group)
+    except Exception:
+        logger.exception("группа пользователя %s не записалась в базу, повторю позже", telegram_id)
+        with state.lock:
+            state.group_writes[telegram_id] = group
+
+
 def get_user_group(conn, telegram_id):
-    """Выбранная группа пользователя (GroupRef) или None.
+    """Выбранная группа пользователя (GroupRef) или None, из памяти.
 
     Пользователи, выбравшие группу до появления направлений, хранятся только с названием группы:
     для них направление и курс находятся по загруженному расписанию и записываются в базу."""
-    if PG_DSN:
-        with pg_cursor() as cur:
-            cur.execute("SELECT group_name, program, course FROM users WHERE telegram_id=%s", (telegram_id,))
-            row = cur.fetchone()
-    else:
-        row = conn.execute(
-            "SELECT group_name, program, course FROM users WHERE telegram_id = ?", (telegram_id,)
-        ).fetchone()
-    if not row or not row[0]:
-        return None
-    name, program, course = row
-    if program and course:
-        return GroupRef(program, int(course), name)
-
-    group, found = _resolve_legacy_group(conn, name)
-    if found:
-        set_user_group(conn, telegram_id, group)
-    return group
+    state = _memory(conn)
+    with state.lock:
+        known, value = telegram_id in state.groups, state.groups.get(telegram_id)
+        loaded = state.groups_loaded
+        retry = not loaded and time.monotonic() - state.groups_tried >= CACHE_RETRY_SECONDS
+        if retry:
+            state.groups_tried = time.monotonic()
+    if not known and retry:
+        try:
+            load_user_groups(conn)
+            loaded = True
+            with state.lock:
+                known, value = telegram_id in state.groups, state.groups.get(telegram_id)
+        except Exception:
+            logger.exception("не удалось загрузить группы пользователей в память")
+    if not known and not loaded:
+        # всех загрузить не вышло: спрашиваем одного (ошибка базы здесь уже пробрасывается)
+        if PG_DSN:
+            with pg_cursor() as cur:
+                cur.execute("SELECT group_name, program, course FROM users WHERE telegram_id=%s", (telegram_id,))
+                row = cur.fetchone()
+        else:
+            row = conn.execute("SELECT group_name, program, course FROM users WHERE telegram_id = ?",
+                               (telegram_id,)).fetchone()
+        value = _group_from_row(*row) if row else None
+        with state.lock:
+            state.groups.setdefault(telegram_id, value)
+    if isinstance(value, _LegacyGroup):
+        group, found = _resolve_legacy_group(conn, value.name)
+        if found:
+            set_user_group(conn, telegram_id, group)
+        return group
+    return value
 
 
 def _resolve_legacy_group(conn, name):
@@ -320,30 +482,62 @@ def _resolve_legacy_group(conn, name):
     return GroupRef(preferred[0], int(preferred[1]), name), True
 
 
+TOUCH_UPSERT = ("INSERT INTO users (telegram_id, username, first_name, first_seen, last_seen) VALUES {values} "
+                "ON CONFLICT (telegram_id) DO UPDATE SET username = excluded.username, "
+                "first_name = excluded.first_name, last_seen = excluded.last_seen, "
+                "first_seen = COALESCE(users.first_seen, excluded.first_seen)")
+
+
 def touch_user(conn, telegram_id, username, first_name):
     """Запоминает пользователя при любом обращении: username (может быть пустым),
-    имя, время первого и последнего обращения. Группу не трогает."""
+    имя, время первого и последнего обращения. Группу не трогает. Только в памяти: в базу уходит flush_users()."""
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    if PG_DSN:
-        with pg_cursor() as cur:
-            cur.execute(
-                "INSERT INTO users (telegram_id, username, first_name, first_seen, last_seen) "
-                "VALUES (%s, %s, %s, %s, %s) "
-                "ON CONFLICT (telegram_id) DO UPDATE SET username = EXCLUDED.username, "
-                "first_name = EXCLUDED.first_name, last_seen = EXCLUDED.last_seen, "
-                "first_seen = COALESCE(users.first_seen, EXCLUDED.first_seen)",
-                (telegram_id, username, first_name, now, now)
-            )
-        return
-    conn.execute(
-        "INSERT INTO users (telegram_id, username, first_name, first_seen, last_seen) "
-        "VALUES (?, ?, ?, ?, ?) "
-        "ON CONFLICT (telegram_id) DO UPDATE SET username = excluded.username, "
-        "first_name = excluded.first_name, last_seen = excluded.last_seen, "
-        "first_seen = COALESCE(users.first_seen, excluded.first_seen)",
-        (telegram_id, username, first_name, now, now)
-    )
-    conn.commit()
+    state = _memory(conn)
+    with state.lock:
+        first = state.touches.get(telegram_id, (None, None, now))[2]
+        state.touches[telegram_id] = (username, first_name, first, now)
+
+
+def pending_writes(conn):
+    state = _memory(conn)
+    with state.lock:
+        return len(state.touches) + len(state.group_writes)
+
+
+def flush_users(conn):
+    """Накопленное в памяти (обращения, несохранённые группы) - в базу одним заходом.
+    Пусто - к базе не обращается. Ошибка - всё возвращается в память и уйдёт со следующим сбросом."""
+    state = _memory(conn)
+    with state.lock:
+        touches, groups = state.touches, state.group_writes
+        state.touches, state.group_writes = {}, {}
+    if not touches and not groups:
+        return 0
+    rows = [(tid, u, f, first, last) for tid, (u, f, first, last) in touches.items()]
+    try:
+        if PG_DSN:
+            from psycopg2.extras import execute_values
+            with pg_session(), pg_cursor() as cur:
+                if rows:
+                    execute_values(cur, TOUCH_UPSERT.format(values="%s"), rows, page_size=1000)
+                for tid, group in groups.items():
+                    _write_user_group(conn, tid, group)
+        else:
+            with conn.lock:
+                if rows:
+                    conn.executemany(TOUCH_UPSERT.format(values="(?, ?, ?, ?, ?)"), rows)
+                for tid, group in groups.items():
+                    _write_user_group(conn, tid, group)
+                conn.commit()
+    except Exception:
+        with state.lock:
+            for tid, (u, f, first, last) in touches.items():
+                newer = state.touches.get(tid)
+                state.touches[tid] = (newer[0], newer[1], first, newer[3]) if newer else (u, f, first, last)
+            for tid, group in groups.items():
+                state.group_writes.setdefault(tid, group)
+        raise
+    return len(rows) + len(groups)
 
 
 def users_without_profile(conn, limit=50):
@@ -377,6 +571,14 @@ def restore_users(conn, rows):
     first_seen, last_seen, program, course), ...]. Уже существующие записи не трогает (они свежее копии).
     Возвращает, сколько пользователей добавлено."""
     added = 0
+    with (pg_session() if PG_DSN else _nothing()):
+        added = _restore_users(conn, rows)
+    forget_cache(conn)
+    return added
+
+
+def _restore_users(conn, rows):
+    added = 0
     for telegram_id, username, first_name, group_name, first_seen, last_seen, program, course in rows:
         params = (telegram_id, group_name, username, first_name, first_seen, last_seen, program, course)
         if PG_DSN:
@@ -398,6 +600,7 @@ def restore_users(conn, rows):
 def list_users(conn):
     """Все пользователи, сначала те, кто обращался недавно:
     [(telegram_id, username, first_name, group_name, first_seen, last_seen, program, course), ...]"""
+    _flush_quietly(conn)
     query = (
         "SELECT telegram_id, username, first_name, group_name, first_seen, last_seen, program, course "
         "FROM users ORDER BY last_seen IS NULL, last_seen DESC, telegram_id"
@@ -432,8 +635,22 @@ BACKUP_KEYS = {
 }
 
 
+def _flush_quietly(conn):
+    """Перед чтением списка пользователей - сбросить накопленное, чтобы список был свежим."""
+    try:
+        flush_users(conn)
+    except Exception:
+        logger.exception("не удалось сбросить накопленное перед чтением пользователей")
+
+
 def export_backup(conn):
     """{"tables": {таблица: [{колонка: значение}, ...]}} для всех таблиц из BACKUP_TABLES."""
+    _flush_quietly(conn)
+    with (pg_session() if PG_DSN else _nothing()):
+        return _export_backup(conn)
+
+
+def _export_backup(conn):
     tables = {}
     for table, columns in BACKUP_TABLES.items():
         query = f"SELECT {', '.join(columns)} FROM {table}"
@@ -450,6 +667,14 @@ def export_backup(conn):
 def import_backup(conn, data):
     """Добавляет из копии записи, которых в базе нет; существующие не трогает.
     Колонки берутся только из BACKUP_TABLES (файл мог прийти откуда угодно). Возвращает {таблица: добавлено}."""
+    try:
+        with (pg_session() if PG_DSN else _nothing()):
+            return _import_backup(conn, data)
+    finally:
+        forget_cache(conn)
+
+
+def _import_backup(conn, data):
     added = {}
     for table, columns in BACKUP_TABLES.items():
         keys = BACKUP_KEYS[table]
@@ -628,14 +853,29 @@ def delete_synced_file(conn, key):
     conn.commit()
 
 
-def get_sync_state(conn, key, default=None):
+def _load_sync_state(conn):
+    """Весь sync_state (десятки коротких строк) в память одним запросом."""
     if PG_DSN:
         with pg_cursor() as cur:
-            cur.execute("SELECT value FROM sync_state WHERE key = %s", (key,))
-            row = cur.fetchone()
+            cur.execute("SELECT key, value FROM sync_state")
+            rows = cur.fetchall()
     else:
-        row = conn.execute("SELECT value FROM sync_state WHERE key = ?", (key,)).fetchone()
-    return row[0] if row else default
+        rows = conn.execute("SELECT key, value FROM sync_state").fetchall()
+    state = _memory(conn)
+    with state.lock:
+        state.sync = dict(rows)
+    return state.sync
+
+
+def get_sync_state(conn, key, default=None):
+    """Из памяти; база читается один раз за процесс (автозадачи проверяют состояние каждые полчаса)."""
+    state = _memory(conn)
+    with state.lock:
+        values = state.sync
+    if values is None:
+        values = _load_sync_state(conn)
+    value = values.get(key)
+    return default if value is None else value
 
 
 def set_sync_state(conn, key, value):
@@ -643,10 +883,14 @@ def set_sync_state(conn, key, value):
         with pg_cursor() as cur:
             cur.execute("INSERT INTO sync_state (key, value) VALUES (%s, %s) "
                         "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (key, value))
-        return
-    conn.execute("INSERT INTO sync_state (key, value) VALUES (?, ?) "
-                 "ON CONFLICT (key) DO UPDATE SET value = excluded.value", (key, value))
-    conn.commit()
+    else:
+        conn.execute("INSERT INTO sync_state (key, value) VALUES (?, ?) "
+                     "ON CONFLICT (key) DO UPDATE SET value = excluded.value", (key, value))
+        conn.commit()
+    state = _memory(conn)
+    with state.lock:
+        if state.sync is not None:
+            state.sync[key] = value
 
 
 def get_week_schedule_grid(conn, group: GroupRef, week_sheet):
@@ -969,86 +1213,4 @@ def buy_blocks_skin(conn, telegram_id, skin):
               "WHERE telegram_id = ? AND earned - spent >= ? AND (',' || skins || ',') NOT LIKE ?",
         (price, "," + skin, now, telegram_id, price, f"%,{skin},%"))
     return changed > 0
-
-
-# --- Статистика действий (stats.py). Запись пачкой раз в 10 минут, чтение только по /stats ---
-
-STATS_DAILY_UPSERT = ("INSERT INTO stats_daily (day, metric, value) VALUES {values} ON CONFLICT (day, metric) "
-                      "DO UPDATE SET value = stats_daily.value + excluded.value")
-STATS_SEEN_UPSERT = ("INSERT INTO stats_seen (day, telegram_id, kinds) VALUES {values} ON CONFLICT (day, telegram_id) "
-                     "DO UPDATE SET kinds = stats_seen.kinds | excluded.kinds")
-
-
-def _stats_rows(conn, query, params=()):
-    """Запрос к таблицам статистики в обеих базах (в тексте «?»), строки целиком."""
-    if PG_DSN:
-        with pg_cursor() as cur:
-            cur.execute(query.replace("?", "%s"), params)
-            return cur.fetchall() if cur.description else []
-    with conn.lock:
-        rows = conn.execute(query, params).fetchall()
-        conn.commit()
-    return rows
-
-
-def stats_write(conn, daily, seen):
-    """daily: [(день, счётчик, прибавка)], seen: [(день, telegram_id, kinds)]. Один запрос на таблицу."""
-    if PG_DSN:
-        from psycopg2.extras import execute_values
-        with pg_cursor() as cur:
-            if daily:
-                execute_values(cur, STATS_DAILY_UPSERT.format(values="%s"), daily, page_size=1000)
-            if seen:
-                execute_values(cur, STATS_SEEN_UPSERT.format(values="%s"), seen, page_size=1000)
-        return
-    with conn.lock:
-        if daily:
-            conn.executemany(STATS_DAILY_UPSERT.format(values="(?, ?, ?)"), daily)
-        if seen:
-            conn.executemany(STATS_SEEN_UPSERT.format(values="(?, ?, ?)"), seen)
-        conn.commit()
-
-
-def stats_read(conn, start, today, week0, week1, month):
-    """Готовые числа для отчёта: суммы счётчиков с start, люди по дням, уникальные за период, 7 и 30 дней,
-    игроки, возвращаемость (были с week0 по week1, вернулись с week1). Дни - строки ГГГГ-ММ-ДД."""
-    since = min(start, month, week0)
-    totals = dict(_stats_rows(conn, "SELECT metric, SUM(value) FROM stats_daily WHERE day >= ? AND day <= ? "
-                              "GROUP BY metric", (start, today)))
-    by_day = {row[0]: tuple(int(v or 0) for v in row[1:]) for row in _stats_rows(
-        conn, "SELECT day, COUNT(*), SUM(CASE WHEN (kinds & 1) <> 0 THEN 1 ELSE 0 END), "
-              "SUM(CASE WHEN (kinds & 2) <> 0 THEN 1 ELSE 0 END), SUM(CASE WHEN (kinds & 4) <> 0 THEN 1 ELSE 0 END) "
-              "FROM stats_seen WHERE day >= ? AND day <= ? GROUP BY day", (start, today))}
-    uniq = _stats_rows(
-        conn, "SELECT COUNT(DISTINCT CASE WHEN day >= ? THEN telegram_id END), "
-              "COUNT(DISTINCT CASE WHEN day >= ? THEN telegram_id END), "
-              "COUNT(DISTINCT CASE WHEN day >= ? THEN telegram_id END), "
-              "COUNT(DISTINCT CASE WHEN day >= ? AND (kinds & 4) <> 0 THEN telegram_id END) "
-              "FROM stats_seen WHERE day >= ? AND day <= ?", (start, week1, month, start, since, today))[0]
-    retention = _stats_rows(
-        conn, "SELECT COUNT(*), SUM(CASE WHEN EXISTS (SELECT 1 FROM stats_seen b WHERE b.telegram_id = a.telegram_id "
-              "AND b.day >= ? AND b.day <= ?) THEN 1 ELSE 0 END) FROM (SELECT DISTINCT telegram_id FROM stats_seen "
-              "WHERE day >= ? AND day < ?) a", (week1, today, week0, week1))[0]
-    first = _stats_rows(conn, "SELECT MIN(day) FROM stats_seen")[0][0]
-    first_daily = _stats_rows(conn, "SELECT MIN(day) FROM stats_daily")[0][0]
-    return {"totals": {m: int(v or 0) for m, v in totals.items()}, "by_day": by_day,
-            "uniq_period": int(uniq[0] or 0), "uniq_7": int(uniq[1] or 0), "uniq_30": int(uniq[2] or 0),
-            "players": int(uniq[3] or 0), "retention": (int(retention[0] or 0), int(retention[1] or 0)),
-            "first_day": min(filter(None, [first, first_daily]), default=None)}
-
-
-def stats_daily_rows(conn, start):
-    """Все счётчики по дням с start (для CSV)."""
-    return [(d, m, int(v)) for d, m, v in _stats_rows(
-        conn, "SELECT day, metric, value FROM stats_daily WHERE day >= ? ORDER BY day", (start,))]
-
-
-def stats_compact(conn, before):
-    """Строки «кто был в этот день» старше before сворачиваются в дневные итоги uniq.* и удаляются."""
-    for metric, condition in (("uniq.all", "1 = 1"), ("uniq.bot", "(kinds & 1) <> 0"),
-                              ("uniq.app", "(kinds & 2) <> 0"), ("uniq.game", "(kinds & 4) <> 0")):
-        _stats_rows(conn, f"INSERT INTO stats_daily (day, metric, value) SELECT day, '{metric}', COUNT(*) "
-                          f"FROM stats_seen WHERE day < ? AND {condition} GROUP BY day "
-                          "ON CONFLICT (day, metric) DO UPDATE SET value = excluded.value", (before,))
-    _stats_rows(conn, "DELETE FROM stats_seen WHERE day < ?", (before,))
 

@@ -4,7 +4,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional
 
 from fastapi import APIRouter, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +19,6 @@ from database import (
 )
 from formatting import trim_trailing_empty
 import lms_sync
-import stats
 from telegram_auth import MAX_AGE_SECONDS, READ_MAX_AGE_SECONDS, validate_init_data
 
 logger = logging.getLogger(__name__)
@@ -61,11 +60,6 @@ class VisitBody(BaseModel):
     init_data: str
     src: Optional[str] = None  # откуда открыли мини-апп (метка ?src= в адресе кнопки)
     platform: Optional[str] = None  # Telegram.WebApp.platform
-
-
-class TrackBody(BaseModel):
-    init_data: str
-    events: Dict[str, int] = {}  # счётчик -> сколько раз, только из stats.APP_EVENTS
 
 
 class NoteBody(BaseModel):
@@ -142,17 +136,6 @@ def schedule_freshness(group):
     if change:
         out["changed"] = {"at": change.get("at"), "dates": change.get("dates", [])}
     return out
-
-
-def _count(*metrics, telegram_id=None, kind=None, n=1):
-    """Статистика не должна ломать ответ мини-аппу: любая её ошибка только в лог."""
-    try:
-        for metric in metrics:
-            stats.count(metric, n)
-        if telegram_id and kind:
-            stats.seen(telegram_id, kind)
-    except Exception:
-        logger.exception("статистика: не удалось посчитать %s", metrics)
 
 
 def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
@@ -249,7 +232,6 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
             group = next((g for g in matches if current and (g.program, g.course) == (current.program, current.course)),
                          matches[0])
         set_user_group(conn, user_id, group)
-        _count("app.group")
         return _group_json(group)
 
     @router.post("/visit")
@@ -259,23 +241,13 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
         user = validate_init_data(body.init_data, bot_token)
         if not user:
             raise HTTPException(status_code=403, detail="bad_init_data")
-        touch_user(conn, user["id"], user.get("username"),
+        touch_user(conn, user["id"], user.get("username"),  # только память, в базу - пачкой раз в час
                    " ".join(filter(None, [user.get("first_name"), user.get("last_name")])) or None)
-        _count("open." + stats.app_source(body.src), "platform." + stats.app_platform(body.platform),
-               telegram_id=user["id"], kind=stats.SEEN_APP)
         return {"ok": True}
 
     @router.post("/track")
-    def track(body: TrackBody):
-        """Пачка счётчиков из мини-аппа (раз в 30 секунд или при закрытии): только числа, без текстов.
-        Сервер прибавляет их в памяти, в базу они уходят вместе с остальной статистикой."""
-        user = validate_init_data(body.init_data, bot_token, READ_MAX_AGE_SECONDS)
-        if not user:
-            raise HTTPException(status_code=403, detail="bad_init_data")
-        for name, n in list(body.events.items())[:len(stats.APP_EVENTS)]:
-            if name in stats.APP_EVENTS and isinstance(n, int) and n > 0:
-                _count(name, n=min(n, stats.APP_EVENT_MAX))
-        _count(telegram_id=user["id"], kind=stats.SEEN_APP)
+    def track():
+        """Статистика действий убрана; адрес оставлен пустым для старых версий мини-аппа из кеша Telegram."""
         return {"ok": True}
 
     def note_user(init_data):
@@ -301,7 +273,6 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
         if count_notes(conn, user_id) >= NOTES_LIMIT:
             raise HTTPException(status_code=400, detail="too_many_notes")
         add_note(conn, user_id, fields["subject"], fields["text"], fields["due_date"])
-        _count("note.add")
         return {"notes": list_notes(conn, user_id)}
 
     @router.patch("/notes/{note_id}")
@@ -319,7 +290,6 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
         user_id = note_user(x_init_data)
         if not delete_note(conn, user_id, note_id):
             raise HTTPException(status_code=404, detail="note_not_found")
-        _count("note.delete")
         return {"notes": list_notes(conn, user_id)}
 
     @router.post("/campus-map")
@@ -371,10 +341,6 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
             save_game_score(conn, user["id"], name[:20] or "Игрок", body.score, game=game)
             if game in ("tetris", "tetris_hard"):
                 add_blocks_points(conn, user["id"], body.score)  # очки партии идут на счёт для магазина скинов
-        if game in ("tetris", "tetris_hard"):
-            _count("game.played", *(["game.played_hard"] if game == "tetris_hard" else []),
-                   telegram_id=user["id"], kind=stats.SEEN_GAME)
-            _count("game.points", n=body.score)
         return game_leaderboard(conn, user["id"], game=game)
 
     # --- Магазин скинов «Блоков». Владельцу бота (OWNER_ID) всё бесплатно ---
@@ -402,7 +368,6 @@ def build_router(conn, bot_token, send_campus_map=None) -> APIRouter:
         if body.skin not in view["owned"]:
             if not buy_blocks_skin(conn, user["id"], body.skin):
                 raise HTTPException(status_code=402, detail="not_enough_points")
-            _count("skin." + body.skin)
         return shop_view(user["id"])
 
     return router
